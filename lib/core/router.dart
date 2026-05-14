@@ -1,5 +1,4 @@
 import 'package:go_router/go_router.dart';
-
 import '../screens/admin/admin_shell_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
@@ -31,9 +30,9 @@ final appRouter = GoRouter(
       builder: (context, state) => const AdminShellScreen(),
     ),
     GoRoute(
-      path: '/guard',
-      builder: (context, state) => const QrScannerScreen(),
-    ),
+  path: '/gate-officer',
+  builder: (context, state) => const QrScannerScreen(),
+),
   ],
 );
 

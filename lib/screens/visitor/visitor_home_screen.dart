@@ -149,12 +149,12 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                         color: Colors.purple.shade700,
                         onTap: _openQrScreen,  // ← FIXED: Now navigates to QR screen
                       ),
-                     _buildQuickAction(
-  icon: Icons.history,
-  label: 'Visit History',
-  color: Colors.orange.shade700,
-  onTap: _openHistoryScreen,  // ← This calls the method above
-),
+                      _buildQuickAction(
+                        icon: Icons.history,
+                        label: 'Visit History',
+                        color: Colors.orange.shade700,
+                        onTap: _openHistoryScreen,  // ← FIXED: Now navigates to history screen
+                      ),
                     ],
                   ),
                 ],
