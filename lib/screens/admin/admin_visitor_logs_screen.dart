@@ -16,9 +16,8 @@ class _AdminVisitorLogsScreenState extends ConsumerState<AdminVisitorLogsScreen>
   bool _isLoading = true;
   String? _errorMessage;
   String _searchQuery = '';
-  String _dateFilter = 'Today'; // Today, Week, Month, All
+  String _dateFilter = 'Today';
   
-  // Date range for custom filter
   DateTime? _startDate;
   DateTime? _endDate;
 
@@ -37,7 +36,6 @@ class _AdminVisitorLogsScreenState extends ConsumerState<AdminVisitorLogsScreen>
     try {
       final supabase = Supabase.instance.client;
       
-      // Get all visitor logs with user and burial info
       final logs = await supabase
           .from('visitor_log')
           .select('''
@@ -75,48 +73,59 @@ class _AdminVisitorLogsScreenState extends ConsumerState<AdminVisitorLogsScreen>
 
   void _applyFilters() {
     DateTime now = DateTime.now();
-    DateTime filterDate = now;
     
-    switch (_dateFilter) {
-      case 'Today':
-        filterDate = now;
-        break;
-      case 'Week':
-        filterDate = now.subtract(const Duration(days: 7));
-        break;
-      case 'Month':
-        filterDate = now.subtract(const Duration(days: 30));
-        break;
-      case 'All':
-        filterDate = DateTime(2000);
-        break;
-    }
+    // Get start and end of today
+    final todayStart = DateTime(now.year, now.month, now.day, 0, 0, 0);
+    final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
+    
+    // Get start of week (Monday)
+    final weekStart = now.subtract(Duration(days: now.weekday - 1));
+    final weekStartDate = DateTime(weekStart.year, weekStart.month, weekStart.day, 0, 0, 0);
+    
+    // Get start of month
+    final monthStart = DateTime(now.year, now.month, 1, 0, 0, 0);
     
     setState(() {
       _filteredLogs = _logs.where((log) {
-        // Date filter
         final timeIn = DateTime.parse(log['time_in']);
-        if (_dateFilter != 'All' && timeIn.isBefore(filterDate)) {
-          return false;
+        
+        // Date filter
+        bool dateMatch = true;
+        switch (_dateFilter) {
+          case 'Today':
+            dateMatch = timeIn.isAfter(todayStart) && timeIn.isBefore(todayEnd);
+            break;
+          case 'Week':
+            dateMatch = timeIn.isAfter(weekStartDate);
+            break;
+          case 'Month':
+            dateMatch = timeIn.isAfter(monthStart);
+            break;
+          case 'All':
+            dateMatch = true;
+            break;
+          case 'Custom':
+            if (_startDate != null && timeIn.isBefore(_startDate!)) {
+              dateMatch = false;
+            }
+            if (_endDate != null && timeIn.isAfter(_endDate!)) {
+              dateMatch = false;
+            }
+            break;
         }
         
-        // Custom date range filter
-        if (_startDate != null && timeIn.isBefore(_startDate!)) {
-          return false;
-        }
-        if (_endDate != null && timeIn.isAfter(_endDate!)) {
-          return false;
-        }
+        if (!dateMatch) return false;
         
         // Search filter
         if (_searchQuery.isNotEmpty) {
           final visitorName = log['user']?['name']?.toLowerCase() ?? '';
           final graveName = log['burial']?['name_of_deceased']?.toLowerCase() ?? '';
           final lotNumber = log['burial']?['cemetery_lot']?['lot_number']?.toLowerCase() ?? '';
+          final query = _searchQuery.toLowerCase();
           
-          return visitorName.contains(_searchQuery.toLowerCase()) ||
-                 graveName.contains(_searchQuery.toLowerCase()) ||
-                 lotNumber.contains(_searchQuery.toLowerCase());
+          return visitorName.contains(query) ||
+                 graveName.contains(query) ||
+                 lotNumber.contains(query);
         }
         
         return true;
@@ -174,29 +183,16 @@ class _AdminVisitorLogsScreenState extends ConsumerState<AdminVisitorLogsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Visitor Logs'),
-        backgroundColor: const Color(0xFF4B6E4F),
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadLogs,
-          ),
-        ],
-      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
               ? _buildErrorWidget()
               : Column(
                   children: [
-                    // Filters
                     Padding(
                       padding: const EdgeInsets.all(12),
                       child: Column(
                         children: [
-                          // Search bar
                           TextField(
                             decoration: InputDecoration(
                               hintText: 'Search by visitor name or grave...',
@@ -222,8 +218,6 @@ class _AdminVisitorLogsScreenState extends ConsumerState<AdminVisitorLogsScreen>
                             },
                           ),
                           const SizedBox(height: 8),
-                          
-                          // Date filter row
                           Row(
                             children: [
                               Expanded(
@@ -261,8 +255,6 @@ class _AdminVisitorLogsScreenState extends ConsumerState<AdminVisitorLogsScreen>
                                 ),
                             ],
                           ),
-                          
-                          // Custom date range display
                           if (_startDate != null || _endDate != null)
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
@@ -281,8 +273,6 @@ class _AdminVisitorLogsScreenState extends ConsumerState<AdminVisitorLogsScreen>
                         ],
                       ),
                     ),
-                    
-                    // Results count
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Row(
@@ -295,10 +285,7 @@ class _AdminVisitorLogsScreenState extends ConsumerState<AdminVisitorLogsScreen>
                         ],
                       ),
                     ),
-                    
                     const SizedBox(height: 8),
-                    
-                    // Logs list
                     Expanded(
                       child: _filteredLogs.isEmpty
                           ? const Center(child: Text('No visitor logs found'))
@@ -315,7 +302,6 @@ class _AdminVisitorLogsScreenState extends ConsumerState<AdminVisitorLogsScreen>
                                 final timeIn = _formatDateTime(log['time_in']);
                                 final method = log['method'] ?? 'Manual';
                                 final visitorName = user['name'] ?? 'Unknown Visitor';
-                                final visitorEmail = user['email'] ?? '';
                                 final graveName = burial['name_of_deceased'];
                                 final lotNumber = lot['lot_number'];
                                 final sectionName = section['name'];
@@ -327,7 +313,7 @@ class _AdminVisitorLogsScreenState extends ConsumerState<AdminVisitorLogsScreen>
                                   ),
                                   child: ListTile(
                                     leading: CircleAvatar(
-                                      backgroundColor: _getMethodColor(method).withOpacity(0.1),
+                                      backgroundColor: _getMethodColor(method).withValues(alpha: 0.1),
                                       child: Icon(
                                         method == 'QR' ? Icons.qr_code_scanner : Icons.person,
                                         color: _getMethodColor(method),
@@ -349,7 +335,7 @@ class _AdminVisitorLogsScreenState extends ConsumerState<AdminVisitorLogsScreen>
                                     ),
                                     trailing: Chip(
                                       label: Text(method),
-                                      backgroundColor: _getMethodColor(method).withOpacity(0.1),
+                                      backgroundColor: _getMethodColor(method).withValues(alpha: 0.1),
                                       labelStyle: TextStyle(
                                         color: _getMethodColor(method),
                                         fontSize: 11,

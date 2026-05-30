@@ -1,18 +1,15 @@
 import 'package:go_router/go_router.dart';
-import '../screens/admin/admin_shell_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
-import '../screens/auth/welcome_screen.dart';
-import '../screens/guard/qr_scanner_screen.dart';
 import '../screens/visitor/visitor_shell_screen.dart';
+import '../screens/admin/admin_shell_screen.dart';
+import '../screens/guard/qr_scanner_screen.dart';
+import '../screens/lot_owner/lot_owner_home_screen.dart';
+import '../screens/lot_owner/lot_owner_payment_screen.dart';
 
-final appRouter = GoRouter(
-  initialLocation: '/welcome',
+final router = GoRouter(
+  initialLocation: '/login',
   routes: [
-    GoRoute(
-      path: '/welcome',
-      builder: (context, state) => const WelcomeScreen(),
-    ),
     GoRoute(
       path: '/login',
       builder: (context, state) => const LoginScreen(),
@@ -30,9 +27,16 @@ final appRouter = GoRouter(
       builder: (context, state) => const AdminShellScreen(),
     ),
     GoRoute(
-  path: '/gate-officer',
-  builder: (context, state) => const QrScannerScreen(),
-),
+      path: '/gate-officer',
+      builder: (context, state) => const QrScannerScreen(),
+    ),
+    GoRoute(
+      path: '/lot-owner',
+      builder: (context, state) => const LotOwnerHomeScreen(),
+    ),
+    GoRoute(
+      path: '/lot-owner-payment',
+      builder: (context, state) => const LotOwnerPaymentScreen(),
+    ),
   ],
 );
-

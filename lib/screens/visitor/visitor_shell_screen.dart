@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -13,28 +14,63 @@ class VisitorShellScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final index = ref.watch(visitorNavIndexProvider);
-    
+
     final screens = [
       const VisitorHomeScreen(),
       const VisitorMapScreen(),
       const VisitorQrScreen(),
       const VisitorProfileScreen(),
     ];
-    
+
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      body: screens[index],
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
-        onDestinationSelected: (value) {
-          // Update the provider with new index
-          ref.read(visitorNavIndexProvider.notifier).state = value;
-        },
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.map_outlined), label: 'Map'),
-          NavigationDestination(icon: Icon(Icons.qr_code_scanner_rounded), label: 'QR'),
-          NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
-        ],
+      extendBody: true,
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 350),
+        switchInCurve: Curves.easeOutQuart,
+        switchOutCurve: Curves.easeInQuart,
+        child: screens[index],
+      ),
+      bottomNavigationBar: ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: BottomNavigationBar(
+            type: BottomNavigationBarType.fixed,
+            currentIndex: index,
+            onTap: (value) =>
+                ref.read(visitorNavIndexProvider.notifier).state = value,
+            selectedItemColor: colorScheme.primary,
+            unselectedItemColor: colorScheme.onSurfaceVariant.withOpacity(0.6),
+            showUnselectedLabels: true,
+            elevation: 0,
+            backgroundColor: colorScheme.surface.withOpacity(0.85),
+            selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home_outlined),
+                activeIcon: Icon(Icons.home_rounded),
+                label: 'Home',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.map_outlined),
+                activeIcon: Icon(Icons.map_rounded),
+                label: 'Map',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.qr_code_2_outlined),
+                activeIcon: Icon(Icons.qr_code_2_rounded),
+                label: 'QR',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person_outline),
+                activeIcon: Icon(Icons.person_rounded),
+                label: 'Profile',
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

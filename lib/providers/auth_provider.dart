@@ -40,7 +40,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   // Login with email and password
   Future<bool> login(String email, String password) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
-    
+
     try {
       final response = await _supabase.auth.signInWithPassword(
         email: email,
@@ -49,47 +49,50 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = state.copyWith(user: response.user, isLoading: false);
       return true;
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
       return false;
     }
   }
 
   // Register new user
-  Future<bool> register(String email, String password, String name, String role) async {
+  Future<bool> register(
+    String email,
+    String password,
+    String name,
+    String role,
+  ) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
-    
+
     try {
-      // Create user in Supabase Auth
-      final response = await _supabase.auth.signUp(
-        email: email,
-        password: password,
-        data: {
-          'name': name,
-          'role': role,
+      final response = await _supabase.functions.invoke(
+        'public-register',
+        body: {
+          'fullName': name.trim(),
+          'email': email.trim().toLowerCase(),
+          'password': password,
+          'role': role.trim().toLowerCase(),
         },
       );
-      
-      if (response.user != null) {
-        // Insert user details into your users table
-        await _supabase.from('users').insert({
-          'name': name,
-          'email': email,
-          'password': 'auth_managed', // Supabase Auth handles password
-          'role': role,
-        });
-        
-        state = state.copyWith(user: response.user, isLoading: false);
-        return true;
+
+      final data = response.data;
+      if (data is Map && data['error'] != null) {
+        throw Exception(data['error']);
       }
-      return false;
+
+      state = state.copyWith(isLoading: false);
+      return true;
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      final message = e.toString();
+      if (message.contains('Failed to fetch') ||
+          message.contains('ClientException')) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage:
+              'Registration service is unavailable. Deploy the public-register function in Supabase.',
+        );
+        return false;
+      }
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
       return false;
     }
   }

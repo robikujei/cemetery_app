@@ -1,11 +1,18 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import '../../services/audit_service.dart';
 
 class AdminBurialRecordsScreen extends ConsumerStatefulWidget {
-  const AdminBurialRecordsScreen({super.key});
+  const AdminBurialRecordsScreen({
+    super.key,
+    this.onMenuPressed,
+    this.onLogoutPressed,
+  });
+
+  final VoidCallback? onMenuPressed;
+  final VoidCallback? onLogoutPressed;
 
   @override
   ConsumerState<AdminBurialRecordsScreen> createState() => _AdminBurialRecordsScreenState();
@@ -16,7 +23,6 @@ class _AdminBurialRecordsScreenState extends ConsumerState<AdminBurialRecordsScr
   List<Map<String, dynamic>> _filteredRecords = [];
   bool _isLoading = true;
   String? _errorMessage;
-  String _searchQuery = '';
   
   // Form controllers for add/edit
   final _nameController = TextEditingController();
@@ -111,21 +117,79 @@ class _AdminBurialRecordsScreenState extends ConsumerState<AdminBurialRecordsScr
     return true;
   }
 
+  InputDecoration _recordFieldDecoration({
+    required String labelText,
+    required IconData icon,
+    String? hintText,
+    String? helperText,
+    String? errorText,
+  }) {
+    return InputDecoration(
+      labelText: labelText,
+      hintText: hintText,
+      helperText: helperText,
+      errorText: errorText,
+      prefixIcon: Icon(icon, color: const Color(0xFF335538)),
+      filled: true,
+      fillColor: Colors.white,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Color(0xFFC2C8BF)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Color(0xFFC2C8BF)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Color(0xFF335538), width: 1.4),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Color(0xFFBA1A1A)),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Color(0xFFBA1A1A), width: 1.4),
+      ),
+    );
+  }
+
   void _showValidationErrorDialog(String title, String message) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFFFBF9F6),
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Row(
           children: [
-            const Icon(Icons.error_outline, color: Colors.red, size: 28),
-            const SizedBox(width: 8),
-            Text(title),
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFDAD6),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.error_outline, color: Color(0xFFBA1A1A)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
           ],
         ),
         content: Text(message),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF335538),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            ),
             child: const Text('OK'),
           ),
         ],
@@ -211,7 +275,6 @@ class _AdminBurialRecordsScreenState extends ConsumerState<AdminBurialRecordsScr
 
   void _filterRecords(String query) {
     setState(() {
-      _searchQuery = query;
       if (query.isEmpty) {
         _filteredRecords = List.from(_burialRecords);
       } else {
@@ -273,17 +336,36 @@ class _AdminBurialRecordsScreenState extends ConsumerState<AdminBurialRecordsScr
     }
     _availableLots = List<Map<String, dynamic>>.from(allLots);
 
+    if (!mounted) return;
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
+            backgroundColor: const Color(0xFFFBF9F6),
+            surfaceTintColor: Colors.transparent,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
             title: Row(
               children: [
-                Icon(_isEditing ? Icons.edit : Icons.person_add, 
-                     color: const Color(0xFF4B6E4F)),
-                const SizedBox(width: 8),
-                Text(_isEditing ? 'Edit Burial Record' : 'Add Burial Record'),
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFC5EDC6),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    _isEditing ? Icons.edit_rounded : Icons.person_add_alt_1_rounded,
+                    color: const Color(0xFF335538),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _isEditing ? 'Edit Burial Record' : 'Add Burial Record',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
               ],
             ),
             content: SingleChildScrollView(
@@ -292,47 +374,43 @@ class _AdminBurialRecordsScreenState extends ConsumerState<AdminBurialRecordsScr
                 children: [
                   TextField(
                     controller: _nameController,
-                    decoration: InputDecoration(
+                    decoration: _recordFieldDecoration(
                       labelText: 'Name of Deceased *',
-                      border: const OutlineInputBorder(),
                       errorText: _nameError,
-                      prefixIcon: const Icon(Icons.person),
+                      icon: Icons.person_outline_rounded,
                     ),
                   ),
                   const SizedBox(height: 12),
                   
                   TextField(
                     controller: _birthDateController,
-                    decoration: InputDecoration(
+                    decoration: _recordFieldDecoration(
                       labelText: 'Birth Date (YYYY-MM-DD)',
                       hintText: 'Optional',
-                      border: const OutlineInputBorder(),
                       errorText: _birthDateError,
                       helperText: 'Example: 1950-01-15',
-                      prefixIcon: const Icon(Icons.cake),
+                      icon: Icons.cake_outlined,
                     ),
                   ),
                   const SizedBox(height: 12),
                   
                   TextField(
                     controller: _deathDateController,
-                    decoration: InputDecoration(
+                    decoration: _recordFieldDecoration(
                       labelText: 'Death Date (YYYY-MM-DD) *',
-                      border: const OutlineInputBorder(),
                       errorText: _deathDateError,
                       helperText: 'Example: 2024-05-10',
-                      prefixIcon: const Icon(Icons.calendar_today),
+                      icon: Icons.calendar_today_outlined,
                     ),
                   ),
                   const SizedBox(height: 12),
                   
                   DropdownButtonFormField<String>(
-                    value: _selectedLotId,
-                    decoration: InputDecoration(
+                    initialValue: _selectedLotId,
+                    decoration: _recordFieldDecoration(
                       labelText: 'Cemetery Lot *',
-                      border: const OutlineInputBorder(),
                       errorText: _lotError,
-                      prefixIcon: const Icon(Icons.location_on),
+                      icon: Icons.location_on_outlined,
                     ),
                     items: [
                       if (_selectedLotId == null)
@@ -357,19 +435,27 @@ class _AdminBurialRecordsScreenState extends ConsumerState<AdminBurialRecordsScr
                   
                   const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(8),
+                      color: const Color(0xFFC7E4F3),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.info_outline, size: 16, color: Colors.blue.shade700),
+                        const Icon(
+                          Icons.info_outline_rounded,
+                          size: 18,
+                          color: Color(0xFF2F4A57),
+                        ),
                         const SizedBox(width: 8),
-                        Expanded(
+                        const Expanded(
                           child: Text(
                             'Death date must be after birth date and cannot be in the future.',
-                            style: TextStyle(fontSize: 11, color: Colors.blue.shade700),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF2F4A57),
+                              height: 1.3,
+                            ),
                           ),
                         ),
                       ],
@@ -381,6 +467,10 @@ class _AdminBurialRecordsScreenState extends ConsumerState<AdminBurialRecordsScr
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF424841),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                ),
                 child: const Text('Cancel'),
               ),
               ElevatedButton(
@@ -391,8 +481,11 @@ class _AdminBurialRecordsScreenState extends ConsumerState<AdminBurialRecordsScr
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4B6E4F),
+                  backgroundColor: const Color(0xFF335538),
                   foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
                 child: Text(_isEditing ? 'Update' : 'Add'),
               ),
@@ -427,6 +520,7 @@ class _AdminBurialRecordsScreenState extends ConsumerState<AdminBurialRecordsScr
         details: 'Updated burial for ${_nameController.text.trim()}',
       );
       
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Record updated!'), backgroundColor: Colors.green),
       );
@@ -443,6 +537,7 @@ class _AdminBurialRecordsScreenState extends ConsumerState<AdminBurialRecordsScr
         details: 'Created burial for ${_nameController.text.trim()}',
       );
       
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Record added!'), backgroundColor: Colors.green),
       );
@@ -450,11 +545,12 @@ class _AdminBurialRecordsScreenState extends ConsumerState<AdminBurialRecordsScr
     
     await _loadData();
   } catch (e) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
     );
   } finally {
-    setState(() => _isLoading = false);
+    if (mounted) setState(() => _isLoading = false);
   }
 }
 
@@ -462,11 +558,47 @@ class _AdminBurialRecordsScreenState extends ConsumerState<AdminBurialRecordsScr
   final confirm = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('Delete Record'),
+      backgroundColor: const Color(0xFFFBF9F6),
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      title: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFDAD6),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFBA1A1A)),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              'Delete Record',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
       content: Text('Delete $name?'),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          style: TextButton.styleFrom(
+            foregroundColor: const Color(0xFF424841),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          ),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: TextButton.styleFrom(
+            foregroundColor: const Color(0xFFBA1A1A),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          ),
+          child: const Text('Delete'),
+        ),
       ],
     ),
   );
@@ -488,19 +620,24 @@ class _AdminBurialRecordsScreenState extends ConsumerState<AdminBurialRecordsScr
         details: 'Deleted burial for $name',
       );
       
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Record deleted!'), backgroundColor: Colors.green),
       );
       await _loadData();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
       );
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
-}
+
+  }
+
+
   String _formatDate(String? dateStr) {
     if (dateStr == null) return 'N/A';
     try {
@@ -514,99 +651,305 @@ class _AdminBurialRecordsScreenState extends ConsumerState<AdminBurialRecordsScr
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Burial Records'),
-        backgroundColor: const Color(0xFF4B6E4F),
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddEditDialog(),
-        backgroundColor: const Color(0xFF4B6E4F),
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
+      backgroundColor: const Color(0xFFFBF9F6),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
               ? _buildErrorWidget()
-              : Column(
+              : SafeArea(
+                  top: false,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildHeaderSection(),
+                        const SizedBox(height: 24),
+                        _buildSearchFilterBar(),
+                        const SizedBox(height: 24),
+                        _filteredRecords.isEmpty
+                            ? _buildEmptyState()
+                            : Column(
+                                children: [
+                                  ...List.generate(
+                                    _filteredRecords.length,
+                                    (index) => Padding(
+                                      padding: EdgeInsets.only(
+                                        bottom: index == _filteredRecords.length - 1 ? 0 : 16,
+                                      ),
+                                      child: _buildRecordCard(_filteredRecords[index]),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  Center(
+                                    child: OutlinedButton(
+                                      onPressed: _loadData,
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: const Color(0xFF1B1C1A),
+                                        side: const BorderSide(color: Color(0xFFC2C8BF)),
+                                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                                        shape: const StadiumBorder(),
+                                      ),
+                                      child: const Text('Load More Records'),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ],
+                    ),
+                  ),
+                ),
+    );
+  }
+
+  Widget _buildHeaderSection() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Burial Records',
+                style: TextStyle(
+                  color: Color(0xFF335538),
+                  fontSize: 28,
+                  fontWeight: FontWeight.w400,
+                  height: 1.2,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Manage and organize historical and current interment data.',
+                style: TextStyle(
+                  color: Colors.black.withValues(alpha: 0.58),
+                  fontSize: 14,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 16),
+        FilledButton.icon(
+          onPressed: () => _showAddEditDialog(),
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFF335538),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+          icon: const Icon(Icons.add),
+          label: const Text('Add New Burial'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchFilterBar() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F3F0),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'Search by name or lot',
+                prefixIcon: const Icon(Icons.search_rounded),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(999),
+                  borderSide: const BorderSide(color: Color(0xFFC2C8BF)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(999),
+                  borderSide: const BorderSide(color: Color(0xFFC2C8BF)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(999),
+                  borderSide: const BorderSide(color: Color(0xFF335538), width: 1.4),
+                ),
+              ),
+              onChanged: _filterRecords,
+            ),
+          ),
+          const SizedBox(width: 12),
+          OutlinedButton.icon(
+            onPressed: () {},
+            style: OutlinedButton.styleFrom(
+              backgroundColor: const Color(0xFFC7E4F3),
+              foregroundColor: const Color(0xFF2F4A57),
+              side: BorderSide.none,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              shape: const StadiumBorder(),
+            ),
+            icon: const Icon(Icons.filter_list_rounded),
+            label: const Text('Filters'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE4E2DF)),
+      ),
+      child: const Text(
+        'No records found',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: Color(0xFF424841),
+          fontSize: 16,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecordCard(Map<String, dynamic> record) {
+    final lot = record['cemetery_lot'] ?? {};
+    final section = lot['section'] ?? {};
+    final deathDate = _formatDate(record['death_date']);
+    final birthDate = _formatDate(record['birth_date']);
+    final initials = _recordInitials(record['name_of_deceased'] ?? 'Unknown');
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE4E2DF)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFC5EDC6),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Center(
+                  child: Text(
+                    initials,
+                    style: const TextStyle(
+                      color: Color(0xFF2C4E32),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: TextField(
-                        decoration: InputDecoration(
-                          hintText: 'Search by name or lot number...',
-                          prefixIcon: const Icon(Icons.search),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                        ),
-                        onChanged: _filterRecords,
+                    Text(
+                      record['name_of_deceased'] ?? 'Unknown',
+                      style: const TextStyle(
+                        color: Color(0xFF1B1C1A),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    Expanded(
-                      child: _filteredRecords.isEmpty
-                          ? const Center(child: Text('No records found'))
-                          : ListView.builder(
-                              padding: const EdgeInsets.all(12),
-                              itemCount: _filteredRecords.length,
-                              itemBuilder: (context, index) {
-                                final record = _filteredRecords[index];
-                                final lot = record['cemetery_lot'] ?? {};
-                                final section = lot['section'] ?? {};
-                                final deathDate = _formatDate(record['death_date']);
-                                final birthDate = _formatDate(record['birth_date']);
-                                
-                                return Card(
-                                  margin: const EdgeInsets.only(bottom: 12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: ListTile(
-                                    leading: CircleAvatar(
-                                      backgroundColor: const Color(0xFF4B6E4F).withOpacity(0.1),
-                                      child: const Icon(Icons.person, color: Color(0xFF4B6E4F)),
-                                    ),
-                                    title: Text(
-                                      record['name_of_deceased'] ?? 'Unknown',
-                                      style: const TextStyle(fontWeight: FontWeight.bold),
-                                    ),
-                                    subtitle: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text('Lot ${lot['lot_number'] ?? 'N/A'} • Section ${section['name'] ?? 'N/A'}'),
-                                        Text('Died: $deathDate${birthDate != 'N/A' ? ' • Born: $birthDate' : ''}'),
-                                      ],
-                                    ),
-                                    trailing: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        IconButton(
-                                          icon: const Icon(Icons.edit, color: Colors.blue),
-                                          onPressed: () => _showAddEditDialog(record),
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(Icons.delete, color: Colors.red),
-                                          onPressed: () => _deleteRecord(
-                                            record['burial_id'].toString(),
-                                            record['name_of_deceased'] ?? 'this record',
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 8,
+                      children: [
+                        _InfoChip(
+                          icon: Icons.calendar_today_rounded,
+                          label: 'Born: $birthDate',
+                          color: const Color(0xFF47626F),
+                        ),
+                        _InfoChip(
+                          icon: Icons.event_busy_rounded,
+                          label: 'Died: $deathDate',
+                          color: const Color(0xFF5A4B3F),
+                        ),
+                        _InfoChip(
+                          icon: Icons.location_on_rounded,
+                          label: 'Lot ${lot['lot_number'] ?? 'N/A'} • Section ${section['name'] ?? 'N/A'}',
+                          color: const Color(0xFF335538),
+                        ),
+                      ],
                     ),
                   ],
                 ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Wrap(
+              spacing: 8,
+              children: [
+                IconButton(
+                  onPressed: () => _showAddEditDialog(record),
+                  icon: const Icon(Icons.edit_rounded),
+                  tooltip: 'Edit',
+                  style: IconButton.styleFrom(
+                    backgroundColor: const Color(0xFFF5F3F0),
+                    foregroundColor: const Color(0xFF47626F),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => _deleteRecord(
+                    record['burial_id'].toString(),
+                    record['name_of_deceased'] ?? 'this record',
+                  ),
+                  icon: const Icon(Icons.delete_rounded),
+                  tooltip: 'Delete',
+                  style: IconButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFDAD6),
+                    foregroundColor: const Color(0xFFBA1A1A),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () {},
+                  icon: const Icon(Icons.more_vert_rounded),
+                  tooltip: 'More',
+                  style: IconButton.styleFrom(
+                    backgroundColor: const Color(0xFFF5F3F0),
+                    foregroundColor: const Color(0xFF727971),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  String _recordInitials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty).toList();
+    if (parts.isEmpty) return '?';
+    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+    return '${parts.first.substring(0, 1)}${parts.last.substring(0, 1)}'.toUpperCase();
   }
 
   Widget _buildErrorWidget() {
@@ -630,4 +973,44 @@ class _AdminBurialRecordsScreenState extends ConsumerState<AdminBurialRecordsScr
       ),
     );
   }
+
 }
+
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+

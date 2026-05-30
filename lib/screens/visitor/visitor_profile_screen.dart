@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/audit_service.dart';
 import '../../providers/session_providers.dart';
@@ -14,19 +15,15 @@ class VisitorProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
-  static const Color _brandGreen = Color(0xFF4B6E4F);
-  static const Color _errorContainer = Color(0xFFFFDAD6);
-  static const Color _onErrorContainer = Color(0xFF93000A);
-  
   Map<String, dynamic>? _userData;
   bool _isLoading = true;
   String? _errorMessage;
   int _savedMemorials = 0;
-  
-  // Edit dialog controllers
+  String? _avatarUrl;
+  bool _isUploadingPhoto = false;
+  static const String _avatarBucket = 'avatars';
+
   final _editNameController = TextEditingController();
-  
-  // Password change controllers
   final _currentPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -64,7 +61,6 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
         return;
       }
 
-      // Get user details from users table
       final userData = await supabase
           .from('users')
           .select('*')
@@ -74,8 +70,8 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       if (userData != null) {
         _userData = userData;
         _editNameController.text = userData['name'] ?? '';
+        _avatarUrl = userData['avatar_url']?.toString();
         
-        // Get visit count
         final memorialsResult = await supabase
             .from('visitor_log')
             .select('log_id')
@@ -114,18 +110,15 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
 
       if (user == null) throw Exception('Not logged in');
 
-      // Update users table
       await supabase
           .from('users')
           .update({'name': newName})
           .eq('email', user.email!);
 
-      // Update local data
       if (_userData != null) {
         _userData!['name'] = newName;
       }
 
-      // Update session provider
       final currentUser = ref.read(sessionProvider);
       if (currentUser != null) {
         final updatedUser = AppUser(
@@ -189,7 +182,6 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
     try {
       final supabase = Supabase.instance.client;
       
-      // Update password via Supabase Auth
       await supabase.auth.updateUser(
         UserAttributes(password: newPassword),
       );
@@ -198,11 +190,9 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Password changed!'), backgroundColor: Colors.green),
         );
-        // Clear password fields
         _currentPasswordController.clear();
         _newPasswordController.clear();
         _confirmPasswordController.clear();
-        // Close dialog if open
         Navigator.pop(context);
       }
     } catch (e) {
@@ -221,27 +211,196 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
   }
 
   void _showEditPhotoDialog() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Profile photo update coming soon!')),
+    _showPhotoActions();
+  }
+
+  Future<void> _showPhotoActions() async {
+    final choice = await showModalBottomSheet<_PhotoAction>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from gallery'),
+              onTap: () => Navigator.pop(context, _PhotoAction.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: const Text('Remove photo'),
+              onTap: () => Navigator.pop(context, _PhotoAction.remove),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+
+    if (choice == _PhotoAction.gallery) {
+      await _pickAndUploadProfilePhoto();
+    } else if (choice == _PhotoAction.remove) {
+      await _removeProfilePhoto();
+    }
+  }
+
+  Future<void> _pickAndUploadProfilePhoto() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 88,
+      maxWidth: 1200,
+    );
+
+    if (image == null) return;
+
+    setState(() => _isUploadingPhoto = true);
+
+    try {
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+      if (user == null) throw Exception('Not logged in');
+
+      final bytes = await image.readAsBytes();
+      final filePath = '${user.id}/${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+      await supabase.storage.from(_avatarBucket).uploadBinary(
+            filePath,
+            bytes,
+            fileOptions: const FileOptions(
+              upsert: true,
+              contentType: 'image/jpeg',
+            ),
+          );
+
+      final publicUrl = supabase.storage.from(_avatarBucket).getPublicUrl(filePath);
+
+      await supabase.from('users').update({'avatar_url': publicUrl}).eq('email', user.email!);
+
+      if (!mounted) return;
+      setState(() {
+        _avatarUrl = publicUrl;
+        if (_userData != null) {
+          _userData!['avatar_url'] = publicUrl;
+        }
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile photo updated!'), backgroundColor: Colors.green),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error uploading photo: $e'), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingPhoto = false);
+      }
+    }
+  }
+
+  Future<void> _removeProfilePhoto() async {
+    setState(() => _isUploadingPhoto = true);
+
+    try {
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+      if (user == null) throw Exception('Not logged in');
+
+      await supabase.from('users').update({'avatar_url': null}).eq('email', user.email!);
+
+      if (!mounted) return;
+      setState(() {
+        _avatarUrl = null;
+        if (_userData != null) {
+          _userData!['avatar_url'] = null;
+        }
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile photo removed!'), backgroundColor: Colors.green),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error removing photo: $e'), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingPhoto = false);
+      }
+    }
+  }
+
+  InputDecoration _profileFieldDecoration({
+    required String labelText,
+    required IconData icon,
+  }) {
+    return InputDecoration(
+      labelText: labelText,
+      prefixIcon: Icon(icon, color: const Color(0xFF335538)),
+      filled: true,
+      fillColor: Colors.white,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Color(0xFFC2C8BF)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Color(0xFFC2C8BF)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Color(0xFF335538), width: 1.4),
+      ),
     );
   }
 
   void _showEditNameDialog() {
     _editNameController.text = _userData?['name'] ?? '';
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Edit Name'),
+        backgroundColor: const Color(0xFFFBF9F6),
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: const Color(0xFFC5EDC6),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.badge_outlined, color: Color(0xFF335538)),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Change Name',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
         content: TextField(
           controller: _editNameController,
-          decoration: const InputDecoration(
+          decoration: _profileFieldDecoration(
             labelText: 'Full Name',
-            border: OutlineInputBorder(),
+            icon: Icons.person_outline_rounded,
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF424841),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            ),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
@@ -250,8 +409,11 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
               _updateDisplayName();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: _brandGreen,
+              backgroundColor: const Color(0xFF335538),
               foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
             child: const Text('Save'),
           ),
@@ -261,7 +423,6 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
   }
 
   void _showChangePasswordDialog() {
-    // Reset controllers
     _currentPasswordController.clear();
     _newPasswordController.clear();
     _confirmPasswordController.clear();
@@ -269,34 +430,56 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Change Password'),
+        backgroundColor: const Color(0xFFFBF9F6),
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: const Color(0xFFC5EDC6),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.lock_outline_rounded, color: Color(0xFF335538)),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Change Password',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: _currentPasswordController,
               obscureText: true,
-              decoration: const InputDecoration(
+              decoration: _profileFieldDecoration(
                 labelText: 'Current Password',
-                border: OutlineInputBorder(),
+                icon: Icons.lock_outline_rounded,
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _newPasswordController,
               obscureText: true,
-              decoration: const InputDecoration(
+              decoration: _profileFieldDecoration(
                 labelText: 'New Password',
-                border: OutlineInputBorder(),
+                icon: Icons.password_rounded,
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _confirmPasswordController,
               obscureText: true,
-              decoration: const InputDecoration(
+              decoration: _profileFieldDecoration(
                 labelText: 'Confirm New Password',
-                border: OutlineInputBorder(),
+                icon: Icons.verified_user_outlined,
               ),
             ),
           ],
@@ -304,13 +487,20 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF424841),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            ),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: _changePassword,
             style: ElevatedButton.styleFrom(
-              backgroundColor: _brandGreen,
+              backgroundColor: const Color(0xFF335538),
               foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
             child: const Text('Change Password'),
           ),
@@ -320,52 +510,50 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
   }
 
   Future<void> _logout() async {
-  final confirm = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Logout'),
-      content: const Text('Are you sure you want to logout?'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text('Logout', style: TextStyle(color: Colors.red)),
-        ),
-      ],
-    ),
-  );
-
-  if (confirm == true) {
-    final user = Supabase.instance.client.auth.currentUser;
-    
-    // ✅ ADD AUDIT LOG FOR LOGOUT
-    await AuditService.log(
-      action: 'LOGOUT',
-      entityType: 'user',
-      entityId: user?.id,
-      details: 'User logged out',
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Logout', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
     );
-    
-    await Supabase.instance.client.auth.signOut();
-    ref.read(sessionProvider.notifier).state = null;
-    if (mounted) {
-      context.go('/login');
+
+    if (confirm == true) {
+      final user = Supabase.instance.client.auth.currentUser;
+      
+      await AuditService.log(
+        action: 'LOGOUT',
+        entityType: 'user',
+        entityId: user?.id,
+        details: 'User logged out',
+      );
+      
+      await Supabase.instance.client.auth.signOut();
+      ref.read(sessionProvider.notifier).state = null;
+      if (mounted) {
+        context.go('/login');
+      }
     }
   }
-}
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = Theme.of(context).textTheme;
-    
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     final displayName = _userData?['name'] ?? 'Loading...';
     final email = _userData?['email'] ?? '';
     final role = _userData?['role']?.toString().toUpperCase() ?? 'VISITOR';
-
     if (_isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -378,12 +566,16 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              Icon(Icons.error_outline, size: 64, color: colorScheme.error),
               const SizedBox(height: 16),
               Text(_errorMessage!),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _loadUserData,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: colorScheme.onPrimary,
+                ),
                 child: const Text('Try Again'),
               ),
             ],
@@ -392,193 +584,196 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       );
     }
 
-    return CustomScrollView(
-      slivers: [
-        SliverAppBar(
-          pinned: true,
-          backgroundColor: Colors.white.withOpacity(0.90),
-          elevation: 0,
-          leading: IconButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Menu (next).')),
-              );
-            },
-            icon: const Icon(Icons.menu_rounded, color: Color(0xFF1B1C1A)),
-          ),
-          title: const Text(
-            'Eternal Rest',
-            style: TextStyle(
-              color: _brandGreen,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.2,
-            ),
-          ),
-          actions: [
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(Icons.notifications_none_rounded, color: Color(0xFF1B1C1A)),
+    return Scaffold(
+      backgroundColor: const Color(0xFFFBF9F6),
+      appBar: _buildTopBar(),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildProfileHeader(displayName, email, role),
+            const SizedBox(height: 24),
+            _buildSettingsCard(),
+            const SizedBox(height: 24),
+            _buildLogoutButton(),
+            const SizedBox(height: 12),
+            Center(
+              child: Text(
+                'App Version 1.0.0',
+                style: textTheme.labelSmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.55),
+                ),
+              ),
             ),
           ],
         ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 110),
-          sliver: SliverList(
-            delegate: SliverChildListDelegate([
-              // User Info Card
-              _UserInfoCard(
-                displayName: displayName,
-                email: email,
-                role: role,
-                t: t,
-                cs: cs,
-                onEditPhotoTap: _showEditPhotoDialog,
-              ),
-              const SizedBox(height: 16),
-              
-              // Saved Memorials Card
-              _SavedMemorialsCard(
-                count: _savedMemorials,
-                t: t,
-                cs: cs,
-              ),
-              const SizedBox(height: 20),
-              
-              // Settings Card
-              _SettingsCard(
-                t: t,
-                cs: cs,
-                onEditNameTap: _showEditNameDialog,
-                onChangePasswordTap: _showChangePasswordDialog,
-              ),
-              const SizedBox(height: 20),
-              
-              // Logout Button
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: FilledButton.icon(
-                  onPressed: _logout,
-                  icon: const Icon(Icons.logout_rounded),
-                  label: const Text('Logout from Account'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _errorContainer,
-                    foregroundColor: _onErrorContainer,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'App Version 1.0.0',
-                textAlign: TextAlign.center,
-                style: t.labelSmall?.copyWith(color: Colors.black45),
-              ),
-            ]),
-          ),
-        ),
-      ],
+      ),
     );
   }
-}
 
-// User Info Card
-// User Info Card
-class _UserInfoCard extends StatelessWidget {
-  const _UserInfoCard({
-    required this.displayName,
-    required this.email,
-    required this.role,
-    required this.t,
-    required this.cs,
-    required this.onEditPhotoTap,
-  });
-
-  final String displayName;
-  final String email;
-  final String role;
-  final TextTheme t;
-  final ColorScheme cs;
-  final VoidCallback onEditPhotoTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF47626F).withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+  PreferredSizeWidget _buildTopBar() {
+    return AppBar(
+      toolbarHeight: 72,
+      backgroundColor: Colors.white.withValues(alpha: 0.9),
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      titleSpacing: 0,
+      title: Row(
+        children: [
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(Icons.menu_rounded, color: Color(0xFF335538)),
+            tooltip: 'Menu',
+          ),
+          const SizedBox(width: 8),
+          const Text(
+            'Eternal Rest',
+            style: TextStyle(
+              color: Color(0xFF4B6E4F),
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ],
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              CircleAvatar(
-                radius: 48,
-                backgroundColor: cs.surfaceContainerHighest,
-                child: const Icon(Icons.person, size: 48, color: Color(0xFF4B6E4F)),
-              ),
-              Positioned(
-                right: -2,
-                bottom: -2,
-                child: InkWell(
-                  onTap: onEditPhotoTap,
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: cs.primary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                    child: const Icon(Icons.edit_rounded, size: 16, color: Colors.white),
-                  ),
+      actions: [
+        IconButton(
+          onPressed: () {},
+          icon: const Icon(Icons.notifications_outlined, color: Color(0xFF335538)),
+          tooltip: 'Notifications',
+        ),
+        const SizedBox(width: 8),
+      ],
+      bottom: const PreferredSize(
+        preferredSize: Size.fromHeight(1),
+        child: Divider(height: 1, color: Color(0xFFE4E2DF)),
+      ),
+    );
+  }
+
+  Widget _buildProfileHeader(String displayName, String email, String role) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 2,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x0F47626F),
+                  blurRadius: 18,
+                  offset: Offset(0, 6),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              ],
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text(
-                  displayName,
-                  style: t.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: cs.onSurface,
-                  ),
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    CircleAvatar(
+                      radius: 48,
+                      backgroundColor: const Color(0xFFC5EDC6),
+                      backgroundImage:
+                          _avatarUrl != null && _avatarUrl!.isNotEmpty
+                              ? NetworkImage(_avatarUrl!)
+                              : null,
+                      child: _avatarUrl == null || _avatarUrl!.isEmpty
+                          ? Text(
+                              _initials(displayName),
+                              style: const TextStyle(
+                                color: Color(0xFF2C4E32),
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            )
+                          : null,
+                    ),
+                    Positioned(
+                      right: -2,
+                      bottom: -2,
+                      child: InkWell(
+                        onTap: _isUploadingPhoto ? null : _showEditPhotoDialog,
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF335538),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: _isUploadingPhoto
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.edit_rounded,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  email,
-                  style: t.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
-                ),
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: cs.secondaryContainer,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.verified_rounded, size: 16, color: cs.onSecondaryFixedVariant),
-                      const SizedBox(width: 6),
                       Text(
-                        role,
-                        style: t.labelSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: cs.onSecondaryFixedVariant,
+                        displayName,
+                        style: textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        email,
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFC7E4F3),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.verified_rounded,
+                              size: 14,
+                              color: colorScheme.onSecondaryContainer,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              role == 'LOT_OWNER' ? 'Lot Owner' : role,
+                              style: textTheme.labelSmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.onSecondaryContainer,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -587,171 +782,166 @@ class _UserInfoCard extends StatelessWidget {
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-// Saved Memorials Card
-class _SavedMemorialsCard extends StatelessWidget {
-  const _SavedMemorialsCard({
-    required this.count,
-    required this.t,
-    required this.cs,
-  });
-
-  final int count;
-  final TextTheme t;
-  final ColorScheme cs;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: cs.primaryContainer,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Total Visits',
-                style: t.labelLarge?.copyWith(
-                  color: cs.onPrimaryContainer.withOpacity(0.85),
-                  fontWeight: FontWeight.w600,
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Container(
+            height: 172,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0xFF4B6E4F),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Saved Memorials',
+                      style: textTheme.labelLarge?.copyWith(
+                        color: Colors.white.withValues(alpha: 0.82),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Icon(Icons.bookmark_rounded, color: Colors.white),
+                  ],
                 ),
-              ),
-              Icon(Icons.history, color: cs.onPrimaryContainer),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            count.toString(),
-            style: t.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: cs.onPrimaryContainer,
-              fontSize: 32,
+                const SizedBox(height: 10),
+                Text(
+                  _savedMemorials.toString(),
+                  style: textTheme.displayMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _savedMemorials == 1
+                      ? '1 visit recorded'
+                      : '$_savedMemorials visits recorded',
+                  style: textTheme.labelSmall?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.75),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            count == 1 ? 'visit recorded' : 'visits recorded',
-            style: t.labelSmall?.copyWith(
-              color: cs.onPrimaryContainer.withOpacity(0.70),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
-}
+  Widget _buildSettingsCard() {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
-// Settings Card - Now has separate callbacks
-class _SettingsCard extends StatelessWidget {
-  const _SettingsCard({
-    required this.t,
-    required this.cs,
-    required this.onEditNameTap,
-    required this.onChangePasswordTap,
-  });
-
-  final TextTheme t;
-  final ColorScheme cs;
-  final VoidCallback onEditNameTap;
-  final VoidCallback onChangePasswordTap;
-
-  @override
-  Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: const Color(0xFF47626F).withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: Color(0x0F47626F),
+            blurRadius: 18,
+            offset: Offset(0, 6),
           ),
         ],
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-            child: Text(
-              'Account Settings',
-              style: t.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: cs.onSurface,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 14),
+              child: Text(
+                'Account Settings',
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: colorScheme.onSurface,
+                ),
               ),
             ),
-          ),
-          Divider(height: 1, color: cs.surfaceContainerLow),
-          _SettingTile(
-            icon: Icons.person_outline,
-            title: 'Edit Name',
-            subtitle: 'Update your display name',
-            onTap: onEditNameTap,  // ← Now updates name
-            cs: cs,
-            t: t,
-          ),
-          Divider(height: 1, color: cs.surfaceContainerLow),
-          _SettingTile(
-            icon: Icons.lock_outline,
-            title: 'Change Password',
-            subtitle: 'Update your login password',
-            onTap: onChangePasswordTap,  // ← Now updates password
-            cs: cs,
-            t: t,
-          ),
-        ],
+            const Divider(height: 1, color: Color(0xFFF5F3F0)),
+            _ProfileSettingTile(
+              icon: Icons.person_outline_rounded,
+              title: 'Change Name',
+              subtitle: 'Update your display name',
+              onTap: _showEditNameDialog,
+            ),
+            const Divider(height: 1, color: Color(0xFFF5F3F0)),
+            _ProfileSettingTile(
+              icon: Icons.lock_outline_rounded,
+              title: 'Change Password',
+              subtitle: 'Update your login password',
+              onTap: _showChangePasswordDialog,
+            ),
+          ],
+        ),
       ),
     );
   }
+
+  Widget _buildLogoutButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: _logout,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFFFDAD6),
+          foregroundColor: const Color(0xFF93000A),
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+        icon: const Icon(Icons.logout_rounded),
+        label: const Text('Logout from Account'),
+      ),
+    );
+  }
+
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty).toList();
+    if (parts.isEmpty) return '?';
+    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+    return '${parts.first.substring(0, 1)}${parts.last.substring(0, 1)}'.toUpperCase();
+  }
 }
 
-class _SettingTile extends StatelessWidget {
-  const _SettingTile({
+class _ProfileSettingTile extends StatelessWidget {
+  const _ProfileSettingTile({
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.onTap,
-    required this.cs,
-    required this.t,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
-  final ColorScheme cs;
-  final TextTheme t;
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           child: Row(
             children: [
               Container(
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: cs.secondaryContainer.withOpacity(0.35),
+                  color: const Color(0xFFC7E4F3).withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: cs.primary, size: 22),
+                child: Icon(icon, color: const Color(0xFF335538), size: 22),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -760,20 +950,22 @@ class _SettingTile extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: t.titleMedium?.copyWith(
+                      style: textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
-                        color: cs.onSurface,
+                        color: const Color(0xFF1B1C1A),
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: t.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+                      style: textTheme.labelSmall?.copyWith(
+                        color: const Color(0xFF424841),
+                      ),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right_rounded, color: cs.outline),
+              const Icon(Icons.chevron_right_rounded, color: Color(0xFF727971), size: 20),
             ],
           ),
         ),
@@ -781,3 +973,5 @@ class _SettingTile extends StatelessWidget {
     );
   }
 }
+
+enum _PhotoAction { gallery, remove }

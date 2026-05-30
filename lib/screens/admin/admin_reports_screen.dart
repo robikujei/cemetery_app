@@ -1,8 +1,10 @@
+// ignore: avoid_web_libraries_in_flutter, deprecated_member_use
 import 'dart:html' as html;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AdminReportsScreen extends ConsumerStatefulWidget {
   const AdminReportsScreen({super.key});
@@ -14,8 +16,10 @@ class AdminReportsScreen extends ConsumerStatefulWidget {
 class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
   bool _isLoading = false;
   String? _errorMessage;
-  
-  // Summary statistics
+  Map<String, dynamic> _metrics = {
+    'recent_activities': [],
+  };
+  Map<String, int> _sectionDistribution = {};
   Map<String, dynamic> _summary = {
     'total_burials': 0,
     'total_lots': 0,
@@ -25,11 +29,7 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
     'qr_scans': 0,
     'revenue': 0,
   };
-  
-  // Report type selection
   String _selectedReportType = 'burials';
-  
-  // Date filters
   DateTime? _startDate;
   DateTime? _endDate;
 
@@ -47,27 +47,52 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
 
     try {
       final supabase = Supabase.instance.client;
-      
-      // Get total burials
+
       final burials = await supabase.from('burial_record').select('burial_id');
-      
-      // Get lot statistics
       final lots = await supabase.from('cemetery_lot').select('lot_id, status, price');
       final availableLots = lots.where((l) => l['status'] == 'Available').length;
       final occupiedLots = lots.where((l) => l['status'] == 'Occupied').length;
-      
-      // Calculate revenue from occupied lots
+
       double revenue = 0;
-      for (var lot in lots) {
+      for (final lot in lots) {
         if (lot['status'] == 'Occupied' && lot['price'] != null) {
           revenue += (lot['price'] as num).toDouble();
         }
       }
-      
-      // Get visitor statistics
+
       final visitors = await supabase.from('visitor_log').select('log_id, method');
       final qrScans = visitors.where((v) => v['method'] == 'QR').length;
-      
+      final recentActivities = await supabase
+          .from('visitor_log')
+          .select('''
+            log_id,
+            time_in,
+            method,
+            user:user_id (name),
+            burial:burial_id (name_of_deceased)
+          ''')
+          .order('time_in', ascending: false)
+          .limit(5);
+
+      final sections = await supabase.from('section').select('''
+            name,
+            cemetery_lot (
+              burial_record (burial_id)
+            )
+          ''');
+      final sectionDistribution = <String, int>{};
+      for (final section in sections) {
+        int burialCount = 0;
+        final lots = section['cemetery_lot'] as List? ?? [];
+        for (final lot in lots) {
+          final burialsInLot = lot['burial_record'] as List? ?? [];
+          burialCount += burialsInLot.length;
+        }
+        if (burialCount > 0) {
+          sectionDistribution[section['name'] ?? 'Unknown'] = burialCount;
+        }
+      }
+
       setState(() {
         _summary = {
           'total_burials': burials.length,
@@ -78,6 +103,10 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
           'qr_scans': qrScans,
           'revenue': revenue,
         };
+        _metrics = {
+          'recent_activities': recentActivities,
+        };
+        _sectionDistribution = sectionDistribution;
         _isLoading = false;
       });
     } catch (e) {
@@ -89,17 +118,16 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
   }
 
   void _downloadAsCSV(String csvContent, String fileName) {
-  // Web download
-  final blob = html.Blob([csvContent], 'text/csv');
-  final url = html.Url.createObjectUrlFromBlob(blob);
-  final anchor = html.AnchorElement(href: url)
-    ..target = 'blank'
-    ..download = fileName;
-  html.document.body?.append(anchor);
-  anchor.click();
-  anchor.remove();  // ← Fixed: no argument needed
-  html.Url.revokeObjectUrl(url);
-}
+    final blob = html.Blob([csvContent], 'text/csv');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    final anchor = html.AnchorElement(href: url)
+      ..target = 'blank'
+      ..download = fileName;
+    html.document.body?.append(anchor);
+    anchor.click();
+    anchor.remove();
+    html.Url.revokeObjectUrl(url);
+  }
 
   Future<void> _exportReport() async {
     setState(() {
@@ -112,13 +140,10 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
       List<Map<String, dynamic>> data = [];
       String fileName = '';
       String csvContent = '';
-      
-      // Fetch data based on report type
+
       switch (_selectedReportType) {
         case 'burials':
-          var query = supabase
-              .from('burial_record')
-              .select('''
+          var query = supabase.from('burial_record').select('''
                 burial_id,
                 name_of_deceased,
                 birth_date,
@@ -129,22 +154,19 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
                   section:section_id (name)
                 )
               ''');
-          
-          // Apply date filters
+
           if (_startDate != null) {
             query = query.gte('death_date', _startDate!.toIso8601String());
           }
           if (_endDate != null) {
             query = query.lte('death_date', _endDate!.toIso8601String());
           }
-          
+
           final records = await query;
           data = List<Map<String, dynamic>>.from(records);
           fileName = 'burial_records_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv';
-          
-          // Create CSV content
           csvContent = 'ID,Name of Deceased,Birth Date,Death Date,Burial Date,Lot Number,Section\n';
-          for (var record in data) {
+          for (final record in data) {
             final lot = record['cemetery_lot'] ?? {};
             final section = lot['section'] ?? {};
             csvContent += '"${record['burial_id']}",';
@@ -156,11 +178,8 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
             csvContent += '"${section['name'] ?? ''}"\n';
           }
           break;
-          
         case 'lots':
-          final lots = await supabase
-              .from('cemetery_lot')
-              .select('''
+          final lots = await supabase.from('cemetery_lot').select('''
                 lot_id,
                 lot_number,
                 status,
@@ -171,9 +190,8 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
               ''');
           data = List<Map<String, dynamic>>.from(lots);
           fileName = 'lot_inventory_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv';
-          
           csvContent = 'ID,Lot Number,Section,Status,Price,X Coordinate,Y Coordinate\n';
-          for (var lot in data) {
+          for (final lot in data) {
             final section = lot['section'] ?? {};
             csvContent += '"${lot['lot_id']}",';
             csvContent += '"${lot['lot_number']}",';
@@ -184,31 +202,25 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
             csvContent += '"${lot['y_coord'] ?? 0}"\n';
           }
           break;
-          
         case 'visitors':
-          var query = supabase
-              .from('visitor_log')
-              .select('''
+          var query = supabase.from('visitor_log').select('''
                 log_id,
                 time_in,
                 method,
                 user:user_id (name, email),
                 burial:burial_id (name_of_deceased)
               ''');
-          
           if (_startDate != null) {
             query = query.gte('time_in', _startDate!.toIso8601String());
           }
           if (_endDate != null) {
             query = query.lte('time_in', _endDate!.toIso8601String());
           }
-          
           final logs = await query.order('time_in', ascending: false);
           data = List<Map<String, dynamic>>.from(logs);
           fileName = 'visitor_logs_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv';
-          
           csvContent = 'ID,Visitor Name,Visitor Email,Time In,Method,Grave Visited\n';
-          for (var log in data) {
+          for (final log in data) {
             final user = log['user'] ?? {};
             final burial = log['burial'] ?? {};
             csvContent += '"${log['log_id']}",';
@@ -220,26 +232,27 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
           }
           break;
       }
-      
-      // Download the file
+
       _downloadAsCSV(csvContent, fileName);
-      
-      // Show success message
+
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Report exported: $fileName'), backgroundColor: Colors.green),
       );
-      
     } catch (e) {
       setState(() {
         _errorMessage = 'Error exporting report: $e';
       });
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
       );
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -252,7 +265,7 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
           ? DateTimeRange(start: _startDate!, end: _endDate!)
           : null,
     );
-    
+
     if (picked != null) {
       setState(() {
         _startDate = picked.start;
@@ -268,229 +281,631 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Reports & Analytics'),
-        backgroundColor: const Color(0xFF4B6E4F),
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadSummary,
+  String _formatDateTime(String? dateTimeString) {
+    if (dateTimeString == null) return 'Unknown';
+    try {
+      final date = DateTime.parse(dateTimeString);
+      return DateFormat('MMM d, y • h:mm a').format(date);
+    } catch (e) {
+      return dateTimeString;
+    }
+  }
+
+  Widget _buildReportOverview() {
+    final totalBurials = _summary['total_burials'] as int;
+    final totalLots = _summary['total_lots'] as int;
+    final availableLots = _summary['available_lots'] as int;
+    final occupiedLots = _summary['occupied_lots'] as int;
+    final visitors = _summary['total_visitors'] as int;
+    final revenue = (_summary['revenue'] as num).toDouble();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth < 700 ? 2 : 4;
+        return GridView.count(
+          crossAxisCount: columns,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 16,
+          crossAxisSpacing: 16,
+          childAspectRatio: constraints.maxWidth < 700 ? 1.15 : 1.55,
+          children: [
+            _reportMetricCard('Total Burials', totalBurials.toString(), Icons.people_outline_rounded, const Color(0xFF335538), const Color(0xFFC5EDC6)),
+            _reportMetricCard('Total Lots', totalLots.toString(), Icons.grid_view_rounded, const Color(0xFF47626F), const Color(0xFFC7E4F3)),
+            _reportMetricCard('Available Lots', availableLots.toString(), Icons.check_circle_outline_rounded, const Color(0xFF2F6F50), const Color(0xFFAAD0AB)),
+            _reportMetricCard('Occupied Lots', occupiedLots.toString(), Icons.location_on_outlined, const Color(0xFFBA1A1A), const Color(0xFFFFDAD6)),
+            _reportMetricCard('Visitors', visitors.toString(), Icons.groups_outlined, const Color(0xFF5A4B3F), const Color(0xFFF5DECE)),
+            _reportMetricCard('QR Scans', (_summary['qr_scans'] as int).toString(), Icons.qr_code_2_rounded, const Color(0xFF335538), const Color(0xFFC5EDC6)),
+            _reportMetricCard('Revenue', 'PHP ${revenue.toStringAsFixed(2)}', Icons.payments_outlined, const Color(0xFF4B6E4F), const Color(0xFFC5EDC6)),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _reportMetricCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+    Color bg,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE4E2DF)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0A000000), blurRadius: 16, offset: Offset(0, 6)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: bg.withValues(alpha: 0.34),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              Text(
+                title.split(' ').first,
+                style: const TextStyle(color: Color(0xFF424841), fontSize: 11),
+              ),
+            ],
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Color(0xFF1B1C1A),
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                title,
+                style: const TextStyle(color: Color(0xFF424841), fontSize: 12),
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildReportLayouts() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 950;
+        final visitorCard = _buildRecentVisitorCard();
+        if (wide) {
+          return Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: _buildLotStatusCard()),
+                  const SizedBox(width: 24),
+                  Expanded(child: _buildRevenueCard()),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 7, child: visitorCard),
+                  const SizedBox(width: 24),
+                  Expanded(flex: 5, child: _buildLotBreakdownCard()),
+                ],
+              ),
+            ],
+          );
+        }
+        return Column(
+          children: [
+            _buildLotStatusCard(),
+            const SizedBox(height: 24),
+            _buildRevenueCard(),
+            const SizedBox(height: 24),
+            visitorCard,
+            const SizedBox(height: 24),
+            _buildLotBreakdownCard(),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildLotStatusCard() {
+    final totalLots = (_summary['total_lots'] as int).toDouble();
+    final availableLots = (_summary['available_lots'] as int).toDouble();
+    final occupiedLots = (_summary['occupied_lots'] as int).toDouble();
+    final occupiedPct = totalLots == 0 ? 0.0 : occupiedLots / totalLots;
+    final availablePct = totalLots == 0 ? 0.0 : availableLots / totalLots;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE4E2DF)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0A000000), blurRadius: 16, offset: Offset(0, 6)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Lot Status Report',
+            style: TextStyle(
+              color: Color(0xFF1B1C1A),
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: _statusStat(
+                  'Occupied',
+                  '${(occupiedPct * 100).round()}%',
+                  const Color(0xFF335538),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _statusStat(
+                  'Available',
+                  '${(availablePct * 100).round()}%',
+                  const Color(0xFF47626F),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: Container(
+              height: 12,
+              color: const Color(0xFFEFEEEB),
+              child: FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: occupiedPct.clamp(0, 1),
+                child: Container(color: const Color(0xFF335538)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: Container(
+              height: 12,
+              color: const Color(0xFFEFEEEB),
+              child: FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: availablePct.clamp(0, 1),
+                child: Container(color: const Color(0xFFC7E4F3)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusStat(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F3F0),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: Color(0xFF424841), fontSize: 12)),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.w800),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentVisitorCard() {
+    final recentActivities = (_metrics['recent_activities'] as List? ?? const [])
+        .cast<Map<String, dynamic>>();
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE4E2DF)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0A000000), blurRadius: 16, offset: Offset(0, 6)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Recent Visitor Activity',
+            style: TextStyle(
+              color: Color(0xFF1B1C1A),
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Latest logs recorded in the system.',
+            style: TextStyle(color: Color(0xFF424841), fontSize: 12),
+          ),
+          const SizedBox(height: 16),
+          if (recentActivities.isEmpty)
+            const Text('No recent activity found.')
+          else
+            Column(
+              children: recentActivities.map((log) {
+                final user = log['user'] as Map<String, dynamic>?;
+                final burial = log['burial'] as Map<String, dynamic>?;
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF5F3F0),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFC5EDC6),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(Icons.person_outline_rounded, color: Color(0xFF335538)),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              user?['name']?.toString() ?? 'Unknown visitor',
+                              style: const TextStyle(
+                                color: Color(0xFF1B1C1A),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${burial?['name_of_deceased'] ?? 'N/A'} • ${log['method'] ?? 'Manual'}',
+                              style: const TextStyle(color: Color(0xFF424841), fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        _formatDateTime(log['time_in']?.toString()),
+                        style: const TextStyle(color: Color(0xFF424841), fontSize: 11),
+                        textAlign: TextAlign.right,
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRevenueCard() {
+    final revenue = (_summary['revenue'] as num).toDouble();
+    final totalBurials = (_summary['total_burials'] as int);
+    final totalVisitors = (_summary['total_visitors'] as int);
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE4E2DF)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0A000000), blurRadius: 16, offset: Offset(0, 6)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Operational Snapshot',
+            style: TextStyle(
+              color: Color(0xFF1B1C1A),
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F3F0),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Estimated Revenue', style: TextStyle(color: Color(0xFF424841), fontSize: 12)),
+                const SizedBox(height: 6),
+                Text(
+                  'PHP ${revenue.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    color: Color(0xFF335538),
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text('Burials: $totalBurials', style: const TextStyle(color: Color(0xFF424841))),
+                const SizedBox(height: 4),
+                Text('Visitors: $totalVisitors', style: const TextStyle(color: Color(0xFF424841))),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFC7E4F3),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.info_outline_rounded, color: Color(0xFF2F4A57)),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Use the export controls below to generate CSV reports for burial, lot, or visitor records.',
+                    style: TextStyle(color: Color(0xFF2F4A57), fontSize: 12, height: 1.3),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLotBreakdownCard() {
+    final entries = _sectionDistribution.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE4E2DF)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0A000000), blurRadius: 16, offset: Offset(0, 6)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Lot Breakdown by Section',
+            style: TextStyle(
+              color: Color(0xFF1B1C1A),
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Occupancy counts grouped by cemetery section.',
+            style: TextStyle(color: Color(0xFF424841), fontSize: 12),
+          ),
+          const SizedBox(height: 16),
+          if (entries.isEmpty)
+            const Text('No section data available.')
+          else
+            Column(
+              children: entries.take(6).map((entry) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          entry.key,
+                          style: const TextStyle(color: Color(0xFF424841)),
+                        ),
+                      ),
+                      Text(
+                        entry.value.toString(),
+                        style: const TextStyle(
+                          color: Color(0xFF1B1C1A),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReportControls() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE4E2DF)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0A000000), blurRadius: 16, offset: Offset(0, 6)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Report Export',
+            style: TextStyle(
+              color: Color(0xFF1B1C1A),
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text('Report Type', style: TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(value: 'burials', label: Text('Burial Records')),
+              ButtonSegment(value: 'lots', label: Text('Lot Inventory')),
+              ButtonSegment(value: 'visitors', label: Text('Visitor Logs')),
+            ],
+            selected: {_selectedReportType},
+            onSelectionChanged: (Set<String> selection) {
+              setState(() {
+                _selectedReportType = selection.first;
+              });
+            },
+          ),
+          const SizedBox(height: 16),
+          const Text('Date Range', style: TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _pickDateRange,
+                  icon: const Icon(Icons.date_range_rounded),
+                  label: const Text('Select Range'),
+                ),
+              ),
+              if (_startDate != null || _endDate != null)
+                IconButton(
+                  icon: const Icon(Icons.clear_rounded),
+                  onPressed: _clearDateFilter,
+                ),
+            ],
+          ),
+          if (_startDate != null || _endDate != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'Filter: ${_startDate != null ? DateFormat('MMM d, y').format(_startDate!) : 'Any'} - ${_endDate != null ? DateFormat('MMM d, y').format(_endDate!) : 'Any'}',
+                style: const TextStyle(color: Color(0xFF424841), fontSize: 12),
+              ),
+            ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton.icon(
+              onPressed: _isLoading ? null : _exportReport,
+              icon: _isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.download_rounded),
+              label: Text(_isLoading ? 'Generating...' : 'Export Report'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF335538),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFFBF9F6),
       body: _isLoading && _summary['total_lots'] == 0
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
               ? _buildErrorWidget()
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      // Summary Cards
-                      _buildSummarySection(),
-                      const SizedBox(height: 24),
-                      
-                      // Report Generation Section
-                      _buildReportSection(),
-                      const SizedBox(height: 24),
-                      
-                      // Export Section
-                      _buildExportSection(),
-                    ],
-                  ),
-                ),
-    );
-  }
-
-  Widget _buildSummarySection() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Cemetery Summary',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF4B6E4F)),
-            ),
-            const SizedBox(height: 16),
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              childAspectRatio: 1.5,
-              children: [
-                _buildSummaryCard('Total Burials', _summary['total_burials'].toString(), Icons.people, Colors.blue),
-                _buildSummaryCard('Total Lots', _summary['total_lots'].toString(), Icons.location_on, Colors.green),
-                _buildSummaryCard('Available Lots', _summary['available_lots'].toString(), Icons.check_circle, Colors.green.shade300),
-                _buildSummaryCard('Occupied Lots', _summary['occupied_lots'].toString(), Icons.check_circle, Colors.orange),
-                _buildSummaryCard('Total Visitors', _summary['total_visitors'].toString(), Icons.people_outline, Colors.purple),
-                _buildSummaryCard('QR Scans', _summary['qr_scans'].toString(), Icons.qr_code_scanner, Colors.teal),
-                _buildSummaryCard('Total Revenue', '₱${_summary['revenue'].toStringAsFixed(2)}', Icons.attach_money, Colors.amber),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSummaryCard(String title, String value, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 24, color: color),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color),
-          ),
-          Text(
-            title,
-            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReportSection() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Generate Report',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF4B6E4F)),
-            ),
-            const SizedBox(height: 16),
-            
-            // Report Type
-            const Text('Report Type', style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(value: 'burials', label: Text('Burial Records')),
-                ButtonSegment(value: 'lots', label: Text('Lot Inventory')),
-                ButtonSegment(value: 'visitors', label: Text('Visitor Logs')),
-              ],
-              selected: {_selectedReportType},
-              onSelectionChanged: (Set<String> selection) {
-                setState(() {
-                  _selectedReportType = selection.first;
-                });
-              },
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Date Range Filter
-            const Text('Date Range (Optional)', style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _pickDateRange,
-                    icon: const Icon(Icons.date_range),
-                    label: const Text('Select Range'),
-                  ),
-                ),
-                if (_startDate != null || _endDate != null)
-                  IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: _clearDateFilter,
-                  ),
-              ],
-            ),
-            if (_startDate != null || _endDate != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  'Filter: ${_startDate != null ? DateFormat('MMM d, y').format(_startDate!) : 'Any'} - ${_endDate != null ? DateFormat('MMM d, y').format(_endDate!) : 'Any'}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildExportSection() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Export Options',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF4B6E4F)),
-            ),
-            const SizedBox(height: 16),
-            
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                onPressed: _isLoading ? null : _exportReport,
-                icon: _isLoading
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.download),
-                label: Text(_isLoading ? 'Generating...' : 'Export Report'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4B6E4F),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline, size: 16, color: Colors.blue.shade700),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Reports will be downloaded as CSV files. Date filters apply to death date (burials) or check-in time (visitors).',
-                      style: TextStyle(fontSize: 11, color: Colors.blue.shade700),
+              : SafeArea(
+                  child: RefreshIndicator(
+                    color: const Color(0xFF335538),
+                    onRefresh: _loadSummary,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildHeaderSection(),
+                          const SizedBox(height: 24),
+                          _buildReportOverview(),
+                          const SizedBox(height: 24),
+                          _buildReportLayouts(),
+                          const SizedBox(height: 24),
+                          _buildReportControls(),
+                        ],
+                      ),
                     ),
                   ),
-                ],
-              ),
-            ),
-          ],
+                ),
+    );
+  }
+
+  Widget _buildHeaderSection() {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Analytics & Reports',
+          style: TextStyle(
+            color: Color(0xFF335538),
+            fontSize: 28,
+            fontWeight: FontWeight.w400,
+            height: 1.2,
+          ),
         ),
-      ),
+        SizedBox(height: 8),
+        Text(
+          'Insightful summaries of cemetery operations and section occupancy.',
+          style: TextStyle(
+            color: Color(0xFF424841),
+            fontSize: 14,
+            height: 1.4,
+          ),
+        ),
+      ],
     );
   }
 
@@ -506,7 +921,7 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
           ElevatedButton(
             onPressed: _loadSummary,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4B6E4F),
+              backgroundColor: const Color(0xFF335538),
               foregroundColor: Colors.white,
             ),
             child: const Text('Try Again'),
