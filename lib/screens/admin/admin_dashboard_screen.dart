@@ -62,7 +62,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   List<String> _burialYears = [];
   List<BarChartGroupData> _visitorBarData = [];
   List<String> _visitorMonths = [];
-  Map<String, int> _sectionDistribution = {};
+  Map<String, int> _blockDistribution = {};
 
   @override
   void initState() {
@@ -81,7 +81,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         _loadMetrics(),
         _loadBurialTrend(),
         _loadVisitorTrend(),
-        _loadSectionDistribution(),
+        _loadBlockDistribution(),
       ]);
 
       setState(() {
@@ -111,9 +111,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     }
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => AdminBurialRecordsScreen(
-          onMenuPressed: widget.onMenuPressed,
-        ),
+        builder: (_) =>
+            AdminBurialRecordsScreen(onMenuPressed: widget.onMenuPressed),
       ),
     );
   }
@@ -125,9 +124,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     }
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => AdminMapManagerScreen(
-          onMenuPressed: widget.onMenuPressed,
-        ),
+        builder: (_) =>
+            AdminMapManagerScreen(onMenuPressed: widget.onMenuPressed),
       ),
     );
   }
@@ -137,11 +135,9 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       widget.onOpenReports!.call();
       return;
     }
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const AdminReportsScreen(),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const AdminReportsScreen()));
   }
 
   Future<void> _loadMetrics() async {
@@ -340,37 +336,36 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     }
   }
 
-  Future<void> _loadSectionDistribution() async {
+  Future<void> _loadBlockDistribution() async {
     final supabase = Supabase.instance.client;
 
     try {
-      final sections = await supabase.from('section').select('''
-            name,
-            cemetery_lot (
-              burial_record (burial_id)
-            )
+      final lots = await supabase.from('cemetery_lot').select('''
+            block_number,
+            burial_record (burial_id)
           ''');
 
       Map<String, int> distribution = {};
-      for (var section in sections) {
-        int burialCount = 0;
-        final lots = section['cemetery_lot'] as List? ?? [];
-        for (var lot in lots) {
-          final burials = lot['burial_record'] as List? ?? [];
-          burialCount += burials.length;
-        }
+      for (var lot in lots) {
+        final blockNumber = lot['block_number']?.toString().trim();
+        final blockName = blockNumber == null || blockNumber.isEmpty
+            ? 'Unassigned Block'
+            : 'Block $blockNumber';
+        final burials = lot['burial_record'] as List? ?? [];
+        final burialCount = burials.length;
         if (burialCount > 0) {
-          distribution[section['name'] ?? 'Unknown'] = burialCount;
+          distribution[blockName] =
+              (distribution[blockName] ?? 0) + burialCount;
         }
       }
 
       setState(() {
-        _sectionDistribution = distribution;
+        _blockDistribution = distribution;
       });
     } catch (e) {
-      print('Error loading section distribution: $e');
+      print('Error loading block distribution: $e');
       setState(() {
-        _sectionDistribution = {};
+        _blockDistribution = {};
       });
     }
   }
@@ -785,11 +780,11 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Section Distribution Pie Chart
-            if (_sectionDistribution.isNotEmpty)
+            // Block Distribution Pie Chart
+            if (_blockDistribution.isNotEmpty)
               Column(
                 children: [
-                  Text('Burial Distribution by Section', style: t.titleMedium),
+                  Text('Burial Distribution by Block', style: t.titleMedium),
                   const SizedBox(height: 8),
                   SizedBox(
                     height: 300,
@@ -837,15 +832,15 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       Colors.pink,
       Colors.brown,
     ];
-    final total = _sectionDistribution.values.fold(
+    final total = _blockDistribution.values.fold(
       0,
       (sum, count) => sum + count,
     );
 
     if (total == 0) return [const Text('No data available')];
 
-    return _sectionDistribution.entries.map((entry) {
-      final index = _sectionDistribution.keys.toList().indexOf(entry.key);
+    return _blockDistribution.entries.map((entry) {
+      final index = _blockDistribution.keys.toList().indexOf(entry.key);
       final percentage = (entry.value / total * 100).toStringAsFixed(1);
 
       return Row(
@@ -880,15 +875,15 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       Colors.pink,
       Colors.brown,
     ];
-    final total = _sectionDistribution.values.fold(
+    final total = _blockDistribution.values.fold(
       0,
       (sum, count) => sum + count,
     );
 
     if (total == 0) return [];
 
-    return _sectionDistribution.entries.map((entry) {
-      final index = _sectionDistribution.keys.toList().indexOf(entry.key);
+    return _blockDistribution.entries.map((entry) {
+      final index = _blockDistribution.keys.toList().indexOf(entry.key);
       final percentage = (entry.value / total * 100);
 
       return PieChartSectionData(
@@ -1265,6 +1260,9 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
   String? _errorMessage;
   double? _entranceXPercent;
   double? _entranceYPercent;
+  LatLng _mapCenter = _tagumMapCenter;
+  double _activeMapLatSpan = _mapLatSpan;
+  double _activeMapLngSpan = _mapLngSpan;
   double _currentZoom = _initialZoom;
   LatLng _currentCenter = _tagumMapCenter;
   List<Map<String, dynamic>> _lotMarkers = [];
@@ -1289,14 +1287,16 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
       final results = await Future.wait([
         supabase
             .from('cemetery_map')
-            .select('entrance_x_percent, entrance_y_percent')
+            .select(
+              'entrance_x_percent, entrance_y_percent, center_lat, center_lng, lat_span, lng_span',
+            )
             .order('uploaded_at', ascending: false)
             .limit(1)
             .maybeSingle(),
         supabase
             .from('lot_markers')
             .select(
-              'marker_id, lot_id, x_percent, y_percent, cemetery_lot(lot_id, lot_number, price, status, section_id)',
+              'marker_id, lot_id, x_percent, y_percent, cemetery_lot(lot_id, lot_number, block_number, price, status)',
             )
             .order('marker_id'),
         supabase
@@ -1308,6 +1308,16 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
       if (!mounted) return;
       setState(() {
         final mapConfig = results[0] as Map<String, dynamic>?;
+        final centerLat = (mapConfig?['center_lat'] as num?)?.toDouble();
+        final centerLng = (mapConfig?['center_lng'] as num?)?.toDouble();
+        if (centerLat != null && centerLng != null) {
+          _mapCenter = LatLng(centerLat, centerLng);
+          _currentCenter = _mapCenter;
+        }
+        _activeMapLatSpan =
+            (mapConfig?['lat_span'] as num?)?.toDouble() ?? _mapLatSpan;
+        _activeMapLngSpan =
+            (mapConfig?['lng_span'] as num?)?.toDouble() ?? _mapLngSpan;
         _entranceXPercent = (mapConfig?['entrance_x_percent'] as num?)
             ?.toDouble();
         _entranceYPercent = (mapConfig?['entrance_y_percent'] as num?)
@@ -1351,8 +1361,8 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
       final id = lotId is int
           ? lotId
           : lotId is num
-              ? lotId.toInt()
-              : null;
+          ? lotId.toInt()
+          : null;
       lot['visit_count'] = id == null ? 0 : (_lotVisitCounts[id] ?? 0);
       normalizedMarker['cemetery_lot'] = lot;
       return normalizedMarker;
@@ -1366,12 +1376,10 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
   }
 
   LatLng _percentToLatLng(double xPercent, double yPercent) {
-    final lat =
-        _tagumMapCenter.latitude +
-        ((_mapLatSpan / 2) - (_mapLatSpan * yPercent));
-    final lng =
-        _tagumMapCenter.longitude -
-        ((_mapLngSpan / 2) - (_mapLngSpan * xPercent));
+    final latOffset = (0.5 - yPercent / 100) * _activeMapLatSpan;
+    final lngOffset = (xPercent / 100 - 0.5) * _activeMapLngSpan;
+    final lat = _mapCenter.latitude + latOffset;
+    final lng = _mapCenter.longitude + lngOffset;
     return LatLng(lat, lng);
   }
 
@@ -1381,12 +1389,7 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
       final x = (marker['x_percent'] as num?)?.toDouble() ?? 0.5;
       final y = (marker['y_percent'] as num?)?.toDouble() ?? 0.5;
       final visitCount = (lot['visit_count'] as num?)?.toInt() ?? 0;
-      return _DbscanPoint(
-        marker: marker,
-        x: x,
-        y: y,
-        visitCount: visitCount,
-      );
+      return _DbscanPoint(marker: marker, x: x, y: y, visitCount: visitCount);
     }).toList();
   }
 
@@ -1404,7 +1407,7 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
       }).toList();
     }
 
-  int neighborhoodWeight(List<_DbscanPoint> items) {
+    int neighborhoodWeight(List<_DbscanPoint> items) {
       return items.fold<int>(0, (sum, item) => sum + item.visitCount);
     }
 
@@ -1474,13 +1477,17 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
     }
 
     for (final cluster in result.clusters) {
-      final visitCount =
-          cluster.points.fold<int>(0, (sum, point) => sum + point.visitCount);
+      final visitCount = cluster.points.fold<int>(
+        0,
+        (sum, point) => sum + point.visitCount,
+      );
       if (visitCount <= 0) continue;
       final centerX =
-          cluster.points.fold<double>(0, (sum, p) => sum + p.x) / cluster.points.length;
+          cluster.points.fold<double>(0, (sum, p) => sum + p.x) /
+          cluster.points.length;
       final centerY =
-          cluster.points.fold<double>(0, (sum, p) => sum + p.y) / cluster.points.length;
+          cluster.points.fold<double>(0, (sum, p) => sum + p.y) /
+          cluster.points.length;
       final intensity = (visitCount / 24).clamp(0.0, 1.0);
       final color = Color.lerp(_primaryFixed, _primaryContainer, intensity)!;
       final radius = (18 + visitCount * 1.6).clamp(22.0, 72.0);
@@ -1489,9 +1496,7 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
         CircleMarker(
           point: _percentToLatLng(centerX, centerY),
           radius: radius,
-          color: color.withValues(
-            alpha: 0.20 + intensity * 0.26,
-          ),
+          color: color.withValues(alpha: 0.20 + intensity * 0.26),
           borderColor: color.withValues(alpha: 0.55),
           borderStrokeWidth: 2,
           useRadiusInMeter: false,
@@ -1525,9 +1530,11 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
         (sum, point) => sum + point.visitCount,
       );
       final centerX =
-          cluster.points.fold<double>(0, (sum, p) => sum + p.x) / cluster.points.length;
+          cluster.points.fold<double>(0, (sum, p) => sum + p.x) /
+          cluster.points.length;
       final centerY =
-          cluster.points.fold<double>(0, (sum, p) => sum + p.y) / cluster.points.length;
+          cluster.points.fold<double>(0, (sum, p) => sum + p.y) /
+          cluster.points.length;
       return Marker(
         point: _percentToLatLng(centerX, centerY),
         width: 42,
@@ -1564,11 +1571,10 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
     return ((lot['visit_count'] as num?)?.toInt() ?? 0) > 0;
   }).length;
 
-  int get _totalVisits =>
-      _lotMarkers.fold<int>(0, (sum, marker) {
-        final lot = marker['cemetery_lot'] ?? {};
-        return sum + ((lot['visit_count'] as num?)?.toInt() ?? 0);
-      });
+  int get _totalVisits => _lotMarkers.fold<int>(0, (sum, marker) {
+    final lot = marker['cemetery_lot'] ?? {};
+    return sum + ((lot['visit_count'] as num?)?.toInt() ?? 0);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1610,7 +1616,7 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
                 : FlutterMap(
                     mapController: _mapController,
                     options: MapOptions(
-                      initialCenter: _tagumMapCenter,
+                      initialCenter: _mapCenter,
                       initialZoom: _initialZoom,
                       minZoom: 14,
                       maxZoom: 20,
@@ -1645,7 +1651,7 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
               decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.92),
+                color: Colors.white.withValues(alpha: 0.92),
                 borderRadius: BorderRadius.circular(999),
                 border: Border.all(
                   color: const Color(0xFFC2C8BF).withValues(alpha: 0.7),
@@ -1717,7 +1723,7 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
                 _MapToolButton(
                   icon: Icons.my_location_outlined,
                   onPressed: () =>
-                      _mapController.move(_tagumMapCenter, _initialZoom),
+                      _mapController.move(_mapCenter, _initialZoom),
                 ),
               ],
             ),

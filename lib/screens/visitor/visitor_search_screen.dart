@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../utils/lot_formatters.dart';
 import 'visitor_qr_with_grave_screen.dart';
 import 'visitor_map_screen.dart';
 
@@ -79,14 +80,12 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
             cemetery_lot!inner (
               lot_id,
               lot_number,
+              lot_label,
+              block_number,
+              lot_class_type,
               x_coord,
               y_coord,
-              status,
-              section:section_id (
-                section_id,
-                name,
-                branch:branch_id (name)
-              )
+              status
             )
           ''')
           .order('name_of_deceased');
@@ -121,10 +120,10 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
       } else {
         _filteredGraves = _allGraves.where((grave) {
           final name = grave['name_of_deceased']?.toLowerCase() ?? '';
-          final lotNumber =
-              grave['cemetery_lot']?['lot_number']?.toLowerCase() ?? '';
           if (_searchType == 'name') return name.contains(query.toLowerCase());
-          return lotNumber.contains(query.toLowerCase());
+          return lotSearchText(
+            grave['cemetery_lot'],
+          ).contains(query.toLowerCase());
         }).toList();
       }
     });
@@ -135,7 +134,8 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
     return {
       'name': burial['name_of_deceased'] ?? 'Unknown',
       'deceased_name': burial['name_of_deceased'] ?? 'Unknown',
-      'lot_number': lot['lot_number'],
+      'lot_number': lotReference(lot, fallback: ''),
+      'block_name': lotBlockLabel(lot, fallback: ''),
       'lot_id': lot['lot_id'],
       'type': 'deceased',
       'burial_id': burial['burial_id'],
@@ -157,8 +157,8 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
         builder: (_) => VisitorQrWithGraveScreen(
           burialId: burial['burial_id'],
           deceasedName: burial['name_of_deceased'],
-          lotNumber: lot['lot_number'],
-          sectionName: null,
+          lotNumber: lotReference(lot, fallback: ''),
+          blockName: lotBlockLabel(lot, fallback: 'Unknown'),
         ),
       ),
     );
@@ -172,7 +172,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
       MaterialPageRoute(
         builder: (_) => VisitorMapScreenWithDestination(
           destinationLotId: lot['lot_id'],
-          destinationLotNumber: lot['lot_number'],
+          destinationLotNumber: lotReference(lot, fallback: ''),
         ),
       ),
     );
@@ -307,7 +307,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                                 decoration: InputDecoration(
                                   hintText: _searchType == 'name'
                                       ? 'Search deceased name...'
-                                      : 'Search lot number...',
+                                      : 'Search lot or block...',
                                   hintStyle: const TextStyle(
                                     color: _C.outline,
                                     fontSize: 14,
@@ -517,7 +517,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                                       ),
                                       const SizedBox(width: 4),
                                       Text(
-                                        'Lot ${lot['lot_number'] ?? '---'}',
+                                        'Lot ${lotReference(lot)}',
                                         style: const TextStyle(
                                           fontSize: 13,
                                           color: _C.onSurfaceVariant,
@@ -657,7 +657,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    'Lot ${lot['lot_number'] ?? '---'}',
+                                    'Lot ${lotReference(lot)}',
                                     style: const TextStyle(
                                       fontSize: 13,
                                       color: _C.onSurfaceVariant,
@@ -676,7 +676,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    'Lot ${lot['lot_number'] ?? '—'}',
+                                    'Lot ${lotReference(lot)}',
                                     style: const TextStyle(
                                       fontSize: 13,
                                       color: _C.onSurfaceVariant,
@@ -801,7 +801,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
             const SizedBox(height: 16),
             _buildInfoRow(
               Icons.location_on_outlined,
-              'Lot ${lot['lot_number']}',
+              'Lot ${lotReference(lot)}',
             ),
             if (burial['death_date'] != null)
               _buildInfoRow(

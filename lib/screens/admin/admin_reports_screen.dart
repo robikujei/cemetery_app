@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../utils/lot_formatters.dart';
+
 class AdminReportsScreen extends ConsumerStatefulWidget {
   const AdminReportsScreen({super.key});
 
@@ -16,10 +18,8 @@ class AdminReportsScreen extends ConsumerStatefulWidget {
 class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
   bool _isLoading = false;
   String? _errorMessage;
-  Map<String, dynamic> _metrics = {
-    'recent_activities': [],
-  };
-  Map<String, int> _sectionDistribution = {};
+  Map<String, dynamic> _metrics = {'recent_activities': []};
+  Map<String, int> _blockDistribution = {};
   Map<String, dynamic> _summary = {
     'total_burials': 0,
     'total_lots': 0,
@@ -49,8 +49,16 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
       final supabase = Supabase.instance.client;
 
       final burials = await supabase.from('burial_record').select('burial_id');
-      final lots = await supabase.from('cemetery_lot').select('lot_id, status, price');
-      final availableLots = lots.where((l) => l['status'] == 'Available').length;
+      final lots = await supabase.from('cemetery_lot').select('''
+            lot_id,
+            status,
+            price,
+            block_number,
+            burial_record (burial_id)
+          ''');
+      final availableLots = lots
+          .where((l) => l['status'] == 'Available')
+          .length;
       final occupiedLots = lots.where((l) => l['status'] == 'Occupied').length;
 
       double revenue = 0;
@@ -60,7 +68,9 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
         }
       }
 
-      final visitors = await supabase.from('visitor_log').select('log_id, method');
+      final visitors = await supabase
+          .from('visitor_log')
+          .select('log_id, method');
       final qrScans = visitors.where((v) => v['method'] == 'QR').length;
       final recentActivities = await supabase
           .from('visitor_log')
@@ -74,22 +84,17 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
           .order('time_in', ascending: false)
           .limit(5);
 
-      final sections = await supabase.from('section').select('''
-            name,
-            cemetery_lot (
-              burial_record (burial_id)
-            )
-          ''');
-      final sectionDistribution = <String, int>{};
-      for (final section in sections) {
-        int burialCount = 0;
-        final lots = section['cemetery_lot'] as List? ?? [];
-        for (final lot in lots) {
-          final burialsInLot = lot['burial_record'] as List? ?? [];
-          burialCount += burialsInLot.length;
-        }
+      final blockDistribution = <String, int>{};
+      for (final lot in lots) {
+        final blockNumber = lot['block_number']?.toString().trim();
+        final blockName = blockNumber == null || blockNumber.isEmpty
+            ? 'Unassigned Block'
+            : 'Block $blockNumber';
+        final burialsInLot = lot['burial_record'] as List? ?? [];
+        final burialCount = burialsInLot.length;
         if (burialCount > 0) {
-          sectionDistribution[section['name'] ?? 'Unknown'] = burialCount;
+          blockDistribution[blockName] =
+              (blockDistribution[blockName] ?? 0) + burialCount;
         }
       }
 
@@ -103,10 +108,8 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
           'qr_scans': qrScans,
           'revenue': revenue,
         };
-        _metrics = {
-          'recent_activities': recentActivities,
-        };
-        _sectionDistribution = sectionDistribution;
+        _metrics = {'recent_activities': recentActivities};
+        _blockDistribution = blockDistribution;
         _isLoading = false;
       });
     } catch (e) {
@@ -151,7 +154,8 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
                 burial_date,
                 cemetery_lot (
                   lot_number,
-                  section:section_id (name)
+                  lot_label,
+                  block_number
                 )
               ''');
 
@@ -164,38 +168,41 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
 
           final records = await query;
           data = List<Map<String, dynamic>>.from(records);
-          fileName = 'burial_records_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv';
-          csvContent = 'ID,Name of Deceased,Birth Date,Death Date,Burial Date,Lot Number,Section\n';
+          fileName =
+              'burial_records_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv';
+          csvContent =
+              'ID,Name of Deceased,Birth Date,Death Date,Burial Date,Lot Number,Block\n';
           for (final record in data) {
             final lot = record['cemetery_lot'] ?? {};
-            final section = lot['section'] ?? {};
             csvContent += '"${record['burial_id']}",';
             csvContent += '"${record['name_of_deceased']}",';
             csvContent += '"${record['birth_date'] ?? ''}",';
             csvContent += '"${record['death_date'] ?? ''}",';
             csvContent += '"${record['burial_date'] ?? ''}",';
-            csvContent += '"${lot['lot_number'] ?? ''}",';
-            csvContent += '"${section['name'] ?? ''}"\n';
+            csvContent += '"${lotReference(lot, fallback: '')}",';
+            csvContent += '"${lotBlockLabel(lot, fallback: '')}"\n';
           }
           break;
         case 'lots':
           final lots = await supabase.from('cemetery_lot').select('''
                 lot_id,
                 lot_number,
+                lot_label,
+                block_number,
                 status,
                 price,
                 x_coord,
-                y_coord,
-                section:section_id (name)
+                y_coord
               ''');
           data = List<Map<String, dynamic>>.from(lots);
-          fileName = 'lot_inventory_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv';
-          csvContent = 'ID,Lot Number,Section,Status,Price,X Coordinate,Y Coordinate\n';
+          fileName =
+              'lot_inventory_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv';
+          csvContent =
+              'ID,Lot Number,Block,Status,Price,X Coordinate,Y Coordinate\n';
           for (final lot in data) {
-            final section = lot['section'] ?? {};
             csvContent += '"${lot['lot_id']}",';
-            csvContent += '"${lot['lot_number']}",';
-            csvContent += '"${section['name'] ?? ''}",';
+            csvContent += '"${lotReference(lot, fallback: '')}",';
+            csvContent += '"${lotBlockLabel(lot, fallback: '')}",';
             csvContent += '"${lot['status']}",';
             csvContent += '"${lot['price'] ?? 0}",';
             csvContent += '"${lot['x_coord'] ?? 0}",';
@@ -218,8 +225,10 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
           }
           final logs = await query.order('time_in', ascending: false);
           data = List<Map<String, dynamic>>.from(logs);
-          fileName = 'visitor_logs_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv';
-          csvContent = 'ID,Visitor Name,Visitor Email,Time In,Method,Grave Visited\n';
+          fileName =
+              'visitor_logs_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv';
+          csvContent =
+              'ID,Visitor Name,Visitor Email,Time In,Method,Grave Visited\n';
           for (final log in data) {
             final user = log['user'] ?? {};
             final burial = log['burial'] ?? {};
@@ -237,7 +246,10 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Report exported: $fileName'), backgroundColor: Colors.green),
+        SnackBar(
+          content: Text('Report exported: $fileName'),
+          backgroundColor: Colors.green,
+        ),
       );
     } catch (e) {
       setState(() {
@@ -310,13 +322,55 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
           crossAxisSpacing: 16,
           childAspectRatio: constraints.maxWidth < 700 ? 1.15 : 1.55,
           children: [
-            _reportMetricCard('Total Burials', totalBurials.toString(), Icons.people_outline_rounded, const Color(0xFF335538), const Color(0xFFC5EDC6)),
-            _reportMetricCard('Total Lots', totalLots.toString(), Icons.grid_view_rounded, const Color(0xFF47626F), const Color(0xFFC7E4F3)),
-            _reportMetricCard('Available Lots', availableLots.toString(), Icons.check_circle_outline_rounded, const Color(0xFF2F6F50), const Color(0xFFAAD0AB)),
-            _reportMetricCard('Occupied Lots', occupiedLots.toString(), Icons.location_on_outlined, const Color(0xFFBA1A1A), const Color(0xFFFFDAD6)),
-            _reportMetricCard('Visitors', visitors.toString(), Icons.groups_outlined, const Color(0xFF5A4B3F), const Color(0xFFF5DECE)),
-            _reportMetricCard('QR Scans', (_summary['qr_scans'] as int).toString(), Icons.qr_code_2_rounded, const Color(0xFF335538), const Color(0xFFC5EDC6)),
-            _reportMetricCard('Revenue', 'PHP ${revenue.toStringAsFixed(2)}', Icons.payments_outlined, const Color(0xFF4B6E4F), const Color(0xFFC5EDC6)),
+            _reportMetricCard(
+              'Total Burials',
+              totalBurials.toString(),
+              Icons.people_outline_rounded,
+              const Color(0xFF335538),
+              const Color(0xFFC5EDC6),
+            ),
+            _reportMetricCard(
+              'Total Lots',
+              totalLots.toString(),
+              Icons.grid_view_rounded,
+              const Color(0xFF47626F),
+              const Color(0xFFC7E4F3),
+            ),
+            _reportMetricCard(
+              'Available Lots',
+              availableLots.toString(),
+              Icons.check_circle_outline_rounded,
+              const Color(0xFF2F6F50),
+              const Color(0xFFAAD0AB),
+            ),
+            _reportMetricCard(
+              'Occupied Lots',
+              occupiedLots.toString(),
+              Icons.location_on_outlined,
+              const Color(0xFFBA1A1A),
+              const Color(0xFFFFDAD6),
+            ),
+            _reportMetricCard(
+              'Visitors',
+              visitors.toString(),
+              Icons.groups_outlined,
+              const Color(0xFF5A4B3F),
+              const Color(0xFFF5DECE),
+            ),
+            _reportMetricCard(
+              'QR Scans',
+              (_summary['qr_scans'] as int).toString(),
+              Icons.qr_code_2_rounded,
+              const Color(0xFF335538),
+              const Color(0xFFC5EDC6),
+            ),
+            _reportMetricCard(
+              'Revenue',
+              'PHP ${revenue.toStringAsFixed(2)}',
+              Icons.payments_outlined,
+              const Color(0xFF4B6E4F),
+              const Color(0xFFC5EDC6),
+            ),
           ],
         );
       },
@@ -337,7 +391,11 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: const Color(0xFFE4E2DF)),
         boxShadow: const [
-          BoxShadow(color: Color(0x0A000000), blurRadius: 16, offset: Offset(0, 6)),
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
         ],
       ),
       child: Column(
@@ -441,7 +499,11 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: const Color(0xFFE4E2DF)),
         boxShadow: const [
-          BoxShadow(color: Color(0x0A000000), blurRadius: 16, offset: Offset(0, 6)),
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
         ],
       ),
       child: Column(
@@ -516,11 +578,18 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: Color(0xFF424841), fontSize: 12)),
+          Text(
+            label,
+            style: const TextStyle(color: Color(0xFF424841), fontSize: 12),
+          ),
           const SizedBox(height: 6),
           Text(
             value,
-            style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.w800),
+            style: TextStyle(
+              color: color,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ],
       ),
@@ -528,8 +597,9 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
   }
 
   Widget _buildRecentVisitorCard() {
-    final recentActivities = (_metrics['recent_activities'] as List? ?? const [])
-        .cast<Map<String, dynamic>>();
+    final recentActivities =
+        (_metrics['recent_activities'] as List? ?? const [])
+            .cast<Map<String, dynamic>>();
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -538,7 +608,11 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: const Color(0xFFE4E2DF)),
         boxShadow: const [
-          BoxShadow(color: Color(0x0A000000), blurRadius: 16, offset: Offset(0, 6)),
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
         ],
       ),
       child: Column(
@@ -581,7 +655,10 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
                           color: const Color(0xFFC5EDC6),
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: const Icon(Icons.person_outline_rounded, color: Color(0xFF335538)),
+                        child: const Icon(
+                          Icons.person_outline_rounded,
+                          color: Color(0xFF335538),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -598,14 +675,20 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
                             const SizedBox(height: 4),
                             Text(
                               '${burial?['name_of_deceased'] ?? 'N/A'} • ${log['method'] ?? 'Manual'}',
-                              style: const TextStyle(color: Color(0xFF424841), fontSize: 12),
+                              style: const TextStyle(
+                                color: Color(0xFF424841),
+                                fontSize: 12,
+                              ),
                             ),
                           ],
                         ),
                       ),
                       Text(
                         _formatDateTime(log['time_in']?.toString()),
-                        style: const TextStyle(color: Color(0xFF424841), fontSize: 11),
+                        style: const TextStyle(
+                          color: Color(0xFF424841),
+                          fontSize: 11,
+                        ),
                         textAlign: TextAlign.right,
                       ),
                     ],
@@ -630,7 +713,11 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: const Color(0xFFE4E2DF)),
         boxShadow: const [
-          BoxShadow(color: Color(0x0A000000), blurRadius: 16, offset: Offset(0, 6)),
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
         ],
       ),
       child: Column(
@@ -654,7 +741,10 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Estimated Revenue', style: TextStyle(color: Color(0xFF424841), fontSize: 12)),
+                const Text(
+                  'Estimated Revenue',
+                  style: TextStyle(color: Color(0xFF424841), fontSize: 12),
+                ),
                 const SizedBox(height: 6),
                 Text(
                   'PHP ${revenue.toStringAsFixed(2)}',
@@ -665,9 +755,15 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Text('Burials: $totalBurials', style: const TextStyle(color: Color(0xFF424841))),
+                Text(
+                  'Burials: $totalBurials',
+                  style: const TextStyle(color: Color(0xFF424841)),
+                ),
                 const SizedBox(height: 4),
-                Text('Visitors: $totalVisitors', style: const TextStyle(color: Color(0xFF424841))),
+                Text(
+                  'Visitors: $totalVisitors',
+                  style: const TextStyle(color: Color(0xFF424841)),
+                ),
               ],
             ),
           ),
@@ -685,7 +781,11 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
                 Expanded(
                   child: Text(
                     'Use the export controls below to generate CSV reports for burial, lot, or visitor records.',
-                    style: TextStyle(color: Color(0xFF2F4A57), fontSize: 12, height: 1.3),
+                    style: TextStyle(
+                      color: Color(0xFF2F4A57),
+                      fontSize: 12,
+                      height: 1.3,
+                    ),
                   ),
                 ),
               ],
@@ -697,7 +797,7 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
   }
 
   Widget _buildLotBreakdownCard() {
-    final entries = _sectionDistribution.entries.toList()
+    final entries = _blockDistribution.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
     return Container(
@@ -707,14 +807,18 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: const Color(0xFFE4E2DF)),
         boxShadow: const [
-          BoxShadow(color: Color(0x0A000000), blurRadius: 16, offset: Offset(0, 6)),
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Lot Breakdown by Section',
+            'Lot Breakdown by Block',
             style: TextStyle(
               color: Color(0xFF1B1C1A),
               fontSize: 16,
@@ -723,12 +827,12 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Occupancy counts grouped by cemetery section.',
+            'Occupancy counts grouped by cemetery block.',
             style: TextStyle(color: Color(0xFF424841), fontSize: 12),
           ),
           const SizedBox(height: 16),
           if (entries.isEmpty)
-            const Text('No section data available.')
+            const Text('No block data available.')
           else
             Column(
               children: entries.take(6).map((entry) {
@@ -767,7 +871,11 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: const Color(0xFFE4E2DF)),
         boxShadow: const [
-          BoxShadow(color: Color(0x0A000000), blurRadius: 16, offset: Offset(0, 6)),
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
         ],
       ),
       child: Column(
@@ -782,7 +890,10 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          const Text('Report Type', style: TextStyle(fontWeight: FontWeight.w600)),
+          const Text(
+            'Report Type',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
           const SizedBox(height: 8),
           SegmentedButton<String>(
             segments: const [
@@ -798,7 +909,10 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
             },
           ),
           const SizedBox(height: 16),
-          const Text('Date Range', style: TextStyle(fontWeight: FontWeight.w600)),
+          const Text(
+            'Date Range',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -841,7 +955,9 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF335538),
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
             ),
           ),
@@ -857,33 +973,33 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
       body: _isLoading && _summary['total_lots'] == 0
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-              ? _buildErrorWidget()
-              : SafeArea(
-                  child: RefreshIndicator(
-                    color: const Color(0xFF335538),
-                    onRefresh: _loadSummary,
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildHeaderSection(),
-                          const SizedBox(height: 24),
-                          _buildReportOverview(),
-                          const SizedBox(height: 24),
-                          _buildReportLayouts(),
-                          const SizedBox(height: 24),
-                          _buildReportControls(),
-                        ],
-                      ),
-                    ),
+          ? _buildErrorWidget()
+          : SafeArea(
+              child: RefreshIndicator(
+                color: const Color(0xFF335538),
+                onRefresh: _loadSummary,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeaderBlock(),
+                      const SizedBox(height: 24),
+                      _buildReportOverview(),
+                      const SizedBox(height: 24),
+                      _buildReportLayouts(),
+                      const SizedBox(height: 24),
+                      _buildReportControls(),
+                    ],
                   ),
                 ),
+              ),
+            ),
     );
   }
 
-  Widget _buildHeaderSection() {
+  Widget _buildHeaderBlock() {
     return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -898,12 +1014,8 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
         ),
         SizedBox(height: 8),
         Text(
-          'Insightful summaries of cemetery operations and section occupancy.',
-          style: TextStyle(
-            color: Color(0xFF424841),
-            fontSize: 14,
-            height: 1.4,
-          ),
+          'Insightful summaries of cemetery operations and block occupancy.',
+          style: TextStyle(color: Color(0xFF424841), fontSize: 14, height: 1.4),
         ),
       ],
     );

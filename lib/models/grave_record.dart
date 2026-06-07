@@ -5,7 +5,7 @@ class GraveRecord {
     required this.birthDate,
     required this.deathDate,
     required this.burialDate,
-    required this.sectionName,
+    required this.blockName,
     required this.lotNumber,
   });
 
@@ -14,7 +14,6 @@ class GraveRecord {
   final DateTime? birthDate;
   final DateTime? deathDate;
   final DateTime? burialDate;
-  final String sectionName;
+  final String blockName;
   final String lotNumber;
 }
-

@@ -24,6 +24,7 @@ class AdminShellScreen extends ConsumerStatefulWidget {
 class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   int _selected = 0;
+  int _mapRefreshToken = 0;
 
   Future<void> _logout() async {
     final confirm = await showDialog<bool>(
@@ -109,7 +110,10 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
                         color: const Color(0xFFC5EDC6),
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: const Icon(Icons.apartment_rounded, color: Color(0xFF335538)),
+                      child: const Icon(
+                        Icons.apartment_rounded,
+                        color: Color(0xFF335538),
+                      ),
                     ),
                     const SizedBox(width: 14),
                     const Expanded(
@@ -207,7 +211,10 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
                     borderRadius: BorderRadius.circular(18),
                   ),
                   child: ListTile(
-                    leading: const Icon(Icons.logout_rounded, color: Color(0xFF93000A)),
+                    leading: const Icon(
+                      Icons.logout_rounded,
+                      color: Color(0xFF93000A),
+                    ),
                     title: const Text(
                       'Logout',
                       style: TextStyle(
@@ -234,6 +241,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
           ),
           AdminMapManagerScreen(
             onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
+            refreshToken: _mapRefreshToken,
           ),
           AdminBurialRecordsScreen(
             onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
@@ -256,7 +264,10 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
   }
 
   void _go(int idx) {
-    setState(() => _selected = idx);
+    setState(() {
+      _selected = idx;
+      if (idx == 1) _mapRefreshToken++;
+    });
     if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
       _scaffoldKey.currentState?.closeDrawer();
     }
@@ -307,7 +318,9 @@ class _NavTile extends StatelessWidget {
         ),
       ),
       onTap: onTap,
-      tileColor: selected ? const Color(0xFFC5EDC6).withValues(alpha: 0.35) : null,
+      tileColor: selected
+          ? const Color(0xFFC5EDC6).withValues(alpha: 0.35)
+          : null,
       selectedTileColor: const Color(0xFFC5EDC6).withValues(alpha: 0.35),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     );

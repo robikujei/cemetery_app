@@ -8,18 +8,18 @@ import '../../providers/session_providers.dart';
 
 // ── Design tokens (mirrors the HTML template's Tailwind config) ──────────────
 class _C {
-  static const background      = Color(0xFFFBF9F6);
-  static const primary         = Color(0xFF335538);
-  static const primaryContainer= Color(0xFF4B6E4F);
-  static const onPrimaryContainer= Color(0xFFC7EFC8);
-  static const primaryFixed    = Color(0xFFC5EDC6);
+  static const background = Color(0xFFFBF9F6);
+  static const primary = Color(0xFF335538);
+  static const primaryContainer = Color(0xFF4B6E4F);
+  static const onPrimaryContainer = Color(0xFFC7EFC8);
+  static const primaryFixed = Color(0xFFC5EDC6);
   static const surfaceContainerLow = Color(0xFFF5F3F0);
   static const surfaceContainerHighest = Color(0xFFE4E2DF);
-  static const onSurface       = Color(0xFF1B1C1A);
-  static const onSurfaceVariant= Color(0xFF424841);
-  static const outline         = Color(0xFF727971);
-  static const outlineVariant  = Color(0xFFC2C8BF);
-  static const error           = Color(0xFFBA1A1A);
+  static const onSurface = Color(0xFF1B1C1A);
+  static const onSurfaceVariant = Color(0xFF424841);
+  static const outline = Color(0xFF727971);
+  static const outlineVariant = Color(0xFFC2C8BF);
+  static const error = Color(0xFFBA1A1A);
 }
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -30,10 +30,10 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _emailCtrl    = TextEditingController();
+  final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
-  bool _obscure    = true;
-  bool _isLoading  = false;
+  bool _obscure = true;
+  bool _isLoading = false;
   String? _emailError;
   String? _passwordError;
 
@@ -46,8 +46,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   bool _isValidEmail(String email) {
     if (email.isEmpty) return false;
-    return RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
-        .hasMatch(email);
+    return RegExp(
+      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+    ).hasMatch(email);
   }
 
   bool _validateForm() {
@@ -93,8 +94,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
         final appUser = AppUser(
           id: response.user!.id,
-          displayName: userData['name'] ??
-              _emailCtrl.text.trim().split('@').first,
+          displayName:
+              userData['name'] ?? _emailCtrl.text.trim().split('@').first,
           role: _mapRoleToEnum(userData['role']),
         );
         ref.read(sessionProvider.notifier).state = appUser;
@@ -113,18 +114,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   void _navigateByRole(String? role) {
     switch (role) {
-      case 'admin':       context.go('/admin');        break;
-      case 'gate_officer':context.go('/gate-officer'); break;
-      case 'lot_owner':   context.go('/lot-owner');    break;
-      default:            context.go('/visitor');
+      case 'admin':
+        context.go('/admin');
+        break;
+      case 'gate_officer':
+        context.go('/gate-officer');
+        break;
+      case 'lot_owner':
+        context.go('/lot-owner');
+        break;
+      default:
+        context.go('/visitor');
     }
   }
 
   UserRole _mapRoleToEnum(String? role) {
     switch (role) {
-      case 'admin':        return UserRole.admin;
-      case 'gate_officer': return UserRole.gateOfficer;
-      default:             return UserRole.visitor;
+      case 'admin':
+        return UserRole.admin;
+      case 'gate_officer':
+        return UserRole.gateOfficer;
+      case 'lot_owner':
+        return UserRole.lotOwner;
+      default:
+        return UserRole.visitor;
     }
   }
 
@@ -160,13 +173,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(label,
-                  style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.1,
-                      color: _C.onSurfaceVariant)),
-              if (labelTrailing != null) labelTrailing,
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.1,
+                  color: _C.onSurfaceVariant,
+                ),
+              ),
+              ?labelTrailing,
             ],
           ),
         ),
@@ -187,8 +203,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             suffixIcon: suffix,
             filled: true,
             fillColor: _C.surfaceContainerLow,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 18,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide.none,
@@ -199,7 +217,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: _C.primaryContainer, width: 2),
+              borderSide: const BorderSide(
+                color: _C.primaryContainer,
+                width: 2,
+              ),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
@@ -235,8 +256,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       color: _C.primaryFixed,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.church,
-                        size: 32, color: _C.primary),
+                    child: const Icon(
+                      Icons.church,
+                      size: 32,
+                      color: _C.primary,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   const Text(
@@ -299,7 +323,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           errorText: _passwordError,
                           obscure: _obscure,
                           labelTrailing: TextButton(
-                            onPressed: () {/* TODO: forgot password */},
+                            onPressed: () {
+                              /* TODO: forgot password */
+                            },
                             style: TextButton.styleFrom(
                               padding: EdgeInsets.zero,
                               minimumSize: Size.zero,
@@ -308,10 +334,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             child: const Text(
                               'Forgot password?',
                               style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                  letterSpacing: 0.5,
-                                  color: _C.primary),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 0.5,
+                                color: _C.primary,
+                              ),
                             ),
                           ),
                           suffix: IconButton(
@@ -332,30 +359,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         SizedBox(
                           height: 56,
                           child: FilledButton.icon(
-                            onPressed:
-                                _isLoading ? null : _signInWithSupabase,
+                            onPressed: _isLoading ? null : _signInWithSupabase,
                             style: FilledButton.styleFrom(
                               backgroundColor: _C.primaryContainer,
                               foregroundColor: _C.onPrimaryContainer,
-                              disabledBackgroundColor:
-                                  _C.primaryContainer.withOpacity(0.5),
+                              disabledBackgroundColor: _C.primaryContainer
+                                  .withValues(alpha: 0.5),
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16)),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
                               textStyle: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  letterSpacing: 0.1),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 0.1,
+                              ),
                             ),
                             icon: _isLoading
                                 ? const SizedBox(
                                     width: 18,
                                     height: 18,
                                     child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: _C.onPrimaryContainer),
+                                      strokeWidth: 2,
+                                      color: _C.onPrimaryContainer,
+                                    ),
                                   )
-                                : const Icon(Icons.arrow_forward_rounded,
-                                    size: 18),
+                                : const Icon(
+                                    Icons.arrow_forward_rounded,
+                                    size: 18,
+                                  ),
                             iconAlignment: IconAlignment.end,
                             label: const Text('Sign In'),
                           ),
@@ -369,9 +400,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           'New to Eternal Rest?',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                              fontSize: 14,
-                              color: _C.onSurfaceVariant,
-                              letterSpacing: 0.25),
+                            fontSize: 14,
+                            color: _C.onSurfaceVariant,
+                            letterSpacing: 0.25,
+                          ),
                         ),
                         const SizedBox(height: 16),
                         SizedBox(
@@ -381,15 +413,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             style: OutlinedButton.styleFrom(
                               foregroundColor: _C.primaryContainer,
                               side: const BorderSide(
-                                  color: _C.primaryContainer, width: 2),
+                                color: _C.primaryContainer,
+                                width: 2,
+                              ),
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16)),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
                               textStyle: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  letterSpacing: 0.1),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 0.1,
+                              ),
                             ),
-                            child: const Text('Create an Account'),
+                            child: const Text('Create Visitor Account'),
                           ),
                         ),
                       ],
@@ -404,17 +440,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       TextButton(
                         onPressed: () {},
                         style: TextButton.styleFrom(
-                            foregroundColor: _C.outline,
-                            textStyle: const TextStyle(
-                                fontSize: 11, letterSpacing: 0.5)),
+                          foregroundColor: _C.outline,
+                          textStyle: const TextStyle(
+                            fontSize: 11,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
                         child: const Text('Terms of Service'),
                       ),
                       TextButton(
                         onPressed: () {},
                         style: TextButton.styleFrom(
-                            foregroundColor: _C.outline,
-                            textStyle: const TextStyle(
-                                fontSize: 11, letterSpacing: 0.5)),
+                          foregroundColor: _C.outline,
+                          textStyle: const TextStyle(
+                            fontSize: 11,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
                         child: const Text('Privacy Policy'),
                       ),
                     ],
@@ -422,9 +464,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const Text(
                     'Respecting legacy, protecting privacy.',
                     style: TextStyle(
-                        fontSize: 11,
-                        letterSpacing: 0.5,
-                        color: _C.outlineVariant),
+                      fontSize: 11,
+                      letterSpacing: 0.5,
+                      color: _C.outlineVariant,
+                    ),
                   ),
                 ],
               ),

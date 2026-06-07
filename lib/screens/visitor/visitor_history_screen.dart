@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 
+import '../../utils/lot_formatters.dart';
+
 class VisitorHistoryScreen extends ConsumerStatefulWidget {
   const VisitorHistoryScreen({super.key});
 
@@ -11,8 +13,7 @@ class VisitorHistoryScreen extends ConsumerStatefulWidget {
       _VisitorHistoryScreenState();
 }
 
-class _VisitorHistoryScreenState
-    extends ConsumerState<VisitorHistoryScreen> {
+class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
   List<Map<String, dynamic>> _visitHistory = [];
   List<Map<String, dynamic>> _filteredHistory = [];
 
@@ -58,9 +59,9 @@ class _VisitorHistoryScreenState
               death_date,
               cemetery_lot (
                 lot_number,
-                section:section_id (
-                  name
-                )
+                lot_label,
+                block_number,
+                lot_class_type
               )
             )
           ''')
@@ -93,19 +94,24 @@ class _VisitorHistoryScreenState
     if (query.isNotEmpty) {
       data = data.where((visit) {
         final burial = visit['burial'] ?? {};
-        final name =
-            burial['name_of_deceased']?.toString().toLowerCase() ?? '';
+        final name = burial['name_of_deceased']?.toString().toLowerCase() ?? '';
         return name.contains(query);
       }).toList();
     }
 
     // SORTING
     if (_selectedFilter == 'Recent') {
-      data.sort((a, b) => DateTime.parse(b['time_in'])
-          .compareTo(DateTime.parse(a['time_in'])));
+      data.sort(
+        (a, b) => DateTime.parse(
+          b['time_in'],
+        ).compareTo(DateTime.parse(a['time_in'])),
+      );
     } else if (_selectedFilter == 'By Date') {
-      data.sort((a, b) => DateTime.parse(a['time_in'])
-          .compareTo(DateTime.parse(b['time_in'])));
+      data.sort(
+        (a, b) => DateTime.parse(
+          a['time_in'],
+        ).compareTo(DateTime.parse(b['time_in'])),
+      );
     } else if (_selectedFilter == 'By Name') {
       data.sort((a, b) {
         final nameA = (a['burial']?['name_of_deceased'] ?? '')
@@ -182,10 +188,7 @@ class _VisitorHistoryScreenState
         actions: [
           IconButton(
             onPressed: _loadVisitHistory,
-            icon: const Icon(
-              Icons.refresh_rounded,
-              color: Color(0xFF335538),
-            ),
+            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF335538)),
           ),
         ],
       ),
@@ -193,19 +196,19 @@ class _VisitorHistoryScreenState
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-              ? _buildErrorWidget()
-              : Column(
-                  children: [
-                    _buildHeader(),
-                    _buildSearchBar(),
-                    _buildFilterChips(),
-                    Expanded(
-                      child: _filteredHistory.isEmpty
-                          ? _buildEmptyWidget()
-                          : _buildHistoryList(),
-                    ),
-                  ],
+          ? _buildErrorWidget()
+          : Column(
+              children: [
+                _buildHeader(),
+                _buildSearchBar(),
+                _buildFilterChips(),
+                Expanded(
+                  child: _filteredHistory.isEmpty
+                      ? _buildEmptyWidget()
+                      : _buildHistoryList(),
                 ),
+              ],
+            ),
     );
   }
 
@@ -214,11 +217,7 @@ class _VisitorHistoryScreenState
       padding: EdgeInsets.fromLTRB(24, 24, 24, 10),
       child: Text(
         "A quiet record of the paths you've walked and the memories you've honored.",
-        style: TextStyle(
-          fontSize: 15,
-          height: 1.5,
-          color: Color(0xFF727971),
-        ),
+        style: TextStyle(fontSize: 15, height: 1.5, color: Color(0xFF727971)),
       ),
     );
   }
@@ -265,8 +264,7 @@ class _VisitorHistoryScreenState
             },
             child: Container(
               margin: const EdgeInsets.only(right: 10),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               decoration: BoxDecoration(
                 color: selected
                     ? const Color(0xFF4B6E4F)
@@ -279,8 +277,8 @@ class _VisitorHistoryScreenState
                     filter == 'Recent'
                         ? Icons.history
                         : filter == 'By Date'
-                            ? Icons.calendar_month
-                            : Icons.person,
+                        ? Icons.calendar_month
+                        : Icons.person,
                     size: 18,
                     color: selected ? Colors.white : const Color(0xFF424841),
                   ),
@@ -289,8 +287,7 @@ class _VisitorHistoryScreenState
                     filter,
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color:
-                          selected ? Colors.white : const Color(0xFF424841),
+                      color: selected ? Colors.white : const Color(0xFF424841),
                     ),
                   ),
                 ],
@@ -329,13 +326,12 @@ class _VisitorHistoryScreenState
               ...entry.value.map((visit) {
                 final burial = visit['burial'] ?? {};
                 final lot = burial['cemetery_lot'] ?? {};
-                final section = lot['section'] ?? {};
 
                 final deceasedName =
                     burial['name_of_deceased'] ?? 'Unknown Grave';
 
-                final lotNumber = lot['lot_number'] ?? 'N/A';
-                final sectionName = section['name'] ?? 'N/A';
+                final lotNumber = lotReference(lot);
+                final blockLabel = lotBlockLabel(lot);
 
                 final timeIn = visit['time_in'];
                 final formattedDate = _formatDate(timeIn);
@@ -347,9 +343,7 @@ class _VisitorHistoryScreenState
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.78),
                     borderRadius: BorderRadius.circular(28),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.35),
-                    ),
+                    border: Border.all(color: Colors.white.withOpacity(0.35)),
                   ),
                   child: Row(
                     children: [
@@ -390,7 +384,7 @@ class _VisitorHistoryScreenState
                             const SizedBox(height: 6),
 
                             Text(
-                              'Section $sectionName • Plot $lotNumber',
+                              '$blockLabel - Lot $lotNumber',
                               style: const TextStyle(fontSize: 14),
                             ),
 
@@ -418,14 +412,10 @@ class _VisitorHistoryScreenState
   }
 
   Widget _buildEmptyWidget() {
-    return const Center(
-      child: Text('No visit history yet'),
-    );
+    return const Center(child: Text('No visit history yet'));
   }
 
   Widget _buildErrorWidget() {
-    return Center(
-      child: Text(_errorMessage ?? 'Error'),
-    );
+    return Center(child: Text(_errorMessage ?? 'Error'));
   }
 }

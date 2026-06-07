@@ -1,0 +1,316 @@
+Project cemetery_grave_finder_actual {
+  database_type: 'PostgreSQL'
+  Note: 'Generated from current public schema output. Includes legacy/staging tables that still exist.'
+}
+
+Table audit_log {
+  log_id int [pk, not null, increment]
+  user_id uuid
+  user_email varchar(100)
+  user_role varchar(20)
+  action varchar(50) [not null]
+  entity_type varchar(50)
+  entity_id varchar(50)
+  details text
+  ip_address varchar(50)
+  created_at timestamp
+}
+
+Table burial_informants {
+  informant_id bigint [pk, not null, increment]
+  full_name text [not null]
+  relationship_to_deceased text
+  address text
+  work text
+  cellphone_no text
+  id_presented text
+  id_number text
+  place_issued text
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table burial_record {
+  burial_id int [pk, not null, increment]
+  name_of_deceased varchar(100) [not null]
+  birth_date date
+  death_date date [not null]
+  burial_date date
+  lot_id int
+  application_date date
+  informant_id bigint
+  religion text
+  interment_date date
+  interment_time time
+  burial_category text
+  bldg_no text
+  niche_no text
+  level text
+  lot_location_no text
+  registered_lot_owner text
+  registered_owner_contact_no text
+  interment_or_number text
+  interment_total numeric(12,2)
+  interment_payment_date date
+  death_certificate_submitted boolean [not null]
+  ownership_certificate_submitted boolean [not null]
+  authority_document_submitted boolean [not null]
+}
+
+Table cemetery_branch {
+  branch_id int [pk, not null, increment]
+  name varchar(100) [not null]
+  map_image text [not null]
+  entrances jsonb
+  exits jsonb
+}
+
+Table cemetery_lot {
+  lot_id int [pk, not null, increment]
+  lot_number varchar(50) [not null]
+  section_id int
+  status varchar(20)
+  price numeric(10,2) [not null]
+  x_coord double [not null]
+  y_coord double [not null]
+  block_number text
+  lot_class_type text
+  lot_label text
+  qgis_feature_id text
+  polygon_geo jsonb
+
+  Indexes {
+    (section_id, lot_number) [unique]
+  }
+}
+
+Table cemetery_map {
+  map_id int [pk, not null, increment]
+  map_image_url text [not null]
+  map_width_meters numeric(10,2) [not null]
+  map_height_meters numeric(10,2) [not null]
+  uploaded_at timestamp
+  entrance_x_percent numeric(5,2)
+  entrance_y_percent numeric(5,2)
+  center_lat double
+  center_lng double
+  lat_span double
+  lng_span double
+}
+
+Table cemetery_map_features {
+  feature_id bigint [pk, not null, increment]
+  feature_type text [not null]
+  feature_name text
+  geometry_wkt text [not null]
+  stroke_color text
+  fill_color text
+  stroke_width numeric
+  sort_order int [not null]
+  is_visible boolean [not null]
+  source_feature_id text
+  created_at timestamptz [not null]
+}
+
+Table graves {
+  grave_id bigint [pk, not null]
+  lot_id int [not null]
+  grave_label text [not null]
+  status text [not null]
+  burial_id int
+  notes text
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  Indexes {
+    (lot_id, grave_label) [unique]
+  }
+}
+
+Table lot_import_staging {
+  qgis_feature_id text
+  block_number text
+  lot_number text
+  lot_label text
+  lot_class_type text
+  price numeric
+  status text
+  lon double
+  lat double
+  polygon_geo jsonb
+  fid text
+  xcoord text
+  ycoord text
+  x text
+  y text
+}
+
+Table lot_markers {
+  marker_id int [pk, not null, increment]
+  lot_id int
+  x_percent numeric(5,2) [not null]
+  y_percent numeric(5,2) [not null]
+  created_at timestamp
+}
+
+Table lot_ownership {
+  ownership_id int [pk, not null, increment]
+  lot_id int
+  total_months int [not null]
+  months_paid int
+  start_date date [not null]
+  status varchar(20)
+  user_id uuid
+
+  Indexes {
+    (lot_id) [unique]
+  }
+}
+
+Table map_feature_import_staging {
+  feature_type text
+  feature_name text
+  name text
+  block_number text
+  fid text
+  qgis_feature_id text
+  geometry_wkt text
+  wkt text
+  stroke_color text
+  fill_color text
+  stroke_width numeric
+  sort_order int
+  is_visible boolean
+}
+
+Table path_edges {
+  edge_id int [pk, not null, increment]
+  from_node_id int
+  to_node_id int
+  distance_meters numeric(10,2)
+  created_at timestamp
+
+  Indexes {
+    (from_node_id, to_node_id) [unique]
+  }
+}
+
+Table path_nodes {
+  node_id int [pk, not null, increment]
+  x_percent numeric(5,2) [not null]
+  y_percent numeric(5,2) [not null]
+  node_type varchar(20)
+  created_at timestamp
+}
+
+Table payment_requests {
+  request_id int [pk, not null, increment]
+  ownership_id int
+  amount numeric(10,2) [not null]
+  payment_date date [not null]
+  receipt_url text
+  notes text
+  status varchar(20)
+  admin_notes text
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table report {
+  report_id int [pk, not null, increment]
+  report_type varchar(50) [not null]
+  description text
+  generated_date date [not null]
+  generated_by uuid
+}
+
+Table section {
+  section_id int [pk, not null, increment]
+  name varchar(50) [not null]
+  coordinates jsonb [not null]
+  branch_id int
+}
+
+Table transaction_history {
+  transaction_id int [pk, not null, increment]
+  ownership_id int
+  amount numeric(10,2) [not null]
+  payment_date date [not null]
+  notes text
+}
+
+Table users {
+  name varchar(100) [not null]
+  email varchar(100) [not null]
+  password varchar(255) [not null]
+  role varchar(20) [not null]
+  created_at timestamp
+  user_id uuid [pk, not null]
+  phone varchar(20)
+  control_number text
+  first_name text
+  middle_name text
+  last_name text
+  address text
+  occupation text
+  age int
+  civil_status text
+  date_of_birth date
+  gender text
+  spouse_beneficiary text
+  beneficiary_relationship text
+  lot_class_type text
+  block_number text
+  lot_number text
+  number_of_lots int
+  purchase_term text
+  lot_price numeric(12,2)
+  interment_fee numeric(12,2)
+  certification_fee numeric(12,2)
+  burial_permit_fee numeric(12,2)
+  total_amount numeric(12,2)
+  or_number text
+  receipt_amount numeric(12,2)
+  receipt_date date
+  approved_date date
+  approved_by_name text
+  approval_signature text
+
+  Indexes {
+    (email) [unique]
+  }
+}
+
+Table visitor_log {
+  log_id int [pk, not null, increment]
+  burial_id int
+  time_in timestamp
+  method varchar(20)
+  user_id uuid
+}
+
+Table walkways {
+  walkway_id int [pk, not null, increment]
+  name varchar(100)
+  points jsonb [not null]
+  width numeric(5,2)
+  created_at timestamp
+}
+
+Ref: audit_log.user_id > users.user_id
+Ref: burial_record.informant_id > burial_informants.informant_id [delete: set null]
+Ref: burial_record.lot_id > cemetery_lot.lot_id [delete: cascade]
+Ref: cemetery_lot.section_id > section.section_id [delete: cascade]
+Ref: graves.burial_id > burial_record.burial_id [delete: set null]
+Ref: graves.lot_id > cemetery_lot.lot_id [delete: cascade]
+Ref: lot_markers.lot_id > cemetery_lot.lot_id [delete: cascade, update: cascade]
+Ref: lot_ownership.lot_id > cemetery_lot.lot_id [delete: cascade]
+Ref: lot_ownership.user_id > users.user_id
+Ref: path_edges.from_node_id > path_nodes.node_id [delete: cascade]
+Ref: path_edges.to_node_id > path_nodes.node_id [delete: cascade]
+Ref: payment_requests.ownership_id > lot_ownership.ownership_id
+Ref: report.generated_by > users.user_id
+Ref: section.branch_id > cemetery_branch.branch_id [delete: cascade]
+Ref: transaction_history.ownership_id > lot_ownership.ownership_id [delete: cascade]
+Ref: visitor_log.burial_id > burial_record.burial_id [delete: cascade]
+Ref: visitor_log.user_id > users.user_id

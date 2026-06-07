@@ -1,7 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+
+import '../../utils/lot_formatters.dart';
 
 const _background = Color(0xFFFBF9F6);
 const _surface = Color(0xFFFFFFFF);
@@ -12,11 +14,25 @@ const _onSurface = Color(0xFF1B1C1A);
 const _onSurfaceVariant = Color(0xFF424841);
 const _outlineVariant = Color(0xFFC2C8BF);
 
+const _lotOwnerPaymentProfileSelect = '''
+  purchase_term,
+  lot_price,
+  interment_fee,
+  certification_fee,
+  burial_permit_fee,
+  total_amount,
+  or_number,
+  receipt_amount,
+  receipt_date,
+  approved_date
+''';
+
 class LotOwnerPaymentScreen extends ConsumerStatefulWidget {
   const LotOwnerPaymentScreen({super.key});
 
   @override
-  ConsumerState<LotOwnerPaymentScreen> createState() => _LotOwnerPaymentScreenState();
+  ConsumerState<LotOwnerPaymentScreen> createState() =>
+      _LotOwnerPaymentScreenState();
 }
 
 class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
@@ -25,10 +41,11 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
   bool _isLoading = true;
   bool _isRefreshing = false;
   String? _errorMessage;
+  Map<String, dynamic> _profile = {};
   final _amountController = TextEditingController();
   final _notesController = TextEditingController();
   int? _selectedOwnershipId;
-  
+
   // Calculated values for selected lot
   double _monthlyPayment = 0;
   int _monthsPaid = 0;
@@ -55,7 +72,7 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
     });
 
     await _fetchData();
-    
+
     setState(() {
       _isLoading = false;
     });
@@ -65,9 +82,9 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
     setState(() {
       _isRefreshing = true;
     });
-    
+
     await _fetchData();
-    
+
     setState(() {
       _isRefreshing = false;
     });
@@ -80,6 +97,17 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
 
       if (user == null) return;
 
+      try {
+        final profile = await supabase
+            .from('users')
+            .select(_lotOwnerPaymentProfileSelect)
+            .eq('user_id', user.id)
+            .maybeSingle();
+        _profile = profile == null ? {} : Map<String, dynamic>.from(profile);
+      } catch (_) {
+        _profile = {};
+      }
+
       final lots = await supabase
           .from('lot_ownership')
           .select('''
@@ -91,6 +119,9 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
             cemetery_lot!inner (
               lot_id,
               lot_number,
+              lot_label,
+              block_number,
+              lot_class_type,
               price,
               status
             ),
@@ -104,12 +135,18 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
 
       final lotsWithBalance = <Map<String, dynamic>>[];
       for (var lot in lots) {
-        final lotPrice = (lot['cemetery_lot']?['price'] as num?)?.toDouble() ?? 0;
+        final lotPrice =
+            (lot['cemetery_lot']?['price'] as num?)?.toDouble() ?? 0;
         final transactions = lot['transaction_history'] as List? ?? [];
-        final totalPaid = transactions.fold<double>(0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0));
+        final totalPaid = transactions.fold<double>(
+          0,
+          (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0),
+        );
         final remainingBalance = lotPrice - totalPaid;
-        final monthlyPayment = lot['total_months'] > 0 ? lotPrice / lot['total_months'] : 0;
-        
+        final monthlyPayment = lot['total_months'] > 0
+            ? lotPrice / lot['total_months']
+            : 0;
+
         lotsWithBalance.add({
           ...lot,
           'lot_price': lotPrice,
@@ -141,7 +178,9 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
     setState(() {
       _selectedOwnershipId = ownershipId;
       if (ownershipId != null) {
-        final selected = _ownedLots.firstWhere((l) => l['ownership_id'] == ownershipId);
+        final selected = _ownedLots.firstWhere(
+          (l) => l['ownership_id'] == ownershipId,
+        );
         _monthlyPayment = selected['monthly_payment'];
         _monthsPaid = selected['months_paid'];
         _totalMonths = selected['total_months'];
@@ -167,32 +206,41 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
       (l) => l['ownership_id'] == _selectedOwnershipId,
       orElse: () => {},
     );
-    
+
     if (_selectedOwnershipId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a lot'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Please select a lot'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
-    
+
     if (amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid amount'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Please enter a valid amount'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
-    
+
     if (amount > selectedLot['remaining_balance']) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Amount exceeds remaining balance'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Amount exceeds remaining balance'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
-    
+
     final monthsToPay = _calculateMonthsToPay(amount);
     final newMonthsPaid = _monthsPaid + monthsToPay;
     final newRemainingBalance = _remainingBalance - amount;
-    
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -201,7 +249,7 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Lot: ${selectedLot['cemetery_lot']?['lot_number']}'),
+            Text('Lot: ${lotReference(selectedLot['cemetery_lot'])}'),
             Text('Amount: ${_formatCurrency(amount)}'),
             Text('Months to be paid: $monthsToPay months'),
             Text('Current months paid: $_monthsPaid/$_totalMonths'),
@@ -210,22 +258,28 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Confirm'),
           ),
         ],
       ),
     );
-    
+
     if (confirmed == true) {
       setState(() => _isLoading = true);
-      
+
       try {
         final supabase = Supabase.instance.client;
-        
+
         await supabase.from('payment_requests').insert({
           'ownership_id': _selectedOwnershipId,
           'amount': amount,
@@ -234,23 +288,29 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
           'status': 'pending',
           'created_at': DateTime.now().toIso8601String(),
         });
-        
+
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Payment request submitted! +$monthsToPay months paid'), backgroundColor: Colors.green),
+          SnackBar(
+            content: Text(
+              'Payment request submitted! +$monthsToPay months paid',
+            ),
+            backgroundColor: Colors.green,
+          ),
         );
-        
+
         _amountController.clear();
         _notesController.clear();
         _selectedOwnershipId = null;
-        
+
         await _fetchData();
-        
       } catch (e) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       } finally {
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
       }
     }
   }
@@ -272,10 +332,14 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
 
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'pending': return Colors.orange;
-      case 'approved': return Colors.green;
-      case 'rejected': return Colors.red;
-      default: return Colors.grey;
+      case 'pending':
+        return Colors.orange;
+      case 'approved':
+        return Colors.green;
+      case 'rejected':
+        return Colors.red;
+      default:
+        return Colors.grey;
     }
   }
 
@@ -301,7 +365,14 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
           actions: [
             IconButton(
               icon: _isRefreshing
-                  ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: _primary))
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: _primary,
+                      ),
+                    )
                   : const Icon(Icons.refresh_rounded),
               onPressed: _refreshData,
               tooltip: 'Refresh',
@@ -315,7 +386,9 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
               decoration: BoxDecoration(
                 color: _surfaceLow,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: _outlineVariant.withValues(alpha: 0.45)),
+                border: Border.all(
+                  color: _outlineVariant.withValues(alpha: 0.45),
+                ),
               ),
               child: const TabBar(
                 dividerColor: Colors.transparent,
@@ -326,10 +399,16 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
                 ),
                 labelColor: _primary,
                 unselectedLabelColor: _onSurfaceVariant,
-                labelStyle: TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                labelStyle: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                ),
                 tabs: [
                   Tab(icon: Icon(Icons.payment_outlined), text: 'Make Payment'),
-                  Tab(icon: Icon(Icons.history_rounded), text: 'Payment History'),
+                  Tab(
+                    icon: Icon(Icons.history_rounded),
+                    text: 'Payment History',
+                  ),
                 ],
               ),
             ),
@@ -338,13 +417,10 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
         body: _isLoading
             ? const Center(child: CircularProgressIndicator(color: _primary))
             : _errorMessage != null
-                ? _buildErrorWidget()
-                : TabBarView(
-                    children: [
-                      _buildPaymentFormTab(),
-                      _buildPaymentHistoryTab(),
-                    ],
-                  ),
+            ? _buildErrorWidget()
+            : TabBarView(
+                children: [_buildPaymentFormTab(), _buildPaymentHistoryTab()],
+              ),
       ),
     );
   }
@@ -357,22 +433,32 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
           children: [
             Icon(Icons.location_off_outlined, size: 64, color: _primary),
             SizedBox(height: 16),
-            Text('No lots owned yet', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: _onSurface)),
+            Text(
+              'No lots owned yet',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: _onSurface,
+              ),
+            ),
           ],
         ),
       );
     }
-    
+
     final monthsToPay = _amountController.text.isNotEmpty
         ? _calculateMonthsToPay(double.tryParse(_amountController.text) ?? 0)
         : 0;
-    
+
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Select Lot', style: TextStyle(fontWeight: FontWeight.w800, color: _onSurface)),
+          const Text(
+            'Select Lot',
+            style: TextStyle(fontWeight: FontWeight.w800, color: _onSurface),
+          ),
           const SizedBox(height: 8),
           DropdownButtonFormField<int>(
             initialValue: _selectedOwnershipId,
@@ -386,10 +472,13 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Lot ${lot['cemetery_lot']?['lot_number']}'),
+                    Text('Lot ${lotReference(lot['cemetery_lot'])}'),
                     Text(
                       'Balance: ${_formatCurrency(lot['remaining_balance'])} • ${lot['months_paid']}/${lot['total_months']} months paid',
-                      style: const TextStyle(fontSize: 12, color: _onSurfaceVariant),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: _onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
@@ -397,7 +486,7 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
             }).toList(),
             onChanged: _onLotSelected,
           ),
-          
+
           if (_selectedOwnershipId != null) ...[
             const SizedBox(height: 16),
             Container(
@@ -405,21 +494,34 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
               decoration: BoxDecoration(
                 color: _surface,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _outlineVariant.withValues(alpha: 0.45)),
+                border: Border.all(
+                  color: _outlineVariant.withValues(alpha: 0.45),
+                ),
               ),
               child: Column(
                 children: [
-                  _buildInfoRow('Monthly Payment', _formatCurrency(_monthlyPayment)),
+                  _buildInfoRow(
+                    'Monthly Payment',
+                    _formatCurrency(_monthlyPayment),
+                  ),
                   _buildInfoRow('Months Paid', '$_monthsPaid/$_totalMonths'),
-                  _buildInfoRow('Remaining Balance', _formatCurrency(_remainingBalance)),
+                  _buildInfoRow(
+                    'Remaining Balance',
+                    _formatCurrency(_remainingBalance),
+                  ),
+                  const SizedBox(height: 14),
+                  _buildOfficialPayablePanel(),
                 ],
               ),
             ),
           ],
-          
+
           const SizedBox(height: 16),
-          
-          const Text('Payment Amount', style: TextStyle(fontWeight: FontWeight.w800, color: _onSurface)),
+
+          const Text(
+            'Payment Amount',
+            style: TextStyle(fontWeight: FontWeight.w800, color: _onSurface),
+          ),
           const SizedBox(height: 8),
           TextField(
             controller: _amountController,
@@ -427,15 +529,20 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
               labelText: 'Amount (₱)',
               icon: Icons.payments_outlined,
               prefixText: '₱',
-              helperText: monthsToPay > 0 ? 'This will pay $monthsToPay month(s)' : null,
+              helperText: monthsToPay > 0
+                  ? 'This will pay $monthsToPay month(s)'
+                  : null,
             ),
             keyboardType: TextInputType.number,
             onChanged: (_) => setState(() {}),
           ),
-          
+
           const SizedBox(height: 16),
-          
-          const Text('Notes (Optional)', style: TextStyle(fontWeight: FontWeight.w800, color: _onSurface)),
+
+          const Text(
+            'Notes (Optional)',
+            style: TextStyle(fontWeight: FontWeight.w800, color: _onSurface),
+          ),
           const SizedBox(height: 8),
           TextField(
             controller: _notesController,
@@ -446,9 +553,9 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
             ),
             maxLines: 2,
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           SizedBox(
             width: double.infinity,
             height: 56,
@@ -457,7 +564,9 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
               style: FilledButton.styleFrom(
                 backgroundColor: _primary,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
               child: const Text('Submit Payment Request'),
             ),
@@ -480,13 +589,92 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
     );
   }
 
+  Widget _buildOfficialPayablePanel() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _surfaceLow,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _outlineVariant.withValues(alpha: 0.45)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.receipt_long_outlined, color: _primary, size: 18),
+              SizedBox(width: 8),
+              Text(
+                'Official Amount Payable',
+                style: TextStyle(
+                  color: _onSurface,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _buildInfoRow(
+            'Terms',
+            _purchaseTermLabel(_profileText('purchase_term')),
+          ),
+          _buildInfoRow('Lot Price', _profileMoney('lot_price')),
+          _buildInfoRow('Interment Fee', _profileMoney('interment_fee')),
+          _buildInfoRow(
+            'Certification Fee',
+            _profileMoney('certification_fee'),
+          ),
+          _buildInfoRow(
+            'Burial Permit Fee',
+            _profileMoney('burial_permit_fee'),
+          ),
+          _buildInfoRow('Total', _profileMoney('total_amount')),
+          _buildInfoRow('OR #', _profileText('or_number')),
+          _buildInfoRow('P', _profileMoney('receipt_amount')),
+          _buildInfoRow('Receipt Date', _profileDate('receipt_date')),
+          _buildInfoRow('Approved Date', _profileDate('approved_date')),
+        ],
+      ),
+    );
+  }
+
+  String _profileText(String key) {
+    final value = _profile[key];
+    if (value == null) return '';
+    return value.toString().trim();
+  }
+
+  String _profileDate(String key) {
+    final value = _profileText(key);
+    if (value.isEmpty) return 'Not recorded';
+    return _formatDate(value);
+  }
+
+  String _profileMoney(String key) {
+    final value = _profile[key];
+    if (value == null) return 'Not recorded';
+    final numeric = value is num ? value.toDouble() : double.tryParse('$value');
+    return numeric == null ? value.toString() : _formatCurrency(numeric);
+  }
+
+  String _purchaseTermLabel(String value) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized == 'cash') return 'Cash';
+    if (normalized == 'at_need') return 'At Need';
+    return value.isEmpty ? 'Not recorded' : value;
+  }
+
   Widget _buildPaymentHistoryTab() {
     if (_paymentRequests.isEmpty) {
       return const Center(
-        child: Text('No payment requests yet', style: TextStyle(color: _onSurfaceVariant)),
+        child: Text(
+          'No payment requests yet',
+          style: TextStyle(color: _onSurfaceVariant),
+        ),
       );
     }
-    
+
     return RefreshIndicator(
       onRefresh: _refreshData,
       child: ListView.builder(
@@ -500,27 +688,38 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
             orElse: () => {},
           );
           final lot = ownership['cemetery_lot'] ?? {};
-          
+
           return Container(
             margin: const EdgeInsets.only(bottom: 12),
             decoration: BoxDecoration(
               color: _surface,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: _outlineVariant.withValues(alpha: 0.45)),
+              border: Border.all(
+                color: _outlineVariant.withValues(alpha: 0.45),
+              ),
             ),
             child: ListTile(
               leading: CircleAvatar(
                 backgroundColor: statusColor.withValues(alpha: 0.14),
                 child: Icon(Icons.receipt, color: statusColor),
               ),
-              title: Text('₱${request['amount']} - Lot ${lot['lot_number']}'),
+              title: Text('₱${request['amount']} - Lot ${lotReference(lot)}'),
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Date: ${_formatDate(request['payment_date'])}'),
-                  Text('Status: ${request['status'].toUpperCase()}', style: TextStyle(color: statusColor)),
+                  Text(
+                    'Status: ${request['status'].toUpperCase()}',
+                    style: TextStyle(color: statusColor),
+                  ),
                   if (request['admin_notes'] != null)
-                    Text('Note: ${request['admin_notes']}', style: const TextStyle(fontSize: 12, color: _onSurfaceVariant)),
+                    Text(
+                      'Note: ${request['admin_notes']}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: _onSurfaceVariant,
+                      ),
+                    ),
                 ],
               ),
               trailing: Chip(
@@ -586,4 +785,3 @@ class _LotOwnerPaymentScreenState extends ConsumerState<LotOwnerPaymentScreen> {
     );
   }
 }
-

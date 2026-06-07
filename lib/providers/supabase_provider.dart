@@ -12,11 +12,13 @@ final currentUserProvider = Provider<User?>((ref) {
 });
 
 // Example: Fetch all available lots
-final availableLotsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+final availableLotsProvider = FutureProvider<List<Map<String, dynamic>>>((
+  ref,
+) async {
   final supabase = ref.read(supabaseProvider);
   final response = await supabase
       .from('cemetery_lot')
-      .select('*, section(*)')
+      .select('*')
       .eq('status', 'Available');
   return response;
 });

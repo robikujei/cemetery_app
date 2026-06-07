@@ -30,7 +30,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _passwordCtrl = TextEditingController();
   final _confirmPasswordCtrl = TextEditingController();
 
-  String _selectedRole = 'visitor';
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
@@ -126,7 +125,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             _emailCtrl.text.trim(),
             _passwordCtrl.text,
             _nameCtrl.text.trim(),
-            _selectedRole,
+            'visitor',
           );
 
       if (!success) {
@@ -254,32 +253,36 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           keyboardType: TextInputType.emailAddress,
                         ),
                         const SizedBox(height: 14),
-                        const Text(
-                          'Register as',
-                          style: TextStyle(
-                            color: _C.onSurfaceVariant,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: [
-                            _RoleChip(
-                              label: 'Visitor / Family Member',
-                              selected: _selectedRole == 'visitor',
-                              onTap: () =>
-                                  setState(() => _selectedRole = 'visitor'),
-                            ),
-                            _RoleChip(
-                              label: 'Lot Owner',
-                              selected: _selectedRole == 'lot_owner',
-                              onTap: () =>
-                                  setState(() => _selectedRole = 'lot_owner'),
-                            ),
-                          ],
+                          decoration: BoxDecoration(
+                            color: _C.primaryFixed.withValues(alpha: 0.45),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: _C.primaryFixed),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(
+                                Icons.person_outline_rounded,
+                                color: _C.primary,
+                                size: 20,
+                              ),
+                              SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'Visitor / Family Member account',
+                                  style: TextStyle(
+                                    color: _C.primary,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 14),
                         _buildField(
@@ -443,39 +446,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           borderSide: const BorderSide(color: _C.error, width: 2),
         ),
       ),
-    );
-  }
-}
-
-class _RoleChip extends StatelessWidget {
-  const _RoleChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return ChoiceChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: (_) => onTap(),
-      selectedColor: _C.primaryFixed,
-      backgroundColor: _C.surfaceContainerLow,
-      labelStyle: TextStyle(
-        color: selected ? _C.primary : _C.onSurfaceVariant,
-        fontWeight: FontWeight.w600,
-        fontSize: 13,
-      ),
-      side: BorderSide(
-        color: selected ? _C.primaryFixed : _C.surfaceContainerHighest,
-      ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
     );
   }
 }

@@ -40,7 +40,9 @@ class WelcomeScreen extends StatelessWidget {
                   end: Alignment.topCenter,
                   colors: [
                     Theme.of(context).scaffoldBackgroundColor,
-                    Theme.of(context).scaffoldBackgroundColor.withOpacity(0.40),
+                    Theme.of(
+                      context,
+                    ).scaffoldBackgroundColor.withValues(alpha: 0.40),
                     Colors.transparent,
                   ],
                   stops: const [0.0, 0.55, 1.0],
@@ -51,12 +53,12 @@ class WelcomeScreen extends StatelessWidget {
           Positioned(
             right: -100,
             top: -100,
-            child: _BlurBlob(color: cs.primary.withOpacity(0.18)),
+            child: _BlurBlob(color: cs.primary.withValues(alpha: 0.18)),
           ),
           Positioned(
             left: -100,
             bottom: -100,
-            child: _BlurBlob(color: cs.secondary.withOpacity(0.16)),
+            child: _BlurBlob(color: cs.secondary.withValues(alpha: 0.16)),
           ),
           SafeArea(
             child: Align(
@@ -76,13 +78,17 @@ class WelcomeScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.14),
+                              color: Colors.black.withValues(alpha: 0.14),
                               blurRadius: 18,
                               offset: const Offset(0, 10),
                             ),
                           ],
                         ),
-                        child: Icon(Icons.church, color: cs.onPrimaryContainer, size: 34),
+                        child: Icon(
+                          Icons.church,
+                          color: cs.onPrimaryContainer,
+                          size: 34,
+                        ),
                       ),
                       const SizedBox(height: 14),
                       Text(
@@ -107,9 +113,11 @@ class WelcomeScreen extends StatelessWidget {
                         child: FilledButton.icon(
                           onPressed: () => context.go('/register'),
                           icon: const Icon(Icons.person_add_alt_1_rounded),
-                          label: const Text('Register'),
+                          label: const Text('Register as Visitor'),
                           style: FilledButton.styleFrom(
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                           ),
                         ),
                       ),
@@ -122,14 +130,20 @@ class WelcomeScreen extends StatelessWidget {
                           icon: const Icon(Icons.login_rounded),
                           label: const Text('Login'),
                           style: FilledButton.styleFrom(
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                           ),
                         ),
                       ),
                       const SizedBox(height: 16),
                       Row(
                         children: [
-                          Expanded(child: Divider(color: Colors.black.withOpacity(0.16))),
+                          Expanded(
+                            child: Divider(
+                              color: Colors.black.withValues(alpha: 0.16),
+                            ),
+                          ),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 10),
                             child: Text(
@@ -141,7 +155,11 @@ class WelcomeScreen extends StatelessWidget {
                               ),
                             ),
                           ),
-                          Expanded(child: Divider(color: Colors.black.withOpacity(0.16))),
+                          Expanded(
+                            child: Divider(
+                              color: Colors.black.withValues(alpha: 0.16),
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 10),
@@ -150,7 +168,10 @@ class WelcomeScreen extends StatelessWidget {
                         height: 48,
                         child: TextButton.icon(
                           onPressed: () => context.go('/visitor'),
-                          icon: Icon(Icons.arrow_forward_rounded, color: cs.primary),
+                          icon: Icon(
+                            Icons.arrow_forward_rounded,
+                            color: cs.primary,
+                          ),
                           label: Text(
                             'Continue as Guest',
                             style: t.labelLarge?.copyWith(color: cs.primary),
@@ -167,18 +188,20 @@ class WelcomeScreen extends StatelessWidget {
                           children: [
                             Text(
                               'By continuing, you agree to our Terms of Service',
-                              style: t.labelSmall?.copyWith(color: Colors.black54),
+                              style: t.labelSmall?.copyWith(
+                                color: Colors.black54,
+                              ),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 10),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                _Dot(color: cs.primary.withOpacity(0.30)),
+                                _Dot(color: cs.primary.withValues(alpha: 0.30)),
                                 const SizedBox(width: 8),
-                                _Dot(color: cs.primary.withOpacity(0.30)),
+                                _Dot(color: cs.primary.withValues(alpha: 0.30)),
                                 const SizedBox(width: 8),
-                                _Dot(color: cs.primary.withOpacity(0.30)),
+                                _Dot(color: cs.primary.withValues(alpha: 0.30)),
                               ],
                             ),
                           ],
@@ -209,13 +232,7 @@ class _BlurBlob extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: color,
-            blurRadius: 100,
-            spreadRadius: 40,
-          ),
-        ],
+        boxShadow: [BoxShadow(color: color, blurRadius: 100, spreadRadius: 40)],
       ),
     );
   }
@@ -234,4 +251,3 @@ class _Dot extends StatelessWidget {
     );
   }
 }
-

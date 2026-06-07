@@ -3,21 +3,25 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 
+import '../../utils/lot_formatters.dart';
+
 class AdminVisitorLogsScreen extends ConsumerStatefulWidget {
   const AdminVisitorLogsScreen({super.key});
 
   @override
-  ConsumerState<AdminVisitorLogsScreen> createState() => _AdminVisitorLogsScreenState();
+  ConsumerState<AdminVisitorLogsScreen> createState() =>
+      _AdminVisitorLogsScreenState();
 }
 
-class _AdminVisitorLogsScreenState extends ConsumerState<AdminVisitorLogsScreen> {
+class _AdminVisitorLogsScreenState
+    extends ConsumerState<AdminVisitorLogsScreen> {
   List<Map<String, dynamic>> _logs = [];
   List<Map<String, dynamic>> _filteredLogs = [];
   bool _isLoading = true;
   String? _errorMessage;
   String _searchQuery = '';
   String _dateFilter = 'Today';
-  
+
   DateTime? _startDate;
   DateTime? _endDate;
 
@@ -35,7 +39,7 @@ class _AdminVisitorLogsScreenState extends ConsumerState<AdminVisitorLogsScreen>
 
     try {
       final supabase = Supabase.instance.client;
-      
+
       final logs = await supabase
           .from('visitor_log')
           .select('''
@@ -52,12 +56,14 @@ class _AdminVisitorLogsScreenState extends ConsumerState<AdminVisitorLogsScreen>
               name_of_deceased,
               cemetery_lot (
                 lot_number,
-                section:section_id (name)
+                lot_label,
+                block_number,
+                lot_class_type
               )
             )
           ''')
           .order('time_in', ascending: false);
-      
+
       setState(() {
         _logs = List<Map<String, dynamic>>.from(logs);
         _applyFilters();
@@ -73,22 +79,29 @@ class _AdminVisitorLogsScreenState extends ConsumerState<AdminVisitorLogsScreen>
 
   void _applyFilters() {
     DateTime now = DateTime.now();
-    
+
     // Get start and end of today
     final todayStart = DateTime(now.year, now.month, now.day, 0, 0, 0);
     final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
-    
+
     // Get start of week (Monday)
     final weekStart = now.subtract(Duration(days: now.weekday - 1));
-    final weekStartDate = DateTime(weekStart.year, weekStart.month, weekStart.day, 0, 0, 0);
-    
+    final weekStartDate = DateTime(
+      weekStart.year,
+      weekStart.month,
+      weekStart.day,
+      0,
+      0,
+      0,
+    );
+
     // Get start of month
     final monthStart = DateTime(now.year, now.month, 1, 0, 0, 0);
-    
+
     setState(() {
       _filteredLogs = _logs.where((log) {
         final timeIn = DateTime.parse(log['time_in']);
-        
+
         // Date filter
         bool dateMatch = true;
         switch (_dateFilter) {
@@ -113,21 +126,24 @@ class _AdminVisitorLogsScreenState extends ConsumerState<AdminVisitorLogsScreen>
             }
             break;
         }
-        
+
         if (!dateMatch) return false;
-        
+
         // Search filter
         if (_searchQuery.isNotEmpty) {
           final visitorName = log['user']?['name']?.toLowerCase() ?? '';
-          final graveName = log['burial']?['name_of_deceased']?.toLowerCase() ?? '';
-          final lotNumber = log['burial']?['cemetery_lot']?['lot_number']?.toLowerCase() ?? '';
+          final graveName =
+              log['burial']?['name_of_deceased']?.toLowerCase() ?? '';
+          final lotNumber =
+              log['burial']?['cemetery_lot']?['lot_number']?.toLowerCase() ??
+              '';
           final query = _searchQuery.toLowerCase();
-          
+
           return visitorName.contains(query) ||
-                 graveName.contains(query) ||
-                 lotNumber.contains(query);
+              graveName.contains(query) ||
+              lotNumber.contains(query);
         }
-        
+
         return true;
       }).toList();
     });
@@ -142,7 +158,7 @@ class _AdminVisitorLogsScreenState extends ConsumerState<AdminVisitorLogsScreen>
           ? DateTimeRange(start: _startDate!, end: _endDate!)
           : null,
     );
-    
+
     if (picked != null) {
       setState(() {
         _startDate = picked.start;
@@ -174,9 +190,12 @@ class _AdminVisitorLogsScreenState extends ConsumerState<AdminVisitorLogsScreen>
 
   Color _getMethodColor(String method) {
     switch (method) {
-      case 'QR': return Colors.green;
-      case 'Manual': return Colors.orange;
-      default: return Colors.grey;
+      case 'QR':
+        return Colors.green;
+      case 'Manual':
+        return Colors.orange;
+      default:
+        return Colors.grey;
     }
   }
 
@@ -186,169 +205,199 @@ class _AdminVisitorLogsScreenState extends ConsumerState<AdminVisitorLogsScreen>
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-              ? _buildErrorWidget()
-              : Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        children: [
-                          TextField(
-                            decoration: InputDecoration(
-                              hintText: 'Search by visitor name or grave...',
-                              prefixIcon: const Icon(Icons.search),
-                              suffixIcon: _searchQuery.isNotEmpty
-                                  ? IconButton(
-                                      icon: const Icon(Icons.clear),
-                                      onPressed: () {
-                                        setState(() {
-                                          _searchQuery = '';
-                                          _applyFilters();
-                                        });
-                                      },
-                                    )
-                                  : null,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                            ),
-                            onChanged: (value) {
-                              _searchQuery = value;
-                              _applyFilters();
-                            },
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: SegmentedButton<String>(
-                                  segments: const [
-                                    ButtonSegment(value: 'Today', label: Text('Today')),
-                                    ButtonSegment(value: 'Week', label: Text('Week')),
-                                    ButtonSegment(value: 'Month', label: Text('Month')),
-                                    ButtonSegment(value: 'All', label: Text('All')),
-                                  ],
-                                  selected: {_dateFilter},
-                                  onSelectionChanged: (Set<String> selection) {
+          ? _buildErrorWidget()
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    children: [
+                      TextField(
+                        decoration: InputDecoration(
+                          hintText: 'Search by visitor name or grave...',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: _searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () {
                                     setState(() {
-                                      _dateFilter = selection.first;
-                                      if (_dateFilter != 'Custom') {
-                                        _startDate = null;
-                                        _endDate = null;
-                                      }
+                                      _searchQuery = '';
                                       _applyFilters();
                                     });
                                   },
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              IconButton(
-                                icon: const Icon(Icons.date_range),
-                                onPressed: _pickDateRange,
-                                tooltip: 'Custom date range',
-                              ),
-                              if (_startDate != null || _endDate != null)
-                                IconButton(
-                                  icon: const Icon(Icons.clear),
-                                  onPressed: _clearDateFilter,
-                                  tooltip: 'Clear date filter',
-                                ),
-                            ],
+                                )
+                              : null,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(30),
                           ),
-                          if (_startDate != null || _endDate != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.shade50,
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  '${_startDate != null ? DateFormat('MMM d, y').format(_startDate!) : 'Any'} - ${_endDate != null ? DateFormat('MMM d, y').format(_endDate!) : 'Any'}',
-                                  style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
-                                ),
-                              ),
-                            ),
-                        ],
+                        ),
+                        onChanged: (value) {
+                          _searchQuery = value;
+                          _applyFilters();
+                        },
                       ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      const SizedBox(height: 8),
+                      Row(
                         children: [
-                          Text(
-                            '${_filteredLogs.length} records found',
-                            style: TextStyle(color: Colors.grey.shade600),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: _filteredLogs.isEmpty
-                          ? const Center(child: Text('No visitor logs found'))
-                          : ListView.builder(
-                              padding: const EdgeInsets.all(12),
-                              itemCount: _filteredLogs.length,
-                              itemBuilder: (context, index) {
-                                final log = _filteredLogs[index];
-                                final user = log['user'] ?? {};
-                                final burial = log['burial'] ?? {};
-                                final lot = burial['cemetery_lot'] ?? {};
-                                final section = lot['section'] ?? {};
-                                
-                                final timeIn = _formatDateTime(log['time_in']);
-                                final method = log['method'] ?? 'Manual';
-                                final visitorName = user['name'] ?? 'Unknown Visitor';
-                                final graveName = burial['name_of_deceased'];
-                                final lotNumber = lot['lot_number'];
-                                final sectionName = section['name'];
-                                
-                                return Card(
-                                  margin: const EdgeInsets.only(bottom: 12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: ListTile(
-                                    leading: CircleAvatar(
-                                      backgroundColor: _getMethodColor(method).withValues(alpha: 0.1),
-                                      child: Icon(
-                                        method == 'QR' ? Icons.qr_code_scanner : Icons.person,
-                                        color: _getMethodColor(method),
-                                      ),
-                                    ),
-                                    title: Text(
-                                      visitorName,
-                                      style: const TextStyle(fontWeight: FontWeight.bold),
-                                    ),
-                                    subtitle: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        if (graveName != null)
-                                          Text('Visited: $graveName'),
-                                        if (lotNumber != null)
-                                          Text('Lot $lotNumber • Section ${sectionName ?? 'N/A'}'),
-                                        Text(timeIn, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-                                      ],
-                                    ),
-                                    trailing: Chip(
-                                      label: Text(method),
-                                      backgroundColor: _getMethodColor(method).withValues(alpha: 0.1),
-                                      labelStyle: TextStyle(
-                                        color: _getMethodColor(method),
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                    isThreeLine: true,
-                                  ),
-                                );
+                          Expanded(
+                            child: SegmentedButton<String>(
+                              segments: const [
+                                ButtonSegment(
+                                  value: 'Today',
+                                  label: Text('Today'),
+                                ),
+                                ButtonSegment(
+                                  value: 'Week',
+                                  label: Text('Week'),
+                                ),
+                                ButtonSegment(
+                                  value: 'Month',
+                                  label: Text('Month'),
+                                ),
+                                ButtonSegment(value: 'All', label: Text('All')),
+                              ],
+                              selected: {_dateFilter},
+                              onSelectionChanged: (Set<String> selection) {
+                                setState(() {
+                                  _dateFilter = selection.first;
+                                  if (_dateFilter != 'Custom') {
+                                    _startDate = null;
+                                    _endDate = null;
+                                  }
+                                  _applyFilters();
+                                });
                               },
                             ),
-                    ),
-                  ],
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.date_range),
+                            onPressed: _pickDateRange,
+                            tooltip: 'Custom date range',
+                          ),
+                          if (_startDate != null || _endDate != null)
+                            IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: _clearDateFilter,
+                              tooltip: 'Clear date filter',
+                            ),
+                        ],
+                      ),
+                      if (_startDate != null || _endDate != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade50,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              '${_startDate != null ? DateFormat('MMM d, y').format(_startDate!) : 'Any'} - ${_endDate != null ? DateFormat('MMM d, y').format(_endDate!) : 'Any'}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.blue.shade700,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${_filteredLogs.length} records found',
+                        style: TextStyle(color: Colors.grey.shade600),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: _filteredLogs.isEmpty
+                      ? const Center(child: Text('No visitor logs found'))
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(12),
+                          itemCount: _filteredLogs.length,
+                          itemBuilder: (context, index) {
+                            final log = _filteredLogs[index];
+                            final user = log['user'] ?? {};
+                            final burial = log['burial'] ?? {};
+                            final lot = burial['cemetery_lot'] ?? {};
+
+                            final timeIn = _formatDateTime(log['time_in']);
+                            final method = log['method'] ?? 'Manual';
+                            final visitorName =
+                                user['name'] ?? 'Unknown Visitor';
+                            final graveName = burial['name_of_deceased'];
+                            final lotNumber = lotReference(lot, fallback: '');
+
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: _getMethodColor(
+                                    method,
+                                  ).withValues(alpha: 0.1),
+                                  child: Icon(
+                                    method == 'QR'
+                                        ? Icons.qr_code_scanner
+                                        : Icons.person,
+                                    color: _getMethodColor(method),
+                                  ),
+                                ),
+                                title: Text(
+                                  visitorName,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (graveName != null)
+                                      Text('Visited: $graveName'),
+                                    if (lotNumber.isNotEmpty)
+                                      Text(
+                                        'Lot $lotNumber - ${lotBlockLabel(lot)}',
+                                      ),
+                                    Text(
+                                      timeIn,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                trailing: Chip(
+                                  label: Text(method),
+                                  backgroundColor: _getMethodColor(
+                                    method,
+                                  ).withValues(alpha: 0.1),
+                                  labelStyle: TextStyle(
+                                    color: _getMethodColor(method),
+                                    fontSize: 11,
+                                  ),
+                                ),
+                                isThreeLine: true,
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
     );
   }
 

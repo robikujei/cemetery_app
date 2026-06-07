@@ -6,6 +6,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../services/map_feature_service.dart';
+import '../../utils/lot_formatters.dart';
+import '../../utils/map_feature_geometry.dart';
+
 const _background = Color(0xFFFBF9F6);
 const _surface = Color(0xFFFFFFFF);
 const _surfaceLow = Color(0xFFF5F3F0);
@@ -15,6 +19,37 @@ const _primaryContainer = Color(0xFFC5EDC6);
 const _onSurface = Color(0xFF1B1C1A);
 const _onSurfaceVariant = Color(0xFF424841);
 const _outlineVariant = Color(0xFFC2C8BF);
+
+const _lotOwnerProfileSelect = '''
+  control_number,
+  first_name,
+  middle_name,
+  last_name,
+  address,
+  occupation,
+  age,
+  civil_status,
+  date_of_birth,
+  gender,
+  spouse_beneficiary,
+  beneficiary_relationship,
+  lot_class_type,
+  block_number,
+  lot_number,
+  number_of_lots,
+  purchase_term,
+  lot_price,
+  interment_fee,
+  certification_fee,
+  burial_permit_fee,
+  total_amount,
+  or_number,
+  receipt_amount,
+  receipt_date,
+  approved_date,
+  approved_by_name,
+  approval_signature
+''';
 
 class LotOwnerHomeScreen extends ConsumerStatefulWidget {
   const LotOwnerHomeScreen({super.key});
@@ -29,12 +64,12 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
   bool _isLoading = true;
   bool _isLoadingAvailable = false;
   bool _isRefreshing = false;
-  String? _errorMessage;
   String _userName = '';
   String _userEmail = '';
   String _userPhone = '';
   String _adminPhone = '+63 912 345 6789';
   String _adminEmail = 'admin@cemetery.com';
+  Map<String, dynamic> _profile = {};
 
   @override
   void initState() {
@@ -45,14 +80,13 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
     });
 
     await _loadUserProfile();
     await _loadAdminContact();
     await _loadOwnedLots();
     await _loadAvailableLots();
-    
+
     setState(() {
       _isLoading = false;
     });
@@ -62,18 +96,23 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
     setState(() {
       _isRefreshing = true;
     });
-    
+
     await _loadUserProfile();
     await _loadAdminContact();
     await _loadOwnedLots();
     await _loadAvailableLots();
-    
+
+    if (!mounted) return;
     setState(() {
       _isRefreshing = false;
     });
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Data refreshed!'), backgroundColor: Colors.green, duration: Duration(seconds: 1)),
+      const SnackBar(
+        content: Text('Data refreshed!'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 1),
+      ),
     );
   }
 
@@ -84,19 +123,39 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
 
       if (user == null) return;
 
-      final userData = await supabase
-          .from('users')
-          .select('name, email, phone')
-          .eq('user_id', user.id)
-          .maybeSingle();
-      
+      Map<String, dynamic>? userData;
+      try {
+        userData = await supabase
+            .from('users')
+            .select('name, email, phone, $_lotOwnerProfileSelect')
+            .eq('user_id', user.id)
+            .maybeSingle();
+      } catch (_) {
+        userData = await supabase
+            .from('users')
+            .select('name, email, phone')
+            .eq('user_id', user.id)
+            .maybeSingle();
+      }
+
       if (userData != null) {
+        final firstName = _profileTextFrom(userData, 'first_name');
+        final middleName = _profileTextFrom(userData, 'middle_name');
+        final lastName = _profileTextFrom(userData, 'last_name');
+        final profileName = [
+          firstName,
+          middleName,
+          lastName,
+        ].where((part) => part.isNotEmpty).join(' ');
+
         _userName = userData['name'] ?? 'Lot Owner';
+        if (profileName.isNotEmpty) _userName = profileName;
         _userEmail = userData['email'] ?? user.email ?? '';
         _userPhone = userData['phone'] ?? '';
+        _profile = Map<String, dynamic>.from(userData);
       }
     } catch (e) {
-      print('Error loading profile: $e');
+      debugPrint('Error loading profile: $e');
     }
   }
 
@@ -118,12 +177,11 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
             cemetery_lot (
               lot_id,
               lot_number,
+              lot_label,
+              block_number,
+              lot_class_type,
               price,
-              status,
-              section:section_id (
-                name,
-                branch:branch_id (name)
-              )
+              status
             ),
             transaction_history (
               transaction_id,
@@ -137,7 +195,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
         _ownedLots = List<Map<String, dynamic>>.from(lots);
       });
     } catch (e) {
-      print('Error loading owned lots: $e');
+      debugPrint('Error loading owned lots: $e');
     }
   }
 
@@ -145,30 +203,29 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
     setState(() {
       _isLoadingAvailable = true;
     });
-    
+
     try {
       final supabase = Supabase.instance.client;
-      
+
       final lots = await supabase
           .from('cemetery_lot')
           .select('''
             lot_id,
             lot_number,
+            lot_label,
+            block_number,
+            lot_class_type,
             price,
-            status,
-            section:section_id (
-              name,
-              branch:branch_id (name)
-            )
+            status
           ''')
           .eq('status', 'Available');
-      
+
       setState(() {
         _availableLots = List<Map<String, dynamic>>.from(lots);
         _isLoadingAvailable = false;
       });
     } catch (e) {
-      print('Error loading available lots: $e');
+      debugPrint('Error loading available lots: $e');
       setState(() {
         _isLoadingAvailable = false;
       });
@@ -190,9 +247,9 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
 
       final adminList = List<Map<String, dynamic>>.from(admins);
       final adminWithPhone = adminList.cast<Map<String, dynamic>?>().firstWhere(
-            (admin) => (admin?['phone'] ?? '').toString().trim().isNotEmpty,
-            orElse: () => adminList.isNotEmpty ? adminList.first : null,
-          );
+        (admin) => (admin?['phone'] ?? '').toString().trim().isNotEmpty,
+        orElse: () => adminList.isNotEmpty ? adminList.first : null,
+      );
 
       if (adminWithPhone == null) return;
 
@@ -202,7 +259,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
       _adminPhone = phone.isNotEmpty ? phone : _adminPhone;
       _adminEmail = email.isNotEmpty ? email : _adminEmail;
     } catch (e) {
-      print('Error loading admin contact: $e');
+      debugPrint('Error loading admin contact: $e');
     }
   }
 
@@ -211,10 +268,10 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
   }
 
   void _inquireAboutLot(Map<String, dynamic> lot) {
-    final lotNumber = lot['lot_number'];
-    final section = lot['section'] ?? {};
+    final lotNumber = lotReference(lot);
+    final meta = lotMeta(lot);
     final price = _formatCurrency(lot['price']);
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -231,12 +288,14 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
               decoration: BoxDecoration(
                 color: _surfaceLow,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: _outlineVariant.withValues(alpha: 0.45)),
+                border: Border.all(
+                  color: _outlineVariant.withValues(alpha: 0.45),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Section: ${section['name'] ?? 'N/A'}'),
+                  Text(meta.isEmpty ? lotBlockLabel(lot) : meta),
                   Text('Price: $price'),
                 ],
               ),
@@ -248,14 +307,19 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
               decoration: BoxDecoration(
                 color: _primaryContainer.withValues(alpha: 0.45),
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: _outlineVariant.withValues(alpha: 0.35)),
+                border: Border.all(
+                  color: _outlineVariant.withValues(alpha: 0.35),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
                     'Contact the admin',
-                    style: TextStyle(fontWeight: FontWeight.w800, color: _onSurface),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: _onSurface,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -288,7 +352,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
     final currentPasswordController = TextEditingController();
     final newPasswordController = TextEditingController();
     final confirmPasswordController = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -296,7 +360,9 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
           return AlertDialog(
             backgroundColor: _background,
             surfaceTintColor: Colors.transparent,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
             title: const Text('Edit Profile'),
             content: SingleChildScrollView(
               child: Column(
@@ -319,7 +385,10 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                     keyboardType: TextInputType.phone,
                   ),
                   const Divider(height: 32),
-                  const Text('Change Password (Optional)', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Change Password (Optional)',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 8),
                   TextField(
                     controller: currentPasswordController,
@@ -366,7 +435,9 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _primary,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
                 child: const Text('Save Changes'),
               ),
@@ -401,7 +472,13 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
     );
   }
 
-  Future<void> _saveProfile(String name, String phone, String currentPassword, String newPassword, String confirmPassword) async {
+  Future<void> _saveProfile(
+    String name,
+    String phone,
+    String currentPassword,
+    String newPassword,
+    String confirmPassword,
+  ) async {
     try {
       final supabase = Supabase.instance.client;
       final user = supabase.auth.currentUser;
@@ -410,39 +487,49 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
 
       await supabase
           .from('users')
-          .update({
-            'name': name,
-            'phone': phone,
-          })
+          .update({'name': name, 'phone': phone})
           .eq('user_id', user.id);
 
+      if (!mounted) return;
       if (newPassword.isNotEmpty) {
         if (newPassword != confirmPassword) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('New passwords do not match'), backgroundColor: Colors.red),
+            const SnackBar(
+              content: Text('New passwords do not match'),
+              backgroundColor: Colors.red,
+            ),
           );
           return;
         }
         if (newPassword.length < 6) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Password must be at least 6 characters'), backgroundColor: Colors.red),
+            const SnackBar(
+              content: Text('Password must be at least 6 characters'),
+              backgroundColor: Colors.red,
+            ),
           );
           return;
         }
         await supabase.auth.updateUser(UserAttributes(password: newPassword));
+        if (!mounted) return;
       }
 
       setState(() {
         _userName = name;
         _userPhone = phone;
+        _profile = {..._profile, 'name': name, 'phone': phone};
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile updated!'), backgroundColor: Colors.green),
+        const SnackBar(
+          content: Text('Profile updated!'),
+          backgroundColor: Colors.green,
+        ),
       );
-      
+
       Navigator.pop(context);
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
       );
@@ -494,6 +581,34 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
     }
   }
 
+  String _profileText(String key) => _profileTextFrom(_profile, key);
+
+  String _profileTextFrom(Map<String, dynamic> source, String key) {
+    final value = source[key];
+    if (value == null) return '';
+    return value.toString().trim();
+  }
+
+  String _profileDate(String key) {
+    final value = _profileText(key);
+    if (value.isEmpty) return '';
+    return _formatDate(value);
+  }
+
+  String _profileMoney(String key) {
+    final value = _profile[key];
+    if (value == null) return '';
+    final numeric = value is num ? value.toDouble() : double.tryParse('$value');
+    return numeric == null ? value.toString() : _formatCurrency(numeric);
+  }
+
+  String _purchaseTermLabel(String value) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized == 'cash') return 'Cash';
+    if (normalized == 'at_need') return 'At Need';
+    return value;
+  }
+
   Widget _buildPaymentButton() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
@@ -508,7 +623,9 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
           backgroundColor: _primary,
           foregroundColor: Colors.white,
           minimumSize: const Size(double.infinity, 56),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
         ),
       ),
     );
@@ -538,7 +655,14 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
           actions: [
             IconButton(
               icon: _isRefreshing
-                  ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: _primary))
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: _primary,
+                      ),
+                    )
                   : const Icon(Icons.refresh_rounded),
               onPressed: _refreshData,
               tooltip: 'Refresh',
@@ -567,7 +691,9 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
               decoration: BoxDecoration(
                 color: _surfaceLow,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: _outlineVariant.withValues(alpha: 0.45)),
+                border: Border.all(
+                  color: _outlineVariant.withValues(alpha: 0.45),
+                ),
               ),
               child: TabBar(
                 dividerColor: Colors.transparent,
@@ -578,10 +704,19 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                 ),
                 labelColor: _primary,
                 unselectedLabelColor: _onSurfaceVariant,
-                labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                labelStyle: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                ),
                 tabs: const [
-                  Tab(icon: Icon(Icons.my_library_books_outlined), text: 'My Lots'),
-                  Tab(icon: Icon(Icons.shopping_cart_outlined), text: 'Shop Lots'),
+                  Tab(
+                    icon: Icon(Icons.my_library_books_outlined),
+                    text: 'My Lots',
+                  ),
+                  Tab(
+                    icon: Icon(Icons.shopping_cart_outlined),
+                    text: 'Shop Lots',
+                  ),
                   Tab(icon: Icon(Icons.map_outlined), text: 'Cemetery Map'),
                 ],
               ),
@@ -618,11 +753,19 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.location_off, size: 64, color: Colors.grey.shade400),
+                  Icon(
+                    Icons.location_off,
+                    size: 64,
+                    color: Colors.grey.shade400,
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     'No lots owned yet',
-                    style: const TextStyle(color: _onSurface, fontSize: 20, fontWeight: FontWeight.w800),
+                    style: const TextStyle(
+                      color: _onSurface,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -636,7 +779,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
         ],
       );
     }
-    
+
     return Column(
       children: [
         _buildPaymentButton(),
@@ -645,28 +788,45 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
             onRefresh: _refreshData,
             child: ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: _ownedLots.length,
+              itemCount: _ownedLots.length + 2,
               itemBuilder: (context, index) {
-                final ownership = _ownedLots[index];
+                if (index == 0) return _buildOwnerSummaryCard();
+                if (index == 1) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 12, bottom: 16),
+                    child: _buildPurchaserProfileCard(),
+                  );
+                }
+
+                final ownership = _ownedLots[index - 2];
                 final lot = ownership['cemetery_lot'] ?? {};
-                final section = lot['section'] ?? {};
-                final branch = section['branch'] ?? {};
-                final transactions = ownership['transaction_history'] as List? ?? [];
-                
+                final transactions =
+                    ownership['transaction_history'] as List? ?? [];
+                final locationText = lotMeta(lot).isEmpty
+                    ? lotBlockLabel(lot)
+                    : lotMeta(lot);
+
                 final lotPrice = (lot['price'] as num?)?.toDouble() ?? 0;
-                final totalPaid = transactions.fold<double>(0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0));
+                final totalPaid = transactions.fold<double>(
+                  0,
+                  (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0),
+                );
                 final remaining = lotPrice - totalPaid;
                 final totalMonths = (ownership['total_months'] as int?) ?? 0;
                 final monthsPaid = (ownership['months_paid'] as int?) ?? 0;
                 final monthsRemaining = totalMonths - monthsPaid;
-                final paymentProgress = totalMonths > 0 ? monthsPaid / totalMonths : 0.0;
-                
+                final paymentProgress = totalMonths > 0
+                    ? monthsPaid / totalMonths
+                    : 0.0;
+
                 return Container(
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
                     color: _surface,
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: _outlineVariant.withValues(alpha: 0.45)),
+                    border: Border.all(
+                      color: _outlineVariant.withValues(alpha: 0.45),
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: _primary.withValues(alpha: 0.06),
@@ -683,10 +843,10 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                           child: const Icon(Icons.location_on, color: _primary),
                         ),
                         title: Text(
-                          'Lot ${lot['lot_number'] ?? 'N/A'}',
+                          'Lot ${lotReference(lot)}',
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        subtitle: Text('${section['name'] ?? 'N/A'} • ${branch['name'] ?? 'N/A'}'),
+                        subtitle: Text(locationText),
                       ),
                       const Divider(),
                       Padding(
@@ -697,13 +857,25 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                             const SizedBox(height: 8),
                             _buildInfoRow('Status', lot['status'] ?? 'Active'),
                             const SizedBox(height: 8),
-                            _buildInfoRow('Start Date', _formatDate(ownership['start_date'])),
+                            _buildInfoRow(
+                              'Start Date',
+                              _formatDate(ownership['start_date']),
+                            ),
                             const SizedBox(height: 8),
-                            _buildInfoRow('Payment Plan', '$monthsPaid/$totalMonths months'),
+                            _buildInfoRow(
+                              'Payment Plan',
+                              '$monthsPaid/$totalMonths months',
+                            ),
                             const SizedBox(height: 8),
-                            _buildInfoRow('Total Paid', _formatCurrency(totalPaid)),
+                            _buildInfoRow(
+                              'Total Paid',
+                              _formatCurrency(totalPaid),
+                            ),
                             const SizedBox(height: 8),
-                            _buildInfoRow('Remaining Balance', _formatCurrency(remaining)),
+                            _buildInfoRow(
+                              'Remaining Balance',
+                              _formatCurrency(remaining),
+                            ),
                             const SizedBox(height: 16),
                             LinearProgressIndicator(
                               value: paymentProgress,
@@ -715,8 +887,15 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                             const SizedBox(height: 8),
                             Text(
                               '$monthsRemaining months remaining',
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                              ),
                             ),
+                            const SizedBox(height: 18),
+                            _buildLotProfilePanel(lot),
+                            const SizedBox(height: 12),
+                            _buildAmountPayablePanel(),
                           ],
                         ),
                       ),
@@ -725,13 +904,18 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                         child: SizedBox(
                           width: double.infinity,
                           child: OutlinedButton.icon(
-                            onPressed: () => _showPaymentHistory(transactions, lot['lot_number']),
+                            onPressed: () => _showPaymentHistory(
+                              transactions,
+                              lotReference(lot),
+                            ),
                             icon: const Icon(Icons.history),
                             label: const Text('View Payment History'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: _primary,
                               side: const BorderSide(color: _outlineVariant),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
                             ),
                           ),
                         ),
@@ -747,11 +931,206 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
     );
   }
 
+  Widget _buildOwnerSummaryCard() {
+    final controlNumber = _profileText('control_number');
+    return _recordCard(
+      icon: Icons.assignment_ind_rounded,
+      title: "Purchaser's Profile",
+      children: [
+        _recordRow('Name of Buyer', _userName),
+        _recordRow('Email', _userEmail),
+        _recordRow('Mobile', _userPhone),
+        if (controlNumber.isNotEmpty) _recordRow('Control No.', controlNumber),
+        _recordRow('Address', _profileText('address')),
+      ],
+    );
+  }
+
+  Widget _buildPurchaserProfileCard() {
+    return _recordCard(
+      icon: Icons.badge_outlined,
+      title: 'Personal Details',
+      children: [
+        _recordRow('Occupation', _profileText('occupation')),
+        _recordRow('Age', _profileText('age')),
+        _recordRow('Civil Status', _profileText('civil_status')),
+        _recordRow('Date of Birth', _profileDate('date_of_birth')),
+        _recordRow('Gender', _profileText('gender')),
+        _recordRow('Spouse / Beneficiary', _profileText('spouse_beneficiary')),
+        _recordRow('Relationship', _profileText('beneficiary_relationship')),
+      ],
+    );
+  }
+
+  Widget _buildLotProfilePanel(Map<String, dynamic> lot) {
+    final lotClassType = _profileText('lot_class_type').isNotEmpty
+        ? _profileText('lot_class_type')
+        : lotText(lot, 'lot_class_type');
+    final blockNumber = _profileText('block_number').isNotEmpty
+        ? _profileText('block_number')
+        : lotText(lot, 'block_number');
+    final lotNumber = _profileText('lot_number').isNotEmpty
+        ? _profileText('lot_number')
+        : lotText(lot, 'lot_number');
+
+    return _recordPanel(
+      icon: Icons.location_on_outlined,
+      title: 'Registered Lot Details',
+      children: [
+        _recordRow('Lot Class / Type', lotClassType),
+        _recordRow('Block', blockNumber),
+        _recordRow('Lot', lotNumber),
+        _recordRow('No. of Lots', _profileText('number_of_lots')),
+        _recordRow('Terms', _purchaseTermLabel(_profileText('purchase_term'))),
+      ],
+    );
+  }
+
+  Widget _buildAmountPayablePanel() {
+    return _recordPanel(
+      icon: Icons.receipt_long_outlined,
+      title: 'Amount Payable',
+      children: [
+        _recordRow('Lot Price', _profileMoney('lot_price')),
+        _recordRow('Interment Fee', _profileMoney('interment_fee')),
+        _recordRow('Certification Fee', _profileMoney('certification_fee')),
+        _recordRow('Burial Permit Fee', _profileMoney('burial_permit_fee')),
+        _recordRow('Total', _profileMoney('total_amount')),
+        _recordRow('OR #', _profileText('or_number')),
+        _recordRow('P', _profileMoney('receipt_amount')),
+        _recordRow('Receipt Date', _profileDate('receipt_date')),
+        _recordRow('Approved Date', _profileDate('approved_date')),
+        _recordRow('Approved By', _profileText('approved_by_name')),
+      ],
+    );
+  }
+
+  Widget _recordCard({
+    required IconData icon,
+    required String title,
+    required List<Widget> children,
+  }) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _outlineVariant.withValues(alpha: 0.45)),
+        boxShadow: [
+          BoxShadow(
+            color: _primary.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _recordTitle(icon: icon, title: title),
+            const SizedBox(height: 12),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _recordPanel({
+    required IconData icon,
+    required String title,
+    required List<Widget> children,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _surfaceLow,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _outlineVariant.withValues(alpha: 0.45)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _recordTitle(icon: icon, title: title, compact: true),
+          const SizedBox(height: 10),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _recordTitle({
+    required IconData icon,
+    required String title,
+    bool compact = false,
+  }) {
+    return Row(
+      children: [
+        Container(
+          width: compact ? 30 : 38,
+          height: compact ? 30 : 38,
+          decoration: BoxDecoration(
+            color: _primaryContainer,
+            borderRadius: BorderRadius.circular(compact ? 10 : 14),
+          ),
+          child: Icon(icon, color: _primary, size: compact ? 17 : 21),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            title,
+            style: TextStyle(
+              color: _onSurface,
+              fontSize: compact ? 13 : 16,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _recordRow(String label, String value) {
+    final display = value.trim().isEmpty ? 'Not recorded' : value.trim();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 132,
+            child: Text(
+              label,
+              style: const TextStyle(color: _onSurfaceVariant, fontSize: 12),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              display,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: display == 'Not recorded'
+                    ? _onSurfaceVariant
+                    : _onSurface,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildShopLotsTab() {
     if (_isLoadingAvailable) {
       return const Center(child: CircularProgressIndicator());
     }
-    
+
     if (_availableLots.isEmpty) {
       return Column(
         children: [
@@ -763,9 +1142,15 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                 children: [
                   Icon(Icons.shopping_cart_outlined, size: 64, color: _primary),
                   SizedBox(height: 16),
-                  Text('No available lots at the moment', style: TextStyle(fontWeight: FontWeight.w800)),
+                  Text(
+                    'No available lots at the moment',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
                   SizedBox(height: 8),
-                  Text('Check back later for new listings', style: TextStyle(color: _onSurfaceVariant)),
+                  Text(
+                    'Check back later for new listings',
+                    style: TextStyle(color: _onSurfaceVariant),
+                  ),
                 ],
               ),
             ),
@@ -773,7 +1158,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
         ],
       );
     }
-    
+
     return Column(
       children: [
         _buildPaymentButton(),
@@ -785,15 +1170,18 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
               itemCount: _availableLots.length,
               itemBuilder: (context, index) {
                 final lot = _availableLots[index];
-                final section = lot['section'] ?? {};
-                final branch = section['branch'] ?? {};
-                
+                final locationText = lotMeta(lot).isEmpty
+                    ? lotBlockLabel(lot)
+                    : lotMeta(lot);
+
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
                     color: _surface,
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: _outlineVariant.withValues(alpha: 0.45)),
+                    border: Border.all(
+                      color: _outlineVariant.withValues(alpha: 0.45),
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: _primary.withValues(alpha: 0.05),
@@ -803,20 +1191,26 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                     ],
                   ),
                   child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 12,
+                    ),
                     leading: CircleAvatar(
                       backgroundColor: _primaryContainer,
                       child: const Icon(Icons.location_on, color: _primary),
                     ),
                     title: Text(
-                      'Lot ${lot['lot_number']}',
+                      'Lot ${lotReference(lot)}',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('${section['name'] ?? 'N/A'} • ${branch['name'] ?? 'N/A'}'),
-                        Text('Price: ${_formatCurrency(lot['price'])}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                        Text(locationText),
+                        Text(
+                          'Price: ${_formatCurrency(lot['price'])}',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
                       ],
                     ),
                     trailing: ElevatedButton.icon(
@@ -826,7 +1220,9 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _primary,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                       ),
                     ),
                   ),
@@ -850,7 +1246,9 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
               decoration: BoxDecoration(
                 color: _surface,
                 borderRadius: BorderRadius.circular(28),
-                border: Border.all(color: _outlineVariant.withValues(alpha: 0.4)),
+                border: Border.all(
+                  color: _outlineVariant.withValues(alpha: 0.4),
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: _primary.withValues(alpha: 0.06),
@@ -907,10 +1305,16 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                   final t = transactions[index];
                   final amount = (t['amount'] as num?)?.toDouble() ?? 0;
                   return ListTile(
-                    leading: const Icon(Icons.receipt, color: Color(0xFF4B6E4F)),
+                    leading: const Icon(
+                      Icons.receipt,
+                      color: Color(0xFF4B6E4F),
+                    ),
                     title: Text(_formatCurrency(amount)),
                     subtitle: Text(_formatDate(t['payment_date'])),
-                    trailing: const Icon(Icons.check_circle, color: Colors.green),
+                    trailing: const Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                    ),
                   );
                 },
               ),
@@ -946,11 +1350,16 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
   static const double _mapLngSpan = 0.0046;
 
   final MapController _mapController = MapController();
+  final LayerHitNotifier<String> _lotPolygonHitNotifier = ValueNotifier(null);
   bool _isLoading = true;
   String? _errorMessage;
   double? _entranceXPercent;
   double? _entranceYPercent;
+  LatLng _mapCenter = _tagumMapCenter;
+  double _activeMapLatSpan = _mapLatSpan;
+  double _activeMapLngSpan = _mapLngSpan;
   List<Map<String, dynamic>> _lotMarkers = [];
+  List<Map<String, dynamic>> _mapFeatures = [];
   Map<String, dynamic>? _selectedAvailableLot;
 
   @override
@@ -959,13 +1368,21 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
     _loadPreviewData();
   }
 
+  @override
+  void dispose() {
+    _lotPolygonHitNotifier.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadPreviewData() async {
     try {
       final supabase = Supabase.instance.client;
       final results = await Future.wait([
         supabase
             .from('cemetery_map')
-            .select('entrance_x_percent, entrance_y_percent')
+            .select(
+              'entrance_x_percent, entrance_y_percent, center_lat, center_lng, lat_span, lng_span',
+            )
             .order('uploaded_at', ascending: false)
             .limit(1)
             .maybeSingle(),
@@ -979,23 +1396,36 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
               cemetery_lot (
                 lot_id,
                 lot_number,
+                lot_label,
+                block_number,
+                lot_class_type,
+                polygon_geo,
                 price,
-                status,
-                section:section_id (
-                  name,
-                  branch:branch_id (name)
-                )
+                status
               )
             ''')
             .order('marker_id'),
       ]);
+      final mapFeatures = await MapFeatureService.loadVisible(supabase);
 
       if (!mounted) return;
       setState(() {
         final mapConfig = results[0] as Map<String, dynamic>?;
-        _entranceXPercent = (mapConfig?['entrance_x_percent'] as num?)?.toDouble();
-        _entranceYPercent = (mapConfig?['entrance_y_percent'] as num?)?.toDouble();
+        final centerLat = (mapConfig?['center_lat'] as num?)?.toDouble();
+        final centerLng = (mapConfig?['center_lng'] as num?)?.toDouble();
+        if (centerLat != null && centerLng != null) {
+          _mapCenter = LatLng(centerLat, centerLng);
+        }
+        _activeMapLatSpan =
+            (mapConfig?['lat_span'] as num?)?.toDouble() ?? _mapLatSpan;
+        _activeMapLngSpan =
+            (mapConfig?['lng_span'] as num?)?.toDouble() ?? _mapLngSpan;
+        _entranceXPercent = (mapConfig?['entrance_x_percent'] as num?)
+            ?.toDouble();
+        _entranceYPercent = (mapConfig?['entrance_y_percent'] as num?)
+            ?.toDouble();
         _lotMarkers = List<Map<String, dynamic>>.from(results[1] as List);
+        _mapFeatures = mapFeatures;
         _isLoading = false;
       });
     } catch (e) {
@@ -1011,15 +1441,15 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
       _entranceXPercent != null && _entranceYPercent != null;
 
   LatLng get _entranceLatLng {
-    if (!_hasMappedEntrance) return _tagumMapCenter;
+    if (!_hasMappedEntrance) return _mapCenter;
     return _percentToLatLng(_entranceXPercent!, _entranceYPercent!);
   }
 
   LatLng _percentToLatLng(double xPercent, double yPercent) {
-    final latOffset = (0.5 - yPercent / 100) * _mapLatSpan;
-    final lngOffset = (xPercent / 100 - 0.5) * _mapLngSpan;
-    final lat = _tagumMapCenter.latitude + latOffset;
-    final lng = _tagumMapCenter.longitude + lngOffset;
+    final latOffset = (0.5 - yPercent / 100) * _activeMapLatSpan;
+    final lngOffset = (xPercent / 100 - 0.5) * _activeMapLngSpan;
+    final lat = _mapCenter.latitude + latOffset;
+    final lng = _mapCenter.longitude + lngOffset;
     return LatLng(lat, lng);
   }
 
@@ -1030,10 +1460,21 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
   }
 
   Color _statusColor(String? status) {
-    if (status == 'Occupied') return const Color(0xFFBA1A1A);
-    if (status == 'Available') return const Color(0xFF335538);
-    if (status == 'Reserved') return const Color(0xFF47626F);
-    return const Color(0xFF727971);
+    return lotStatusStrokeColor(status);
+  }
+
+  void _selectAvailableLotById(String lotId) {
+    final marker = _lotMarkers.cast<Map<String, dynamic>?>().firstWhere((
+      marker,
+    ) {
+      final lot = marker?['cemetery_lot'];
+      return lot is Map && lot['lot_id']?.toString() == lotId;
+    }, orElse: () => null);
+    final lot = marker?['cemetery_lot'];
+    final status = lot is Map ? lot['status']?.toString().toLowerCase() : null;
+    if (lot is Map && status == 'available') {
+      setState(() => _selectedAvailableLot = Map<String, dynamic>.from(lot));
+    }
   }
 
   @override
@@ -1067,11 +1508,15 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
             filled: true,
           ),
         ),
-      ..._lotMarkers.map((marker) {
+      ..._lotMarkers.where((marker) => !markerHasLotPolygon(marker)).map((
+        marker,
+      ) {
         final lot = marker['cemetery_lot'] ?? {};
         final status = lot['status']?.toString() ?? '';
-        final lotNumber = lot['lot_number']?.toString() ?? '';
+        final lotNumber = lotReference(lot, fallback: '');
         final color = _statusColor(status);
+        final fillColor = lotStatusFillColor(status);
+        final iconColor = lotStatusForegroundColor(status);
         return Marker(
           point: _markerToLatLng(marker),
           width: 52,
@@ -1080,19 +1525,21 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
             behavior: HitTestBehavior.opaque,
             onTap: status == 'Available'
                 ? () => setState(() {
-                      _selectedAvailableLot = Map<String, dynamic>.from(lot);
-                    })
+                    _selectedAvailableLot = Map<String, dynamic>.from(lot);
+                  })
                 : null,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 _PreviewPin(
                   color: color,
+                  fillColor: fillColor,
+                  iconColor: iconColor,
                   icon: status == 'Occupied'
                       ? Icons.person_rounded
                       : status == 'Reserved'
-                          ? Icons.bookmark_rounded
-                          : Icons.nature_people_rounded,
+                      ? Icons.bookmark_rounded
+                      : Icons.nature_people_rounded,
                   size: 40,
                   filled: true,
                 ),
@@ -1100,7 +1547,10 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 48),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 1,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.92),
                       borderRadius: BorderRadius.circular(999),
@@ -1125,6 +1575,21 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
         );
       }),
     ];
+    final selectedLotId = _selectedAvailableLot?['lot_id'];
+    final lotPolygons = lotPolygonsFromMarkers(
+      _lotMarkers,
+      selectedLotId: selectedLotId,
+      includeHitValues: true,
+    );
+    final baseMapFeatures = _mapFeatures.where(isMapLayerFeature).toList();
+    final overlayMapFeatures = _mapFeatures
+        .where((feature) => !isMapLayerFeature(feature))
+        .toList();
+    final basePolygons = mapFeaturePolygons(baseMapFeatures);
+    final basePolylines = mapFeaturePolylines(baseMapFeatures);
+    final overlayPolygons = mapFeaturePolygons(overlayMapFeatures);
+    final overlayPolylines = mapFeaturePolylines(overlayMapFeatures);
+    final overlayPointMarkers = mapFeaturePointMarkers(overlayMapFeatures);
 
     return Stack(
       children: [
@@ -1135,7 +1600,9 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
             initialZoom: _initialZoom,
             minZoom: 14,
             maxZoom: 20,
-            interactionOptions: const InteractionOptions(flags: InteractiveFlag.all),
+            interactionOptions: const InteractionOptions(
+              flags: InteractiveFlag.all,
+            ),
           ),
           children: [
             TileLayer(
@@ -1143,6 +1610,27 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
               userAgentPackageName: 'com.example.cemetery_app',
               maxZoom: 20,
             ),
+            if (basePolygons.isNotEmpty) PolygonLayer(polygons: basePolygons),
+            if (basePolylines.isNotEmpty)
+              PolylineLayer(polylines: basePolylines),
+            if (overlayPolygons.isNotEmpty)
+              PolygonLayer(polygons: overlayPolygons),
+            if (lotPolygons.isNotEmpty)
+              GestureDetector(
+                onTap: () {
+                  final hitValues = _lotPolygonHitNotifier.value?.hitValues;
+                  if (hitValues == null || hitValues.isEmpty) return;
+                  _selectAvailableLotById(hitValues.last);
+                },
+                child: PolygonLayer<String>(
+                  polygons: lotPolygons,
+                  hitNotifier: _lotPolygonHitNotifier,
+                ),
+              ),
+            if (overlayPolylines.isNotEmpty)
+              PolylineLayer(polylines: overlayPolylines),
+            if (overlayPointMarkers.isNotEmpty)
+              MarkerLayer(markers: overlayPointMarkers),
             MarkerLayer(markers: markers),
             RichAttributionWidget(
               attributions: [
@@ -1184,9 +1672,21 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
               spacing: 10,
               runSpacing: 8,
               children: [
-                _LegendDot(color: const Color(0xFF335538), label: 'Available'),
-                _LegendDot(color: const Color(0xFFBA1A1A), label: 'Occupied'),
-                _LegendDot(color: const Color(0xFF47626F), label: 'Reserved'),
+                _LegendDot(
+                  color: lotStatusAvailableFill,
+                  borderColor: lotStatusAvailableStroke,
+                  label: 'Available',
+                ),
+                _LegendDot(
+                  color: lotStatusReservedFill,
+                  borderColor: lotStatusReservedStroke,
+                  label: 'Owner assigned',
+                ),
+                _LegendDot(
+                  color: lotStatusOccupiedFill,
+                  borderColor: lotStatusOccupiedStroke,
+                  label: 'Occupied',
+                ),
               ],
             ),
           ),
@@ -1220,9 +1720,9 @@ class _AvailableLotMapCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final section = lot['section'] ?? {};
-    final branch = section['branch'] ?? {};
-    final lotNumber = lot['lot_number']?.toString() ?? 'N/A';
+    final lotNumber = lotReference(lot);
+    final meta = lotMeta(lot);
+    final locationText = meta.isEmpty ? lotBlockLabel(lot) : meta;
     final price = _formatPrice(lot['price']);
 
     return Container(
@@ -1266,10 +1766,13 @@ class _AvailableLotMapCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${section['name'] ?? 'N/A'} • ${branch['name'] ?? 'N/A'}',
+                  locationText,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: _onSurfaceVariant, fontSize: 12),
+                  style: const TextStyle(
+                    color: _onSurfaceVariant,
+                    fontSize: 12,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -1290,7 +1793,9 @@ class _AvailableLotMapCard extends StatelessWidget {
               backgroundColor: _primary,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
             child: const Text('Inquire'),
           ),
@@ -1306,8 +1811,13 @@ class _AvailableLotMapCard extends StatelessWidget {
   }
 
   String _formatPrice(dynamic value) {
-    final numeric = value is num ? value.toDouble() : double.tryParse(value?.toString() ?? '') ?? 0;
-    return NumberFormat.currency(symbol: 'PHP ', decimalDigits: 2).format(numeric);
+    final numeric = value is num
+        ? value.toDouble()
+        : double.tryParse(value?.toString() ?? '') ?? 0;
+    return NumberFormat.currency(
+      symbol: 'PHP ',
+      decimalDigits: 2,
+    ).format(numeric);
   }
 }
 
@@ -1317,12 +1827,16 @@ class _PreviewPin extends StatelessWidget {
     required this.icon,
     required this.size,
     this.filled = false,
+    this.fillColor,
+    this.iconColor,
   });
 
   final Color color;
   final IconData icon;
   final double size;
   final bool filled;
+  final Color? fillColor;
+  final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -1330,7 +1844,9 @@ class _PreviewPin extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: filled ? color.withValues(alpha: 0.18) : Colors.white,
+        color:
+            fillColor ??
+            (filled ? color.withValues(alpha: 0.18) : Colors.white),
         shape: BoxShape.circle,
         border: Border.all(color: color, width: 2),
         boxShadow: const [
@@ -1341,16 +1857,21 @@ class _PreviewPin extends StatelessWidget {
           ),
         ],
       ),
-      child: Icon(icon, color: color, size: size * 0.42),
+      child: Icon(icon, color: iconColor ?? color, size: size * 0.42),
     );
   }
 }
 
 class _LegendDot extends StatelessWidget {
-  const _LegendDot({required this.color, required this.label});
+  const _LegendDot({
+    required this.color,
+    required this.label,
+    this.borderColor,
+  });
 
   final Color color;
   final String label;
+  final Color? borderColor;
 
   @override
   Widget build(BuildContext context) {
@@ -1360,7 +1881,11 @@ class _LegendDot extends StatelessWidget {
         Container(
           width: 10,
           height: 10,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: Border.all(color: borderColor ?? color),
+          ),
         ),
         const SizedBox(width: 6),
         Text(label, style: const TextStyle(fontSize: 12, color: _onSurface)),

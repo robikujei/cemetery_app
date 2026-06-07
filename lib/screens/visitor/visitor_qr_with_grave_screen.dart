@@ -42,12 +42,14 @@ class VisitorQrWithGraveScreen extends ConsumerStatefulWidget {
     this.burialId,
     this.deceasedName,
     this.lotNumber,
+    this.blockName,
     this.sectionName,
   });
 
   final int? burialId;
   final String? deceasedName;
   final String? lotNumber;
+  final String? blockName;
   final String? sectionName;
 
   @override
@@ -99,7 +101,7 @@ class _VisitorQrWithGraveScreenState
           userData?['name'] ?? user.email?.split('@').first ?? 'Visitor';
 
       final Map<String, dynamic> payload = {
-          'visitorId': user.id,
+        'visitorId': user.id,
         'visitorUserId': userData?['user_id'],
         'visitorName': _userName,
         'visitorEmail': user.email,
@@ -111,7 +113,8 @@ class _VisitorQrWithGraveScreenState
         payload['burialId'] = widget.burialId;
         payload['deceasedName'] = widget.deceasedName ?? 'Unknown';
         payload['lotNumber'] = widget.lotNumber ?? 'Unknown';
-        payload['sectionName'] = widget.sectionName ?? 'Unknown';
+        payload['blockName'] =
+            widget.blockName ?? widget.sectionName ?? 'Unknown';
 
         _selectedGrave =
             '${widget.deceasedName ?? 'Unknown'} (Lot ${widget.lotNumber ?? 'N/A'})';
@@ -133,13 +136,13 @@ class _VisitorQrWithGraveScreenState
   Future<void> _saveQrCode() async {
     try {
       RenderRepaintBoundary boundary =
-          _qrKey.currentContext!.findRenderObject()
-              as RenderRepaintBoundary;
+          _qrKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
 
       ui.Image image = await boundary.toImage(pixelRatio: 3.0);
 
-      ByteData? byteData =
-          await image.toByteData(format: ui.ImageByteFormat.png);
+      ByteData? byteData = await image.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
 
       Uint8List pngBytes = byteData!.buffer.asUint8List();
 
@@ -194,8 +197,7 @@ class _VisitorQrWithGraveScreenState
         titleSpacing: 4,
         title: Row(
           children: const [
-            Icon(Icons.church,
-                color: _C.primaryContainer, size: 20),
+            Icon(Icons.church, color: _C.primaryContainer, size: 20),
             SizedBox(width: 8),
             Text(
               'Eternal Rest',
@@ -210,29 +212,26 @@ class _VisitorQrWithGraveScreenState
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh,
-                color: _C.primaryContainer),
+            icon: const Icon(Icons.refresh, color: _C.primaryContainer),
             onPressed: _loadUserData,
           ),
           IconButton(
-            icon: const Icon(Icons.notifications_outlined,
-                color: _C.primaryContainer),
+            icon: const Icon(
+              Icons.notifications_outlined,
+              color: _C.primaryContainer,
+            ),
             onPressed: () {},
           ),
           const SizedBox(width: 8),
         ],
       ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                color: _C.primary,
-              ),
-            )
+          ? const Center(child: CircularProgressIndicator(color: _C.primary))
           : _errorMessage != null
-              ? _buildErrorWidget()
-              : _qrData == null
-                  ? _buildNoQrWidget()
-                  : _buildQrContent(),
+          ? _buildErrorWidget()
+          : _qrData == null
+          ? _buildNoQrWidget()
+          : _buildQrContent(),
     );
   }
 
@@ -243,18 +242,11 @@ class _VisitorQrWithGraveScreenState
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.error_outline,
-              size: 64,
-              color: _C.error,
-            ),
+            const Icon(Icons.error_outline, size: 64, color: _C.error),
             const SizedBox(height: 16),
             Text(
               _errorMessage!,
-              style: const TextStyle(
-                fontSize: 16,
-                color: _C.error,
-              ),
+              style: const TextStyle(fontSize: 16, color: _C.error),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -288,10 +280,7 @@ class _VisitorQrWithGraveScreenState
           const SizedBox(height: 16),
           const Text(
             'Unable to generate QR code',
-            style: TextStyle(
-              fontSize: 16,
-              color: _C.outline,
-            ),
+            style: TextStyle(fontSize: 16, color: _C.outline),
           ),
           const SizedBox(height: 24),
           FilledButton(
@@ -378,9 +367,7 @@ class _VisitorQrWithGraveScreenState
                         padding: const EdgeInsets.only(bottom: 16),
                         decoration: const BoxDecoration(
                           border: Border(
-                            bottom: BorderSide(
-                              color: _C.surfaceVariant,
-                            ),
+                            bottom: BorderSide(color: _C.surfaceVariant),
                           ),
                         ),
                         child: Row(
@@ -403,8 +390,7 @@ class _VisitorQrWithGraveScreenState
 
                             Expanded(
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     _userName,
@@ -440,8 +426,7 @@ class _VisitorQrWithGraveScreenState
                               padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
                                 color: _C.white,
-                                borderRadius:
-                                    BorderRadius.circular(24),
+                                borderRadius: BorderRadius.circular(24),
                                 border: Border.all(
                                   color: _C.primaryFixed,
                                   width: 4,
@@ -455,11 +440,9 @@ class _VisitorQrWithGraveScreenState
                                   color: _C.primary,
                                   eyeShape: QrEyeShape.square,
                                 ),
-                                dataModuleStyle:
-                                    const QrDataModuleStyle(
+                                dataModuleStyle: const QrDataModuleStyle(
                                   color: _C.primary,
-                                  dataModuleShape:
-                                      QrDataModuleShape.square,
+                                  dataModuleShape: QrDataModuleShape.square,
                                 ),
                               ),
                             ),
@@ -473,10 +456,8 @@ class _VisitorQrWithGraveScreenState
                               vertical: 12,
                             ),
                             decoration: BoxDecoration(
-                              color:
-                                  _C.primaryFixed.withOpacity(0.2),
-                              borderRadius:
-                                  BorderRadius.circular(999),
+                              color: _C.primaryFixed.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(999),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -510,8 +491,7 @@ class _VisitorQrWithGraveScreenState
                         padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
                           color: _C.surfaceContainerLow,
-                          borderRadius:
-                              BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(24),
                         ),
                         child: Column(
                           children: const [
@@ -553,9 +533,7 @@ class _VisitorQrWithGraveScreenState
                 style: FilledButton.styleFrom(
                   backgroundColor: _C.primary,
                   foregroundColor: _C.onPrimary,
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 18,
-                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 18),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -578,12 +556,8 @@ class _VisitorQrWithGraveScreenState
                 onPressed: () => Navigator.pop(context),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: _C.primary,
-                  side: const BorderSide(
-                    color: _C.outlineVariant,
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 18,
-                  ),
+                  side: const BorderSide(color: _C.outlineVariant),
+                  padding: const EdgeInsets.symmetric(vertical: 18),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),

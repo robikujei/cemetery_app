@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../utils/lot_formatters.dart';
+
 class QrScannerScreen extends StatefulWidget {
   const QrScannerScreen({super.key});
 
@@ -64,7 +66,9 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
               name_of_deceased,
               cemetery_lot (
                 lot_number,
-                section:section_id (name)
+                lot_label,
+                block_number,
+                lot_class_type
               )
             )
           ''')
@@ -263,7 +267,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
         if (data['alreadyCheckedIn'] == true) {
           setState(() {
-            _scanMessage = data['message']?.toString() ??
+            _scanMessage =
+                data['message']?.toString() ??
                 '$visitorName already checked in today';
             _messageColor = _warning;
           });
@@ -286,8 +291,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
     final visitorEmail =
         payload['visitorEmail'] ?? payload['email'] ?? payload['displayEmail'];
-    if (visitorEmail == null ||
-        visitorEmail.toString().trim().isEmpty) {
+    if (visitorEmail == null || visitorEmail.toString().trim().isEmpty) {
       return null;
     }
 
@@ -316,18 +320,20 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     return _lastPayload?['visitorName']?.toString().trim().isNotEmpty == true
         ? _lastPayload!['visitorName'].toString()
         : _lastPayload?['displayName']?.toString().trim().isNotEmpty == true
-            ? _lastPayload!['displayName'].toString()
-            : _lastPayload?['name']?.toString().trim().isNotEmpty == true
-                ? _lastPayload!['name'].toString()
-                : 'Unknown Visitor';
+        ? _lastPayload!['displayName'].toString()
+        : _lastPayload?['name']?.toString().trim().isNotEmpty == true
+        ? _lastPayload!['name'].toString()
+        : 'Unknown Visitor';
   }
 
   String _visitTypeLabel() {
-    return _lastPayload?['sectionName']?.toString().trim().isNotEmpty == true
+    return _lastPayload?['blockName']?.toString().trim().isNotEmpty == true
+        ? _lastPayload!['blockName'].toString()
+        : _lastPayload?['sectionName']?.toString().trim().isNotEmpty == true
         ? _lastPayload!['sectionName'].toString()
         : _lastPayload?['lotNumber']?.toString().trim().isNotEmpty == true
-            ? 'Lot ${_lastPayload!['lotNumber']}'
-            : 'N/A';
+        ? 'Lot ${_lastPayload!['lotNumber']}'
+        : 'N/A';
   }
 
   String _loggedTime() {
@@ -369,10 +375,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
           titleSpacing: 0,
           leading: const Padding(
             padding: EdgeInsets.only(left: 12),
-            child: Icon(
-              Icons.qr_code_scanner_rounded,
-              color: _primary,
-            ),
+            child: Icon(Icons.qr_code_scanner_rounded, color: _primary),
           ),
           leadingWidth: 40,
           title: const Text(
@@ -402,12 +405,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
             ],
           ),
         ),
-        body: TabBarView(
-          children: [
-            _buildScannerTab(),
-            _buildVisitorsTab(),
-          ],
-        ),
+        body: TabBarView(children: [_buildScannerTab(), _buildVisitorsTab()]),
         floatingActionButton: FloatingActionButton(
           onPressed: () => _controller.toggleTorch(),
           backgroundColor: _primaryContainer,
@@ -487,9 +485,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
             child: Row(
               children: [
                 Icon(
-                  _messageColor == _primary
-                      ? Icons.check_circle
-                      : Icons.error,
+                  _messageColor == _primary ? Icons.check_circle : Icons.error,
                   color: _messageColor,
                 ),
                 const SizedBox(width: 12),
@@ -535,8 +531,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                           _messageColor == _primary
                               ? Icons.check_circle_rounded
                               : _messageColor == _warning
-                                  ? Icons.info_rounded
-                                  : Icons.error_rounded,
+                              ? Icons.info_rounded
+                              : Icons.error_rounded,
                           color: _messageColor,
                         ),
                       ),
@@ -549,8 +545,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                               _messageColor == _primary
                                   ? 'Confirmed'
                                   : _messageColor == _warning
-                                      ? 'Needs Attention'
-                                      : 'Scan Result',
+                                  ? 'Needs Attention'
+                                  : 'Scan Result',
                               style: const TextStyle(
                                 color: _onSurface,
                                 fontSize: 18,
@@ -655,7 +651,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: _ScanStatTile(
-                          title: 'Section',
+                          title: 'Block',
                           value: _visitTypeLabel(),
                           icon: Icons.map_outlined,
                         ),
@@ -702,7 +698,6 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
           final user = log['user'] ?? {};
           final burial = log['burial'] ?? {};
           final lot = burial['cemetery_lot'] ?? {};
-          final section = lot['section'] ?? {};
 
           final timeIn = log['time_in'] != null
               ? DateFormat('h:mm a').format(DateTime.parse(log['time_in']))
@@ -732,10 +727,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                 children: [
                   if (burial['name_of_deceased'] != null)
                     Text('Visiting: ${burial['name_of_deceased']}'),
-                  if (lot['lot_number'] != null)
-                    Text(
-                      'Lot ${lot['lot_number']} - Section ${section['name'] ?? 'N/A'}',
-                    ),
+                  if (lotReference(lot, fallback: '').isNotEmpty)
+                    Text('Lot ${lotReference(lot)} - ${lotBlockLabel(lot)}'),
                   Text(
                     'Time: $timeIn',
                     style: const TextStyle(

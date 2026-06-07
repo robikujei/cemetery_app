@@ -1,0 +1,1803 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Current Schema Data Dictionary</title>
+<style>
+@page { size: 8.5in 11in; margin: 0.75in; }
+body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; line-height: 1.35; color: #111111; }
+h1 { font-size: 20pt; margin: 0 0 12pt; text-align: center; }
+h2 { font-size: 15pt; margin: 18pt 0 8pt; color: #1f4e79; border-bottom: 1px solid #9eacba; padding-bottom: 3pt; page-break-after: avoid; }
+h3 { font-size: 12.5pt; margin: 14pt 0 5pt; color: #1f4e79; page-break-after: avoid; }
+p { margin: 0 0 8pt; text-align: justify; }
+table { width: 100%; border-collapse: collapse; margin: 6pt 0 12pt; page-break-inside: avoid; }
+th, td { border: 1px solid #7f7f7f; padding: 4pt 5pt; vertical-align: top; }
+th { background: #d9eaf7; font-weight: bold; text-align: left; }
+tr:nth-child(even) td { background: #f7fbff; }
+code { font-family: Consolas, Courier New, monospace; font-size: 10pt; }
+.note { color: #555555; }
+</style>
+</head>
+<body>
+<h1>Current Schema Data Dictionary</h1>
+<p>This data dictionary matches the current Supabase schema and the intended app model: cemetery lots are grouped by <code>block_number</code>, each lot may contain multiple <code>graves</code>, and each grave may be linked to a <code>burial_record</code>. The old branch/section model is listed only as legacy because the app is moving to blocks.</p>
+<h2>Operational Tables</h2>
+<h3>Table 1. Users</h3>
+<p>The <code>users</code> table replaces the old Visitor table. It stores all system accounts, including visitors, lot owners, gate officers, and administrators. The <code>role</code> field controls which screens and actions the user can access. The table also stores lot-owner profile and purchase/application details used by the admin and lot-owner modules.</p>
+<table>
+<thead>
+<tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length/Precision</th>
+<th>Constraint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>user_id</td>
+<td>UUID</td>
+<td>16</td>
+<td>PK, NOT NULL</td>
+<td>Unique identifier of the user account.</td>
+</tr>
+<tr>
+<td>name</td>
+<td>VARCHAR</td>
+<td>100</td>
+<td>NOT NULL</td>
+<td>Display name or full name of the user.</td>
+</tr>
+<tr>
+<td>email</td>
+<td>VARCHAR</td>
+<td>100</td>
+<td>UNIQUE, NOT NULL</td>
+<td>Email address used for login and account lookup.</td>
+</tr>
+<tr>
+<td>password</td>
+<td>VARCHAR</td>
+<td>255</td>
+<td>NOT NULL</td>
+<td>Encrypted or hashed account password.</td>
+</tr>
+<tr>
+<td>role</td>
+<td>VARCHAR</td>
+<td>20</td>
+<td>NOT NULL</td>
+<td>User role such as visitor, admin, guard, or lot_owner.</td>
+</tr>
+<tr>
+<td>created_at</td>
+<td>TIMESTAMP</td>
+<td>-</td>
+<td>DEFAULT CURRENT_TIMESTAMP</td>
+<td>Date and time the account was created.</td>
+</tr>
+<tr>
+<td>phone</td>
+<td>VARCHAR</td>
+<td>20</td>
+<td>NULLABLE</td>
+<td>Contact number of the user.</td>
+</tr>
+<tr>
+<td>control_number</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Internal control or application number.</td>
+</tr>
+<tr>
+<td>first_name</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>User first name.</td>
+</tr>
+<tr>
+<td>middle_name</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>User middle name.</td>
+</tr>
+<tr>
+<td>last_name</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>User last name.</td>
+</tr>
+<tr>
+<td>address</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Residential address.</td>
+</tr>
+<tr>
+<td>occupation</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>User occupation.</td>
+</tr>
+<tr>
+<td>age</td>
+<td>INT</td>
+<td>32</td>
+<td>NULLABLE</td>
+<td>User age.</td>
+</tr>
+<tr>
+<td>civil_status</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Civil status.</td>
+</tr>
+<tr>
+<td>date_of_birth</td>
+<td>DATE</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Date of birth.</td>
+</tr>
+<tr>
+<td>gender</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Gender.</td>
+</tr>
+<tr>
+<td>spouse_beneficiary</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Spouse or beneficiary name.</td>
+</tr>
+<tr>
+<td>beneficiary_relationship</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Relationship of beneficiary to the user.</td>
+</tr>
+<tr>
+<td>lot_class_type</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Selected or purchased lot class type.</td>
+</tr>
+<tr>
+<td>block_number</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Block number associated with the lot-owner application.</td>
+</tr>
+<tr>
+<td>lot_number</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Lot number associated with the lot-owner application.</td>
+</tr>
+<tr>
+<td>number_of_lots</td>
+<td>INT</td>
+<td>32</td>
+<td>NULLABLE</td>
+<td>Number of lots requested or purchased.</td>
+</tr>
+<tr>
+<td>purchase_term</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Purchase or installment term.</td>
+</tr>
+<tr>
+<td>lot_price</td>
+<td>NUMERIC</td>
+<td>12,2</td>
+<td>NULLABLE</td>
+<td>Lot price.</td>
+</tr>
+<tr>
+<td>interment_fee</td>
+<td>NUMERIC</td>
+<td>12,2</td>
+<td>NULLABLE</td>
+<td>Interment fee.</td>
+</tr>
+<tr>
+<td>certification_fee</td>
+<td>NUMERIC</td>
+<td>12,2</td>
+<td>NULLABLE</td>
+<td>Certification fee.</td>
+</tr>
+<tr>
+<td>burial_permit_fee</td>
+<td>NUMERIC</td>
+<td>12,2</td>
+<td>NULLABLE</td>
+<td>Burial permit fee.</td>
+</tr>
+<tr>
+<td>total_amount</td>
+<td>NUMERIC</td>
+<td>12,2</td>
+<td>NULLABLE</td>
+<td>Total amount due or paid.</td>
+</tr>
+<tr>
+<td>or_number</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Official receipt number.</td>
+</tr>
+<tr>
+<td>receipt_amount</td>
+<td>NUMERIC</td>
+<td>12,2</td>
+<td>NULLABLE</td>
+<td>Amount shown on receipt.</td>
+</tr>
+<tr>
+<td>receipt_date</td>
+<td>DATE</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Receipt date.</td>
+</tr>
+<tr>
+<td>approved_date</td>
+<td>DATE</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Date the application or record was approved.</td>
+</tr>
+<tr>
+<td>approved_by_name</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Name of approving staff.</td>
+</tr>
+<tr>
+<td>approval_signature</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Stored approval signature or signature reference.</td>
+</tr>
+</tbody>
+</table>
+<h3>Table 2. Cemetery Lot</h3>
+<p>The <code>cemetery_lot</code> table stores each mapped cemetery lot. In the updated model, lots are grouped by <code>block_number</code> instead of cemetery sections. QGIS import fields such as <code>qgis_feature_id</code>, <code>polygon_geo</code>, and coordinate values allow the visitor and admin map screens to show lot shapes, labels, and selectable locations.</p>
+<table>
+<thead>
+<tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length/Precision</th>
+<th>Constraint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>lot_id</td>
+<td>INT</td>
+<td>32</td>
+<td>PK, AUTO INCREMENT, NOT NULL</td>
+<td>Unique identifier of the cemetery lot.</td>
+</tr>
+<tr>
+<td>lot_number</td>
+<td>VARCHAR</td>
+<td>50</td>
+<td>NOT NULL</td>
+<td>Lot number or lot identifier.</td>
+</tr>
+<tr>
+<td>section_id</td>
+<td>INT</td>
+<td>32</td>
+<td>LEGACY FK, NULLABLE</td>
+<td>Old reference to <code>section.section_id</code>; retained only until the section model is removed.</td>
+</tr>
+<tr>
+<td>status</td>
+<td>VARCHAR</td>
+<td>20</td>
+<td>NULLABLE</td>
+<td>Lot status such as available, occupied, reserved, or unavailable.</td>
+</tr>
+<tr>
+<td>price</td>
+<td>NUMERIC</td>
+<td>10,2</td>
+<td>NOT NULL</td>
+<td>Price of the lot.</td>
+</tr>
+<tr>
+<td>x_coord</td>
+<td>DOUBLE PRECISION</td>
+<td>-</td>
+<td>NOT NULL</td>
+<td>Longitude or map X coordinate from the QGIS lot mapping.</td>
+</tr>
+<tr>
+<td>y_coord</td>
+<td>DOUBLE PRECISION</td>
+<td>-</td>
+<td>NOT NULL</td>
+<td>Latitude or map Y coordinate from the QGIS lot mapping.</td>
+</tr>
+<tr>
+<td>block_number</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Current block grouping for the lot. This replaces section-based grouping in the app.</td>
+</tr>
+<tr>
+<td>lot_class_type</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Lot class or category imported from QGIS.</td>
+</tr>
+<tr>
+<td>lot_label</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Human-readable lot label shown on forms and map cards.</td>
+</tr>
+<tr>
+<td>qgis_feature_id</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Original QGIS feature identifier for traceability.</td>
+</tr>
+<tr>
+<td>polygon_geo</td>
+<td>JSONB</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>GeoJSON polygon or geometry data used to draw the lot on the map.</td>
+</tr>
+</tbody>
+</table>
+<h3>Table 3. Graves</h3>
+<p>The <code>graves</code> table stores individual grave slots inside a cemetery lot. This supports lots that contain multiple graves. Visitor map cards use this table to let visitors choose the exact grave to navigate to after tapping a lot.</p>
+<table>
+<thead>
+<tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length/Precision</th>
+<th>Constraint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>grave_id</td>
+<td>BIGINT</td>
+<td>64</td>
+<td>PK, NOT NULL</td>
+<td>Unique identifier of the grave slot.</td>
+</tr>
+<tr>
+<td>lot_id</td>
+<td>INT</td>
+<td>32</td>
+<td>FK, NOT NULL</td>
+<td>References <code>cemetery_lot.lot_id</code>.</td>
+</tr>
+<tr>
+<td>grave_label</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NOT NULL</td>
+<td>Grave label, number, or position within the lot.</td>
+</tr>
+<tr>
+<td>status</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NOT NULL</td>
+<td>Grave status such as available, occupied, reserved, or unavailable.</td>
+</tr>
+<tr>
+<td>burial_id</td>
+<td>INT</td>
+<td>32</td>
+<td>FK, NULLABLE</td>
+<td>References <code>burial_record.burial_id</code> when the grave is occupied by a burial record.</td>
+</tr>
+<tr>
+<td>notes</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Administrative notes for the grave.</td>
+</tr>
+<tr>
+<td>created_at</td>
+<td>TIMESTAMPTZ</td>
+<td>-</td>
+<td>NOT NULL</td>
+<td>Date and time the grave row was created.</td>
+</tr>
+<tr>
+<td>updated_at</td>
+<td>TIMESTAMPTZ</td>
+<td>-</td>
+<td>NOT NULL</td>
+<td>Date and time the grave row was last updated.</td>
+</tr>
+</tbody>
+</table>
+<h3>Table 4. Burial Record</h3>
+<p>The <code>burial_record</code> table stores deceased-person and interment details. It supports visitor grave search, QR-based visitor logging, admin burial management, and the visitor map route flow. A burial can be linked to a lot directly through <code>lot_id</code> and, when available, to a specific grave through <code>graves.burial_id</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length/Precision</th>
+<th>Constraint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>burial_id</td>
+<td>INT</td>
+<td>32</td>
+<td>PK, AUTO INCREMENT, NOT NULL</td>
+<td>Unique identifier of the burial record.</td>
+</tr>
+<tr>
+<td>name_of_deceased</td>
+<td>VARCHAR</td>
+<td>100</td>
+<td>NOT NULL</td>
+<td>Full name of the deceased person.</td>
+</tr>
+<tr>
+<td>birth_date</td>
+<td>DATE</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Birth date of the deceased.</td>
+</tr>
+<tr>
+<td>death_date</td>
+<td>DATE</td>
+<td>-</td>
+<td>NOT NULL</td>
+<td>Date of death.</td>
+</tr>
+<tr>
+<td>burial_date</td>
+<td>DATE</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Date of burial.</td>
+</tr>
+<tr>
+<td>lot_id</td>
+<td>INT</td>
+<td>32</td>
+<td>FK, NULLABLE</td>
+<td>References <code>cemetery_lot.lot_id</code>.</td>
+</tr>
+<tr>
+<td>application_date</td>
+<td>DATE</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Date the burial or interment application was filed.</td>
+</tr>
+<tr>
+<td>informant_id</td>
+<td>BIGINT</td>
+<td>64</td>
+<td>FK, NULLABLE</td>
+<td>References <code>burial_informants.informant_id</code>.</td>
+</tr>
+<tr>
+<td>religion</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Religion of the deceased.</td>
+</tr>
+<tr>
+<td>interment_date</td>
+<td>DATE</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Scheduled or actual interment date.</td>
+</tr>
+<tr>
+<td>interment_time</td>
+<td>TIME</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Scheduled or actual interment time.</td>
+</tr>
+<tr>
+<td>burial_category</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Burial category or service type.</td>
+</tr>
+<tr>
+<td>bldg_no</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Building number, if applicable.</td>
+</tr>
+<tr>
+<td>niche_no</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Niche number, if applicable.</td>
+</tr>
+<tr>
+<td>level</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Level or layer reference, if applicable.</td>
+</tr>
+<tr>
+<td>lot_location_no</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Lot or location number shown in records and search results.</td>
+</tr>
+<tr>
+<td>registered_lot_owner</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Registered lot owner name.</td>
+</tr>
+<tr>
+<td>registered_owner_contact_no</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Registered lot owner contact number.</td>
+</tr>
+<tr>
+<td>interment_or_number</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Official receipt number for interment payment.</td>
+</tr>
+<tr>
+<td>interment_total</td>
+<td>NUMERIC</td>
+<td>12,2</td>
+<td>NULLABLE</td>
+<td>Total interment amount.</td>
+</tr>
+<tr>
+<td>interment_payment_date</td>
+<td>DATE</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Interment payment date.</td>
+</tr>
+<tr>
+<td>death_certificate_submitted</td>
+<td>BOOLEAN</td>
+<td>-</td>
+<td>NOT NULL</td>
+<td>Indicates whether the death certificate was submitted.</td>
+</tr>
+<tr>
+<td>ownership_certificate_submitted</td>
+<td>BOOLEAN</td>
+<td>-</td>
+<td>NOT NULL</td>
+<td>Indicates whether the ownership certificate was submitted.</td>
+</tr>
+<tr>
+<td>authority_document_submitted</td>
+<td>BOOLEAN</td>
+<td>-</td>
+<td>NOT NULL</td>
+<td>Indicates whether the authority document was submitted.</td>
+</tr>
+</tbody>
+</table>
+<h3>Table 5. Burial Informants</h3>
+<p>The <code>burial_informants</code> table stores the informant or applicant details connected to a burial record. It helps the admin keep supporting information for interment applications.</p>
+<table>
+<thead>
+<tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length/Precision</th>
+<th>Constraint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>informant_id</td>
+<td>BIGINT</td>
+<td>64</td>
+<td>PK, AUTO INCREMENT, NOT NULL</td>
+<td>Unique identifier of the informant.</td>
+</tr>
+<tr>
+<td>full_name</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NOT NULL</td>
+<td>Full name of the informant.</td>
+</tr>
+<tr>
+<td>relationship_to_deceased</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Relationship of informant to the deceased.</td>
+</tr>
+<tr>
+<td>address</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Informant address.</td>
+</tr>
+<tr>
+<td>work</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Informant work or occupation.</td>
+</tr>
+<tr>
+<td>cellphone_no</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Informant cellphone number.</td>
+</tr>
+<tr>
+<td>id_presented</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Type of ID presented.</td>
+</tr>
+<tr>
+<td>id_number</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>ID number.</td>
+</tr>
+<tr>
+<td>place_issued</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Place where the ID was issued.</td>
+</tr>
+<tr>
+<td>created_at</td>
+<td>TIMESTAMPTZ</td>
+<td>-</td>
+<td>NOT NULL</td>
+<td>Date and time the informant record was created.</td>
+</tr>
+<tr>
+<td>updated_at</td>
+<td>TIMESTAMPTZ</td>
+<td>-</td>
+<td>NOT NULL</td>
+<td>Date and time the informant record was last updated.</td>
+</tr>
+</tbody>
+</table>
+<h3>Table 6. Lot Ownership</h3>
+<p>The <code>lot_ownership</code> table connects a lot owner account to a cemetery lot. It supports ownership verification, installment monitoring, lot-owner dashboards, payment requests, and transaction history.</p>
+<table>
+<thead>
+<tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length/Precision</th>
+<th>Constraint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ownership_id</td>
+<td>INT</td>
+<td>32</td>
+<td>PK, AUTO INCREMENT, NOT NULL</td>
+<td>Unique identifier of the ownership record.</td>
+</tr>
+<tr>
+<td>lot_id</td>
+<td>INT</td>
+<td>32</td>
+<td>FK, UNIQUE, NULLABLE</td>
+<td>References <code>cemetery_lot.lot_id</code>.</td>
+</tr>
+<tr>
+<td>user_id</td>
+<td>UUID</td>
+<td>16</td>
+<td>FK, NULLABLE</td>
+<td>References <code>users.user_id</code>.</td>
+</tr>
+<tr>
+<td>total_months</td>
+<td>INT</td>
+<td>32</td>
+<td>NOT NULL</td>
+<td>Total installment months.</td>
+</tr>
+<tr>
+<td>months_paid</td>
+<td>INT</td>
+<td>32</td>
+<td>NULLABLE</td>
+<td>Number of months already paid.</td>
+</tr>
+<tr>
+<td>start_date</td>
+<td>DATE</td>
+<td>-</td>
+<td>NOT NULL</td>
+<td>Start date of ownership or installment term.</td>
+</tr>
+<tr>
+<td>status</td>
+<td>VARCHAR</td>
+<td>20</td>
+<td>NULLABLE</td>
+<td>Ownership or payment status.</td>
+</tr>
+</tbody>
+</table>
+<h3>Table 7. Transaction History</h3>
+<p>The <code>transaction_history</code> table stores recorded payments connected to lot ownership. It is used for viewing paid records and payment summaries.</p>
+<table>
+<thead>
+<tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length/Precision</th>
+<th>Constraint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>transaction_id</td>
+<td>INT</td>
+<td>32</td>
+<td>PK, AUTO INCREMENT, NOT NULL</td>
+<td>Unique identifier of the transaction.</td>
+</tr>
+<tr>
+<td>ownership_id</td>
+<td>INT</td>
+<td>32</td>
+<td>FK, NULLABLE</td>
+<td>References <code>lot_ownership.ownership_id</code>.</td>
+</tr>
+<tr>
+<td>amount</td>
+<td>NUMERIC</td>
+<td>10,2</td>
+<td>NOT NULL</td>
+<td>Amount paid.</td>
+</tr>
+<tr>
+<td>payment_date</td>
+<td>DATE</td>
+<td>-</td>
+<td>NOT NULL</td>
+<td>Date of payment.</td>
+</tr>
+<tr>
+<td>notes</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Notes about the transaction.</td>
+</tr>
+</tbody>
+</table>
+<h3>Table 8. Payment Requests</h3>
+<p>The <code>payment_requests</code> table stores payment requests and collection tracking records for lot ownership. Administrators can use it to monitor requested payments, receipts, and request status.</p>
+<table>
+<thead>
+<tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length/Precision</th>
+<th>Constraint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>request_id</td>
+<td>INT</td>
+<td>32</td>
+<td>PK, AUTO INCREMENT, NOT NULL</td>
+<td>Unique identifier of the payment request.</td>
+</tr>
+<tr>
+<td>ownership_id</td>
+<td>INT</td>
+<td>32</td>
+<td>FK, NULLABLE</td>
+<td>References <code>lot_ownership.ownership_id</code>.</td>
+</tr>
+<tr>
+<td>amount</td>
+<td>NUMERIC</td>
+<td>10,2</td>
+<td>NOT NULL</td>
+<td>Requested or expected payment amount.</td>
+</tr>
+<tr>
+<td>payment_date</td>
+<td>DATE</td>
+<td>-</td>
+<td>NOT NULL</td>
+<td>Requested or target payment date.</td>
+</tr>
+<tr>
+<td>receipt_url</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>URL or storage path of the receipt.</td>
+</tr>
+<tr>
+<td>notes</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>User or request notes.</td>
+</tr>
+<tr>
+<td>status</td>
+<td>VARCHAR</td>
+<td>20</td>
+<td>NULLABLE</td>
+<td>Request status such as pending, paid, approved, or rejected.</td>
+</tr>
+<tr>
+<td>admin_notes</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Internal administrator notes.</td>
+</tr>
+<tr>
+<td>created_at</td>
+<td>TIMESTAMP</td>
+<td>-</td>
+<td>DEFAULT CURRENT_TIMESTAMP</td>
+<td>Date and time the request was created.</td>
+</tr>
+<tr>
+<td>updated_at</td>
+<td>TIMESTAMP</td>
+<td>-</td>
+<td>DEFAULT CURRENT_TIMESTAMP</td>
+<td>Date and time the request was last updated.</td>
+</tr>
+</tbody>
+</table>
+<h3>Table 9. Visitor Log</h3>
+<p>The <code>visitor_log</code> table stores cemetery visit entries. It supports QR and manual check-in flows by recording the user, the burial being visited, check-in time, and logging method.</p>
+<table>
+<thead>
+<tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length/Precision</th>
+<th>Constraint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>log_id</td>
+<td>INT</td>
+<td>32</td>
+<td>PK, AUTO INCREMENT, NOT NULL</td>
+<td>Unique identifier of the visitor log entry.</td>
+</tr>
+<tr>
+<td>burial_id</td>
+<td>INT</td>
+<td>32</td>
+<td>FK, NULLABLE</td>
+<td>References <code>burial_record.burial_id</code>.</td>
+</tr>
+<tr>
+<td>user_id</td>
+<td>UUID</td>
+<td>16</td>
+<td>FK, NULLABLE</td>
+<td>References <code>users.user_id</code>.</td>
+</tr>
+<tr>
+<td>time_in</td>
+<td>TIMESTAMP</td>
+<td>-</td>
+<td>DEFAULT CURRENT_TIMESTAMP</td>
+<td>Time when the visitor checked in.</td>
+</tr>
+<tr>
+<td>method</td>
+<td>VARCHAR</td>
+<td>20</td>
+<td>NULLABLE</td>
+<td>Check-in method such as QR or manual.</td>
+</tr>
+</tbody>
+</table>
+<h3>Table 10. Report</h3>
+<p>The <code>report</code> table stores generated report metadata. It supports admin reporting such as burial summaries, visitor logs, lot availability, transaction history, and activity monitoring.</p>
+<table>
+<thead>
+<tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length/Precision</th>
+<th>Constraint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>report_id</td>
+<td>INT</td>
+<td>32</td>
+<td>PK, AUTO INCREMENT, NOT NULL</td>
+<td>Unique identifier of the generated report.</td>
+</tr>
+<tr>
+<td>report_type</td>
+<td>VARCHAR</td>
+<td>50</td>
+<td>NOT NULL</td>
+<td>Type of report generated.</td>
+</tr>
+<tr>
+<td>description</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Summary or description of the report.</td>
+</tr>
+<tr>
+<td>generated_date</td>
+<td>DATE</td>
+<td>-</td>
+<td>NOT NULL</td>
+<td>Date the report was generated.</td>
+</tr>
+<tr>
+<td>generated_by</td>
+<td>UUID</td>
+<td>16</td>
+<td>FK, NULLABLE</td>
+<td>References <code>users.user_id</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3>Table 11. Audit Log</h3>
+<p>The <code>audit_log</code> table tracks system actions for monitoring, accountability, and troubleshooting. It is directly connected to <code>users</code> through <code>user_id</code>; <code>entity_type</code> and <code>entity_id</code> are polymorphic references that identify the affected record at the application level.</p>
+<table>
+<thead>
+<tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length/Precision</th>
+<th>Constraint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>log_id</td>
+<td>INT</td>
+<td>32</td>
+<td>PK, AUTO INCREMENT, NOT NULL</td>
+<td>Unique identifier of the audit entry.</td>
+</tr>
+<tr>
+<td>user_id</td>
+<td>UUID</td>
+<td>16</td>
+<td>FK, NULLABLE</td>
+<td>References <code>users.user_id</code>.</td>
+</tr>
+<tr>
+<td>user_email</td>
+<td>VARCHAR</td>
+<td>100</td>
+<td>NULLABLE</td>
+<td>Email of the acting user at the time of the action.</td>
+</tr>
+<tr>
+<td>user_role</td>
+<td>VARCHAR</td>
+<td>20</td>
+<td>NULLABLE</td>
+<td>Role of the acting user at the time of the action.</td>
+</tr>
+<tr>
+<td>action</td>
+<td>VARCHAR</td>
+<td>50</td>
+<td>NOT NULL</td>
+<td>Action performed, such as INSERT, UPDATE, DELETE, LOGIN, or LOGOUT.</td>
+</tr>
+<tr>
+<td>entity_type</td>
+<td>VARCHAR</td>
+<td>50</td>
+<td>NULLABLE</td>
+<td>Table, module, or entity affected by the action.</td>
+</tr>
+<tr>
+<td>entity_id</td>
+<td>VARCHAR</td>
+<td>50</td>
+<td>NULLABLE</td>
+<td>Identifier of the affected record.</td>
+</tr>
+<tr>
+<td>details</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>JSON or text details of the action.</td>
+</tr>
+<tr>
+<td>ip_address</td>
+<td>VARCHAR</td>
+<td>50</td>
+<td>NULLABLE</td>
+<td>IP address of the acting user, when available.</td>
+</tr>
+<tr>
+<td>created_at</td>
+<td>TIMESTAMP</td>
+<td>-</td>
+<td>DEFAULT CURRENT_TIMESTAMP</td>
+<td>Date and time of the audit entry.</td>
+</tr>
+</tbody>
+</table>
+<h3>Table 12. Cemetery Map</h3>
+<p>The <code>cemetery_map</code> table stores map configuration metadata. It provides the spatial reference used by the GIS map, including map image settings, real-world dimensions, entrance position, and geographic map bounds.</p>
+<table>
+<thead>
+<tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length/Precision</th>
+<th>Constraint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>map_id</td>
+<td>INT</td>
+<td>32</td>
+<td>PK, AUTO INCREMENT, NOT NULL</td>
+<td>Unique identifier of the map configuration.</td>
+</tr>
+<tr>
+<td>map_image_url</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NOT NULL</td>
+<td>URL or path of the cemetery map image.</td>
+</tr>
+<tr>
+<td>map_width_meters</td>
+<td>NUMERIC</td>
+<td>10,2</td>
+<td>NOT NULL</td>
+<td>Real-world width of the map in meters.</td>
+</tr>
+<tr>
+<td>map_height_meters</td>
+<td>NUMERIC</td>
+<td>10,2</td>
+<td>NOT NULL</td>
+<td>Real-world height of the map in meters.</td>
+</tr>
+<tr>
+<td>uploaded_at</td>
+<td>TIMESTAMP</td>
+<td>-</td>
+<td>DEFAULT CURRENT_TIMESTAMP</td>
+<td>Date and time the map was uploaded or configured.</td>
+</tr>
+<tr>
+<td>entrance_x_percent</td>
+<td>NUMERIC</td>
+<td>5,2</td>
+<td>NULLABLE</td>
+<td>Main entrance X coordinate as a percentage.</td>
+</tr>
+<tr>
+<td>entrance_y_percent</td>
+<td>NUMERIC</td>
+<td>5,2</td>
+<td>NULLABLE</td>
+<td>Main entrance Y coordinate as a percentage.</td>
+</tr>
+<tr>
+<td>center_lat</td>
+<td>DOUBLE PRECISION</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Latitude of the map center.</td>
+</tr>
+<tr>
+<td>center_lng</td>
+<td>DOUBLE PRECISION</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Longitude of the map center.</td>
+</tr>
+<tr>
+<td>lat_span</td>
+<td>DOUBLE PRECISION</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Latitude span used to calculate map bounds.</td>
+</tr>
+<tr>
+<td>lng_span</td>
+<td>DOUBLE PRECISION</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Longitude span used to calculate map bounds.</td>
+</tr>
+</tbody>
+</table>
+<h3>Table 13. Cemetery Map Features</h3>
+<p>The <code>cemetery_map_features</code> table stores QGIS-imported map features such as base map line art, boundaries, blocks, entrances, and pathways. Visitor map preview should show only non-pathway display features; pathway features are kept for navigation and route calculation when a visitor starts routing.</p>
+<table>
+<thead>
+<tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length/Precision</th>
+<th>Constraint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>feature_id</td>
+<td>BIGINT</td>
+<td>64</td>
+<td>PK, AUTO INCREMENT, NOT NULL</td>
+<td>Unique identifier of the map feature.</td>
+</tr>
+<tr>
+<td>feature_type</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NOT NULL</td>
+<td>Feature category such as map_layer, boundary, block, pathway, entrance, or other.</td>
+</tr>
+<tr>
+<td>feature_name</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Display name of the feature.</td>
+</tr>
+<tr>
+<td>geometry_wkt</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NOT NULL</td>
+<td>WKT geometry imported from QGIS.</td>
+</tr>
+<tr>
+<td>stroke_color</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Stroke or line color used for rendering.</td>
+</tr>
+<tr>
+<td>fill_color</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Fill color used for polygons.</td>
+</tr>
+<tr>
+<td>stroke_width</td>
+<td>NUMERIC</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Stroke width used for map rendering.</td>
+</tr>
+<tr>
+<td>sort_order</td>
+<td>INT</td>
+<td>32</td>
+<td>NOT NULL</td>
+<td>Drawing order of the feature.</td>
+</tr>
+<tr>
+<td>is_visible</td>
+<td>BOOLEAN</td>
+<td>-</td>
+<td>NOT NULL</td>
+<td>Whether the feature is generally enabled for display.</td>
+</tr>
+<tr>
+<td>source_feature_id</td>
+<td>TEXT</td>
+<td>-</td>
+<td>NULLABLE</td>
+<td>Original QGIS feature identifier.</td>
+</tr>
+<tr>
+<td>created_at</td>
+<td>TIMESTAMPTZ</td>
+<td>-</td>
+<td>NOT NULL</td>
+<td>Date and time the feature was imported.</td>
+</tr>
+</tbody>
+</table>
+<h3>Table 14. Lot Markers</h3>
+<p>The <code>lot_markers</code> table stores percentage-based marker coordinates for cemetery lots. These markers support clickable map behavior, lot selection, and navigation target positioning.</p>
+<table>
+<thead>
+<tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length/Precision</th>
+<th>Constraint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>marker_id</td>
+<td>INT</td>
+<td>32</td>
+<td>PK, AUTO INCREMENT, NOT NULL</td>
+<td>Unique identifier of the marker.</td>
+</tr>
+<tr>
+<td>lot_id</td>
+<td>INT</td>
+<td>32</td>
+<td>FK, NULLABLE</td>
+<td>References <code>cemetery_lot.lot_id</code>.</td>
+</tr>
+<tr>
+<td>x_percent</td>
+<td>NUMERIC</td>
+<td>5,2</td>
+<td>NOT NULL</td>
+<td>X position on the map as a percentage.</td>
+</tr>
+<tr>
+<td>y_percent</td>
+<td>NUMERIC</td>
+<td>5,2</td>
+<td>NOT NULL</td>
+<td>Y position on the map as a percentage.</td>
+</tr>
+<tr>
+<td>created_at</td>
+<td>TIMESTAMP</td>
+<td>-</td>
+<td>DEFAULT CURRENT_TIMESTAMP</td>
+<td>Date and time the marker was created.</td>
+</tr>
+</tbody>
+</table>
+<h3>Table 15. Path Nodes</h3>
+<p>The <code>path_nodes</code> table stores graph nodes used by the navigation system. These nodes are used internally by Dijkstra pathfinding and should not be shown as always-visible visitor map preview features.</p>
+<table>
+<thead>
+<tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length/Precision</th>
+<th>Constraint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>node_id</td>
+<td>INT</td>
+<td>32</td>
+<td>PK, AUTO INCREMENT, NOT NULL</td>
+<td>Unique identifier of the path node.</td>
+</tr>
+<tr>
+<td>x_percent</td>
+<td>NUMERIC</td>
+<td>5,2</td>
+<td>NOT NULL</td>
+<td>X position on the map as a percentage.</td>
+</tr>
+<tr>
+<td>y_percent</td>
+<td>NUMERIC</td>
+<td>5,2</td>
+<td>NOT NULL</td>
+<td>Y position on the map as a percentage.</td>
+</tr>
+<tr>
+<td>node_type</td>
+<td>VARCHAR</td>
+<td>20</td>
+<td>NULLABLE</td>
+<td>Node type such as normal, entrance, exit, or landmark.</td>
+</tr>
+<tr>
+<td>created_at</td>
+<td>TIMESTAMP</td>
+<td>-</td>
+<td>DEFAULT CURRENT_TIMESTAMP</td>
+<td>Date and time the node was created.</td>
+</tr>
+</tbody>
+</table>
+<h3>Table 16. Path Edges</h3>
+<p>The <code>path_edges</code> table stores graph connections between path nodes. It provides the weighted edges needed by Dijkstra&#39;s shortest path algorithm.</p>
+<table>
+<thead>
+<tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length/Precision</th>
+<th>Constraint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>edge_id</td>
+<td>INT</td>
+<td>32</td>
+<td>PK, AUTO INCREMENT, NOT NULL</td>
+<td>Unique identifier of the path edge.</td>
+</tr>
+<tr>
+<td>from_node_id</td>
+<td>INT</td>
+<td>32</td>
+<td>FK, NULLABLE</td>
+<td>Starting node, references <code>path_nodes.node_id</code>.</td>
+</tr>
+<tr>
+<td>to_node_id</td>
+<td>INT</td>
+<td>32</td>
+<td>FK, NULLABLE</td>
+<td>Ending node, references <code>path_nodes.node_id</code>.</td>
+</tr>
+<tr>
+<td>distance_meters</td>
+<td>NUMERIC</td>
+<td>10,2</td>
+<td>NULLABLE</td>
+<td>Real-world distance between the two nodes.</td>
+</tr>
+<tr>
+<td>created_at</td>
+<td>TIMESTAMP</td>
+<td>-</td>
+<td>DEFAULT CURRENT_TIMESTAMP</td>
+<td>Date and time the edge was created.</td>
+</tr>
+</tbody>
+</table>
+<h2>Import and Staging Tables</h2>
+<h3>Table 17. Lot Import Staging</h3>
+<p>The <code>lot_import_staging</code> table temporarily stores QGIS lot CSV data before it is imported into <code>cemetery_lot</code> and <code>lot_markers</code>. It is not a runtime app table, but it should be kept while QGIS imports are still being used.</p>
+<table>
+<thead>
+<tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>qgis_feature_id</td>
+<td>TEXT</td>
+<td>QGIS feature identifier.</td>
+</tr>
+<tr>
+<td>block_number</td>
+<td>TEXT</td>
+<td>Block number imported from QGIS.</td>
+</tr>
+<tr>
+<td>lot_number</td>
+<td>TEXT</td>
+<td>Lot number imported from QGIS.</td>
+</tr>
+<tr>
+<td>lot_label</td>
+<td>TEXT</td>
+<td>Display label imported from QGIS.</td>
+</tr>
+<tr>
+<td>lot_class_type</td>
+<td>TEXT</td>
+<td>Lot class or type.</td>
+</tr>
+<tr>
+<td>price</td>
+<td>NUMERIC</td>
+<td>Lot price from import file.</td>
+</tr>
+<tr>
+<td>status</td>
+<td>TEXT</td>
+<td>Lot status from import file.</td>
+</tr>
+<tr>
+<td>lon</td>
+<td>DOUBLE PRECISION</td>
+<td>Longitude value.</td>
+</tr>
+<tr>
+<td>lat</td>
+<td>DOUBLE PRECISION</td>
+<td>Latitude value.</td>
+</tr>
+<tr>
+<td>polygon_geo</td>
+<td>JSONB</td>
+<td>Lot polygon geometry.</td>
+</tr>
+<tr>
+<td>fid</td>
+<td>TEXT</td>
+<td>Alternative feature ID from QGIS.</td>
+</tr>
+<tr>
+<td>xcoord</td>
+<td>TEXT</td>
+<td>Alternative X coordinate field.</td>
+</tr>
+<tr>
+<td>ycoord</td>
+<td>TEXT</td>
+<td>Alternative Y coordinate field.</td>
+</tr>
+<tr>
+<td>x</td>
+<td>TEXT</td>
+<td>Alternative X field.</td>
+</tr>
+<tr>
+<td>y</td>
+<td>TEXT</td>
+<td>Alternative Y field.</td>
+</tr>
+</tbody>
+</table>
+<h3>Table 18. Map Feature Import Staging</h3>
+<p>The <code>map_feature_import_staging</code> table temporarily stores QGIS WKT feature exports before they are imported into <code>cemetery_map_features</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>feature_type</td>
+<td>TEXT</td>
+<td>Feature type from QGIS or import file.</td>
+</tr>
+<tr>
+<td>feature_name</td>
+<td>TEXT</td>
+<td>Feature display name.</td>
+</tr>
+<tr>
+<td>name</td>
+<td>TEXT</td>
+<td>Alternative feature name column.</td>
+</tr>
+<tr>
+<td>block_number</td>
+<td>TEXT</td>
+<td>Block value, if the feature represents a block.</td>
+</tr>
+<tr>
+<td>fid</td>
+<td>TEXT</td>
+<td>Alternative feature ID from QGIS.</td>
+</tr>
+<tr>
+<td>qgis_feature_id</td>
+<td>TEXT</td>
+<td>QGIS feature identifier.</td>
+</tr>
+<tr>
+<td>geometry_wkt</td>
+<td>TEXT</td>
+<td>WKT geometry.</td>
+</tr>
+<tr>
+<td>wkt</td>
+<td>TEXT</td>
+<td>Alternative WKT column.</td>
+</tr>
+<tr>
+<td>stroke_color</td>
+<td>TEXT</td>
+<td>Stroke color for rendering.</td>
+</tr>
+<tr>
+<td>fill_color</td>
+<td>TEXT</td>
+<td>Fill color for rendering.</td>
+</tr>
+<tr>
+<td>stroke_width</td>
+<td>NUMERIC</td>
+<td>Stroke width for rendering.</td>
+</tr>
+<tr>
+<td>sort_order</td>
+<td>INT</td>
+<td>Drawing order.</td>
+</tr>
+<tr>
+<td>is_visible</td>
+<td>BOOLEAN</td>
+<td>Whether the feature should be visible after import.</td>
+</tr>
+</tbody>
+</table>
+<h2>Legacy or Optional Tables Still Present in the Database</h2>
+<p>These tables still exist in the current database output, but they do not represent the intended new block-based model.</p>
+<h3>Table 19. Cemetery Branch</h3>
+<p>The <code>cemetery_branch</code> table is part of the old branch and section design. The new app flow uses one cemetery map configuration through <code>cemetery_map</code> and groups lots by <code>cemetery_lot.block_number</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Constraint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>branch_id</td>
+<td>INT</td>
+<td>PK, AUTO INCREMENT, NOT NULL</td>
+<td>Legacy branch identifier.</td>
+</tr>
+<tr>
+<td>name</td>
+<td>VARCHAR(100)</td>
+<td>NOT NULL</td>
+<td>Legacy cemetery branch name.</td>
+</tr>
+<tr>
+<td>map_image</td>
+<td>TEXT</td>
+<td>NOT NULL</td>
+<td>Legacy map image reference.</td>
+</tr>
+<tr>
+<td>entrances</td>
+<td>JSONB</td>
+<td>NULLABLE</td>
+<td>Legacy entrance coordinates.</td>
+</tr>
+<tr>
+<td>exits</td>
+<td>JSONB</td>
+<td>NULLABLE</td>
+<td>Legacy exit coordinates.</td>
+</tr>
+</tbody>
+</table>
+<h3>Table 20. Section</h3>
+<p>The <code>section</code> table is part of the old cemetery section model. The current app model replaces sections with blocks stored in <code>cemetery_lot.block_number</code>. This table remains only because <code>cemetery_lot.section_id</code> still has a database-level foreign key.</p>
+<table>
+<thead>
+<tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Constraint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>section_id</td>
+<td>INT</td>
+<td>PK, AUTO INCREMENT, NOT NULL</td>
+<td>Legacy section identifier.</td>
+</tr>
+<tr>
+<td>name</td>
+<td>VARCHAR(50)</td>
+<td>NOT NULL</td>
+<td>Legacy section name.</td>
+</tr>
+<tr>
+<td>coordinates</td>
+<td>JSONB</td>
+<td>NOT NULL</td>
+<td>Legacy section polygon or coordinate data.</td>
+</tr>
+<tr>
+<td>branch_id</td>
+<td>INT</td>
+<td>FK, NULLABLE</td>
+<td>References <code>cemetery_branch.branch_id</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3>Table 21. Walkways</h3>
+<p>The <code>walkways</code> table stores a simpler polyline-style walkway representation. The current routing implementation uses <code>path_nodes</code>, <code>path_edges</code>, and QGIS <code>cemetery_map_features</code> pathway rows instead.</p>
+<table>
+<thead>
+<tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Constraint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>walkway_id</td>
+<td>INT</td>
+<td>PK, AUTO INCREMENT, NOT NULL</td>
+<td>Unique walkway identifier.</td>
+</tr>
+<tr>
+<td>name</td>
+<td>VARCHAR(100)</td>
+<td>NULLABLE</td>
+<td>Walkway name.</td>
+</tr>
+<tr>
+<td>points</td>
+<td>JSONB</td>
+<td>NOT NULL</td>
+<td>Array of coordinate points.</td>
+</tr>
+<tr>
+<td>width</td>
+<td>NUMERIC(5,2)</td>
+<td>NULLABLE</td>
+<td>Walkway width.</td>
+</tr>
+<tr>
+<td>created_at</td>
+<td>TIMESTAMP</td>
+<td>DEFAULT CURRENT_TIMESTAMP</td>
+<td>Date and time the walkway row was created.</td>
+</tr>
+</tbody>
+</table>
+<h2>Main Relationships</h2>
+<table>
+<thead>
+<tr>
+<th>Relationship</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cemetery_lot.lot_id</code> to <code>graves.lot_id</code></td>
+<td>One lot can contain multiple graves.</td>
+</tr>
+<tr>
+<td><code>graves.burial_id</code> to <code>burial_record.burial_id</code></td>
+<td>A grave can be linked to one burial record.</td>
+</tr>
+<tr>
+<td><code>burial_record.lot_id</code> to <code>cemetery_lot.lot_id</code></td>
+<td>A burial record can also be linked directly to a lot for search and older records.</td>
+</tr>
+<tr>
+<td><code>burial_record.informant_id</code> to <code>burial_informants.informant_id</code></td>
+<td>A burial record can have one informant.</td>
+</tr>
+<tr>
+<td><code>lot_ownership.lot_id</code> to <code>cemetery_lot.lot_id</code></td>
+<td>A lot can have one ownership record.</td>
+</tr>
+<tr>
+<td><code>lot_ownership.user_id</code> to <code>users.user_id</code></td>
+<td>A user can own or be assigned to lot ownership records.</td>
+</tr>
+<tr>
+<td><code>transaction_history.ownership_id</code> to <code>lot_ownership.ownership_id</code></td>
+<td>Ownership records can have payment transaction history.</td>
+</tr>
+<tr>
+<td><code>payment_requests.ownership_id</code> to <code>lot_ownership.ownership_id</code></td>
+<td>Ownership records can have payment requests.</td>
+</tr>
+<tr>
+<td><code>visitor_log.burial_id</code> to <code>burial_record.burial_id</code></td>
+<td>Visitor check-ins can be linked to a burial record.</td>
+</tr>
+<tr>
+<td><code>visitor_log.user_id</code> to <code>users.user_id</code></td>
+<td>Visitor check-ins can be linked to a user account.</td>
+</tr>
+<tr>
+<td><code>audit_log.user_id</code> to <code>users.user_id</code></td>
+<td>Audit entries can be linked to the acting user.</td>
+</tr>
+<tr>
+<td><code>path_edges.from_node_id</code> and <code>path_edges.to_node_id</code> to <code>path_nodes.node_id</code></td>
+<td>Path edges connect navigation nodes for route calculation.</td>
+</tr>
+</tbody>
+</table>
+</body>
+</html>

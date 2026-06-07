@@ -11,24 +11,24 @@ import '../../providers/visitor_nav_providers.dart';
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 class _C {
-  static const background             = Color(0xFFFBF9F6);
-  static const primary                = Color(0xFF335538);
-  static const primaryContainer       = Color(0xFF4B6E4F);
-  static const onPrimaryContainer     = Color(0xFFC7EFC8);
-  static const primaryFixed           = Color(0xFFC5EDC6);
-  static const surfaceContainerLow    = Color(0xFFF5F3F0);
-  static const surfaceContainerHigh   = Color(0xFFEAE8E5);
-  static const surfaceContainerHighest= Color(0xFFE4E2DF);
-  static const surfaceContainer       = Color(0xFFEFEEEB);
-  static const secondaryContainer     = Color(0xFFC7E4F3);
-  static const onSecondaryContainer   = Color(0xFF4B6673);
-  static const tertiaryContainer      = Color(0xFF746356);
-  static const onTertiaryContainer    = Color(0xFFF7E1D0);
-  static const onSurface              = Color(0xFF1B1C1A);
-  static const onSurfaceVariant       = Color(0xFF424841);
-  static const outline                = Color(0xFF727971);
-  static const outlineVariant         = Color(0xFFC2C8BF);
-  static const white                  = Color(0xFFFFFFFF);
+  static const background = Color(0xFFFBF9F6);
+  static const primary = Color(0xFF335538);
+  static const primaryContainer = Color(0xFF4B6E4F);
+  static const onPrimaryContainer = Color(0xFFC7EFC8);
+  static const primaryFixed = Color(0xFFC5EDC6);
+  static const surfaceContainerLow = Color(0xFFF5F3F0);
+  static const surfaceContainerHigh = Color(0xFFEAE8E5);
+  static const surfaceContainerHighest = Color(0xFFE4E2DF);
+  static const surfaceContainer = Color(0xFFEFEEEB);
+  static const secondaryContainer = Color(0xFFC7E4F3);
+  static const onSecondaryContainer = Color(0xFF4B6673);
+  static const tertiaryContainer = Color(0xFF746356);
+  static const onTertiaryContainer = Color(0xFFF7E1D0);
+  static const onSurface = Color(0xFF1B1C1A);
+  static const onSurfaceVariant = Color(0xFF424841);
+  static const outline = Color(0xFF727971);
+  static const outlineVariant = Color(0xFFC2C8BF);
+  static const white = Color(0xFFFFFFFF);
 }
 
 class VisitorHomeScreen extends ConsumerStatefulWidget {
@@ -76,8 +76,9 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
         if (json != null) {
           final List<dynamic> decoded = jsonDecode(json);
           setState(() {
-            _recentSearches =
-                decoded.map((i) => Map<String, dynamic>.from(i)).toList();
+            _recentSearches = decoded
+                .map((i) => Map<String, dynamic>.from(i))
+                .toList();
           });
         }
       }
@@ -101,22 +102,32 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
         'type': searchData['type'] ?? 'deceased',
       };
 
-      _recentSearches.removeWhere((i) =>
-          i['lotNumber'] == newSearch['lotNumber'] ||
-          (i['name'] == newSearch['name'] && i['type'] == newSearch['type']));
+      _recentSearches.removeWhere(
+        (i) =>
+            i['lotNumber'] == newSearch['lotNumber'] ||
+            (i['name'] == newSearch['name'] && i['type'] == newSearch['type']),
+      );
       _recentSearches.insert(0, newSearch);
       if (_recentSearches.length > 10) {
         _recentSearches = _recentSearches.take(10).toList();
       }
       setState(() {});
-      await prefs.setString('recent_searches_$userId', jsonEncode(_recentSearches));
+      await prefs.setString(
+        'recent_searches_$userId',
+        jsonEncode(_recentSearches),
+      );
     } catch (e) {
       debugPrint('Error saving recent search: $e');
     }
   }
 
   String _generateSearchDetails(Map<String, dynamic> d) {
-    if (d['section_name'] != null) return '${d['section_name']} • Lot ${d['lot_number']}';
+    if (d['block_name'] != null && d['block_name'].toString().isNotEmpty) {
+      return '${d['block_name']} - Lot ${d['lot_number']}';
+    }
+    if (d['section_name'] != null) {
+      return '${d['section_name']} - Lot ${d['lot_number']}';
+    }
     if (d['details'] != null) return d['details'];
     return 'Lot ${d['lot_number']}';
   }
@@ -136,7 +147,8 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
               behavior: SnackBarBehavior.floating,
               backgroundColor: _C.primaryContainer,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           );
         }
@@ -147,30 +159,33 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
   }
 
   Future<void> _openSearch() async {
-    final result = await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const VisitorSearchScreen()),
-    );
+    final result = await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const VisitorSearchScreen()));
     if (result != null && result is Map<String, dynamic>) {
       await _addRecentSearch(result);
     }
   }
 
-  void _openQrScreen() => Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const VisitorQrScreen()));
+  void _openQrScreen() => Navigator.of(
+    context,
+  ).push(MaterialPageRoute(builder: (_) => const VisitorQrScreen()));
 
-  void _openHistoryScreen() => Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const VisitorHistoryScreen()));
+  void _openHistoryScreen() => Navigator.of(
+    context,
+  ).push(MaterialPageRoute(builder: (_) => const VisitorHistoryScreen()));
 
-  void _goToMapTab() =>
-      ref.read(visitorNavIndexProvider.notifier).state = 1;
+  void _goToMapTab() => ref.read(visitorNavIndexProvider.notifier).state = 1;
 
   void _navigateToGrave(Map<String, dynamic> search) =>
-      Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => VisitorMapScreen(
-          initialLotId: search['lotId'],
-          initialLotNumber: search['lotNumber'],
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => VisitorMapScreen(
+            initialLotId: search['lotId'],
+            initialLotNumber: search['lotNumber'],
+          ),
         ),
-      ));
+      );
 
   // ── Build ────────────────────────────────────────────────────────────────
   @override
@@ -202,16 +217,18 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_outlined,
-                color: _C.primaryContainer, size: 22),
+            icon: const Icon(
+              Icons.notifications_outlined,
+              color: _C.primaryContainer,
+              size: 22,
+            ),
             onPressed: () {},
           ),
           const SizedBox(width: 8),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Divider(
-              height: 1, thickness: 1, color: Colors.grey.shade100),
+          child: Divider(height: 1, thickness: 1, color: Colors.grey.shade100),
         ),
       ),
       body: SingleChildScrollView(
@@ -249,17 +266,19 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
               onTap: _openSearch,
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 16),
+                  horizontal: 20,
+                  vertical: 16,
+                ),
                 decoration: BoxDecoration(
                   color: _C.surfaceContainerHigh,
                   borderRadius: BorderRadius.circular(40),
-                  border: Border.all(
-                      color: _C.outlineVariant.withOpacity(0.3)),
+                  border: Border.all(color: _C.outlineVariant.withOpacity(0.3)),
                   boxShadow: const [
                     BoxShadow(
-                        color: Color(0x0A000000),
-                        blurRadius: 4,
-                        offset: Offset(0, 2))
+                      color: Color(0x0A000000),
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
                   ],
                 ),
                 child: Row(
@@ -268,7 +287,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                     SizedBox(width: 14),
                     Expanded(
                       child: Text(
-                        'Search deceased name, lot number, or section',
+                        'Search deceased name, lot number, or block',
                         style: TextStyle(
                           fontSize: 14,
                           color: _C.outline,
@@ -307,7 +326,9 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       textStyle: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w500),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     child: const Text('Clear all'),
                   ),
@@ -321,28 +342,31 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                 child: Center(
                   child: Column(
                     children: [
-                      Icon(Icons.history_rounded,
-                          size: 44,
-                          color: _C.outline.withOpacity(0.4)),
+                      Icon(
+                        Icons.history_rounded,
+                        size: 44,
+                        color: _C.outline.withOpacity(0.4),
+                      ),
                       const SizedBox(height: 10),
                       const Text(
                         'No recent searches',
-                        style: TextStyle(
-                            fontSize: 14, color: _C.outline),
+                        style: TextStyle(fontSize: 14, color: _C.outline),
                       ),
                     ],
                   ),
                 ),
               )
             else
-              ...(_recentSearches.map((s) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _buildRecentItem(
-                      name: s['name'],
-                      details: s['details'],
-                      onTap: () => _navigateToGrave(s),
-                    ),
-                  ))),
+              ...(_recentSearches.map(
+                (s) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _buildRecentItem(
+                    name: s['name'],
+                    details: s['details'],
+                    onTap: () => _navigateToGrave(s),
+                  ),
+                ),
+              )),
 
             const SizedBox(height: 32),
           ],
@@ -478,8 +502,11 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                   color: _C.surfaceContainerLow,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.person_outline_rounded,
-                    color: _C.outline, size: 22),
+                child: const Icon(
+                  Icons.person_outline_rounded,
+                  color: _C.outline,
+                  size: 22,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -499,15 +526,15 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                     Text(
                       details,
                       style: const TextStyle(
-                          fontSize: 13,
-                          letterSpacing: 0.25,
-                          color: _C.outline),
+                        fontSize: 13,
+                        letterSpacing: 0.25,
+                        color: _C.outline,
+                      ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.history_rounded,
-                  color: _C.outline, size: 20),
+              const Icon(Icons.history_rounded, color: _C.outline, size: 20),
             ],
           ),
         ),

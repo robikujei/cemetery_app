@@ -48,9 +48,9 @@ Deno.serve(async (req) => {
     );
   }
 
-  if (role !== "visitor" && role !== "lot_owner") {
+  if (role !== "visitor") {
     return Response.json(
-      { error: "Only visitor and lot owner registration is allowed" },
+      { error: "Lot owner accounts must be created by an admin" },
       { status: 400, headers: corsHeaders },
     );
   }
