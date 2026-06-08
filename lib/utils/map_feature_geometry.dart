@@ -16,6 +16,21 @@ bool isMapLayerFeature(Map<String, dynamic> feature) {
   return mapFeatureType(feature) == 'map_layer';
 }
 
+bool isPublicPreviewMapFeature(Map<String, dynamic> feature) {
+  const visiblePreviewTypes = {'map_layer', 'boundary', 'block', 'entrance'};
+  const hiddenPreviewTypes = {
+    'pathway',
+    'path_node',
+    'path_nodes',
+    'pathway_node',
+    'pathway_nodes',
+  };
+
+  final type = mapFeatureType(feature);
+  return visiblePreviewTypes.contains(type) &&
+      !hiddenPreviewTypes.contains(type);
+}
+
 List<Polygon> mapFeaturePolygons(List<Map<String, dynamic>> features) {
   final polygons = <Polygon>[];
   for (final feature in features) {

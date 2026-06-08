@@ -1555,20 +1555,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
   }
 
   List<Map<String, dynamic>> get _visitorVisibleMapFeatures {
-    const hiddenPreviewTypes = {
-      'pathway',
-      'path_node',
-      'path_nodes',
-      'pathway_node',
-      'pathway_nodes',
-    };
-    const visiblePreviewTypes = {'map_layer', 'boundary', 'entrance'};
-
-    return _mapFeatures.where((feature) {
-      final type = mapFeatureType(feature);
-      return !hiddenPreviewTypes.contains(type) &&
-          visiblePreviewTypes.contains(type);
-    }).toList();
+    return _mapFeatures.where(isPublicPreviewMapFeature).toList();
   }
 
   bool get _hasMappedEntrance =>

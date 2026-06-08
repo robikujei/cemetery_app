@@ -1581,8 +1581,13 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
       selectedLotId: selectedLotId,
       includeHitValues: true,
     );
-    final baseMapFeatures = _mapFeatures.where(isMapLayerFeature).toList();
-    final overlayMapFeatures = _mapFeatures
+    final previewMapFeatures = _mapFeatures
+        .where(isPublicPreviewMapFeature)
+        .toList();
+    final baseMapFeatures = previewMapFeatures
+        .where(isMapLayerFeature)
+        .toList();
+    final overlayMapFeatures = previewMapFeatures
         .where((feature) => !isMapLayerFeature(feature))
         .toList();
     final basePolygons = mapFeaturePolygons(baseMapFeatures);
