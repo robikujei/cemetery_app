@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../services/supabase_pagination_service.dart';
 import '../../utils/lot_formatters.dart';
 import 'visitor_qr_with_grave_screen.dart';
 import 'visitor_map_screen.dart';
@@ -68,9 +69,11 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
   Future<void> _loadAllGraves() async {
     setState(() => _isLoading = true);
     try {
-      final allBurials = await Supabase.instance.client
-          .from('burial_record')
-          .select('''
+      final allBurials = await SupabasePaginationService.selectAll(
+        supabase: Supabase.instance.client,
+        table: 'burial_record',
+        orderColumn: 'burial_id',
+        columns: '''
             burial_id,
             name_of_deceased,
             birth_date,
@@ -87,8 +90,14 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
               y_coord,
               status
             )
-          ''')
-          .order('name_of_deceased');
+          ''',
+      );
+      allBurials.sort(
+        (a, b) => (a['name_of_deceased'] ?? '')
+            .toString()
+            .toLowerCase()
+            .compareTo((b['name_of_deceased'] ?? '').toString().toLowerCase()),
+      );
 
       setState(() {
         _allGraves = List<Map<String, dynamic>>.from(allBurials);

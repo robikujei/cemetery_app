@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../services/audit_service.dart';
 import '../../utils/lot_formatters.dart';
+import '../../utils/lot_pricing.dart';
 import '../../widgets/app_date_field.dart';
 
 const _lotOwnerProfileSelect = '''
@@ -84,7 +85,7 @@ String? _choiceOrNull(String? value, List<String> choices) {
 String _purchaseTermValue(String? value) {
   final text = value?.trim().toLowerCase().replaceAll(' ', '_') ?? '';
   if (text == 'at_need') return 'at_need';
-  return 'cash';
+  return 'pre_need';
 }
 
 Map<String, dynamic> _lotOwnerProfilePayload(Map<String, String> result) {
@@ -456,9 +457,6 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
         .update(lotData)
         .eq('lot_id', resolvedLotId);
 
-    final purchaseTerm = result['purchase_term']?.trim() ?? 'cash';
-    final totalMonths = purchaseTerm == 'cash' ? 1 : 24;
-
     final existingForUser = await supabase
         .from('lot_ownership')
         .select('ownership_id')
@@ -470,7 +468,8 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
           .from('lot_ownership')
           .update({
             'lot_id': resolvedLotId,
-            'total_months': totalMonths,
+            'total_months': 1,
+            'months_paid': 1,
             'status': 'Active',
           })
           .eq('ownership_id', existingForUser['ownership_id']);
@@ -494,7 +493,8 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
           .from('lot_ownership')
           .update({
             'user_id': userId,
-            'total_months': totalMonths,
+            'total_months': 1,
+            'months_paid': 1,
             'status': 'Active',
           })
           .eq('ownership_id', existingForLot['ownership_id']);
@@ -504,8 +504,8 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
     await supabase.from('lot_ownership').insert({
       'user_id': userId,
       'lot_id': resolvedLotId,
-      'total_months': totalMonths,
-      'months_paid': 0,
+      'total_months': 1,
+      'months_paid': 1,
       'start_date': DateTime.now().toIso8601String(),
       'status': 'Active',
     });
@@ -1347,7 +1347,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
   String? _civilStatus;
   String? _gender;
   String? _linkedLotId;
-  String _purchaseTerm = 'cash';
+  String _purchaseTerm = 'pre_need';
 
   bool get _isLotOwner => _role == 'lot_owner';
 
@@ -1381,6 +1381,9 @@ class _UserFormDialogState extends State<_UserFormDialog> {
     _numberOfLotsController = _controller(user, 'number_of_lots');
     _lotPriceController = _moneyController(user, 'lot_price');
     _intermentFeeController = _moneyController(user, 'interment_fee');
+    if (_intermentFeeController.text.trim().isEmpty) {
+      _intermentFeeController.text = defaultIntermentFee.toStringAsFixed(2);
+    }
     _certificationFeeController = _moneyController(user, 'certification_fee');
     _burialPermitFeeController = _moneyController(user, 'burial_permit_fee');
     _totalAmountController = _moneyController(user, 'total_amount');
@@ -1827,17 +1830,23 @@ class _UserFormDialogState extends State<_UserFormDialog> {
         ),
       ]),
       const SizedBox(height: 18),
-      const _SectionTitle(icon: Icons.payments_outlined, title: 'Terms'),
+      const _SectionTitle(
+        icon: Icons.payments_outlined,
+        title: 'Purchase Pricing',
+      ),
       const SizedBox(height: 12),
       SegmentedButton<String>(
         segments: const [
-          ButtonSegment(value: 'cash', label: Text('Cash')),
-          ButtonSegment(value: 'at_need', label: Text('At Need')),
+          ButtonSegment(value: 'at_need', label: Text('At-Need')),
+          ButtonSegment(value: 'pre_need', label: Text('Pre-Need')),
         ],
         selected: {_purchaseTerm},
         showSelectedIcon: false,
         onSelectionChanged: (values) {
-          setState(() => _purchaseTerm = values.first);
+          setState(() {
+            _purchaseTerm = values.first;
+            _applyFixedLotPrice();
+          });
         },
       ),
       const SizedBox(height: 18),
@@ -1853,15 +1862,16 @@ class _UserFormDialogState extends State<_UserFormDialog> {
           icon: Icons.payments_outlined,
           keyboardType: TextInputType.number,
           prefixText: 'PHP ',
+          readOnly: true,
           onChanged: (_) => _updateTotalAmount(),
         ),
         _Field(
           controller: _intermentFeeController,
-          label: 'Interment Fee',
+          label: 'Interment Fee (Included)',
           icon: Icons.payments_outlined,
           keyboardType: TextInputType.number,
           prefixText: 'PHP ',
-          onChanged: (_) => _updateTotalAmount(),
+          readOnly: true,
         ),
         _Field(
           controller: _certificationFeeController,
@@ -1963,20 +1973,20 @@ class _UserFormDialogState extends State<_UserFormDialog> {
     final blockNumber = lotText(lot, 'block_number');
     final lotNumber = lotText(lot, 'lot_number');
     final lotClassType = lotText(lot, 'lot_class_type');
-    final price = lot['price'];
 
     if (blockNumber.isNotEmpty) _blockNumberController.text = blockNumber;
     if (lotNumber.isNotEmpty) _lotNumberController.text = lotNumber;
     if (lotClassType.isNotEmpty) _lotClassTypeController.text = lotClassType;
-    if (price != null && _lotPriceController.text.trim().isEmpty) {
-      final numeric = price is num
-          ? price.toDouble()
-          : double.tryParse('$price');
-      if (numeric != null) {
-        _lotPriceController.text = numeric.toStringAsFixed(2);
-        _updateTotalAmount();
-      }
-    }
+    _applyFixedLotPrice();
+  }
+
+  void _applyFixedLotPrice() {
+    final pricing = lotPriceForType(_lotClassTypeController.text);
+    final price = _purchaseTerm == 'at_need'
+        ? pricing?.atNeed
+        : pricing?.preNeed;
+    _lotPriceController.text = price?.toStringAsFixed(2) ?? '';
+    _updateTotalAmount();
   }
 
   Map<String, String> _formResult() {

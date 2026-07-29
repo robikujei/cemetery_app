@@ -10,7 +10,6 @@ import 'admin_dashboard_screen.dart';
 import 'admin_lots_screen.dart';
 import 'admin_map_manager_screen.dart';
 import 'admin_reports_screen.dart';
-import 'admin_transactions_screen.dart';
 import 'admin_visitor_logs_screen.dart';
 import 'admin_user_management_screen.dart';
 
@@ -153,10 +152,10 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
                       onTap: () => _go(0),
                     ),
                     _NavTile(
-                      selected: _selected == 8,
+                      selected: _selected == 7,
                       icon: Icons.group_outlined,
                       label: 'User Management',
-                      onTap: () => _go(8),
+                      onTap: () => _go(7),
                     ),
                     _NavTile(
                       selected: _selected == 1,
@@ -193,12 +192,6 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
                       icon: Icons.history,
                       label: 'Audit Trail',
                       onTap: () => _go(6),
-                    ),
-                    _NavTile(
-                      selected: _selected == 7,
-                      icon: Icons.receipt_long,
-                      label: 'Payments',
-                      onTap: () => _go(7),
                     ),
                   ],
                 ),
@@ -254,7 +247,6 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
           const AdminVisitorLogsScreen(),
           const AdminReportsScreen(),
           const AdminAuditTrailScreen(),
-          AdminTransactionsScreen(),
           AdminUserManagementScreen(
             onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
           ),
@@ -282,8 +274,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
       4 => 'Visitor Logs',
       5 => 'Reports & Analytics',
       6 => 'Audit Trail',
-      7 => 'Payments',
-      8 => 'User Management',
+      7 => 'User Management',
       _ => 'Cemetery Admin',
     };
   }

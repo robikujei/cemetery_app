@@ -1,13 +1,19 @@
 -- Optional: after uploading an entrance POINT WKT into
 -- public.map_feature_import_staging, run this to set the app's route entrance.
 -- The entrance point must be EPSG:4326 WKT, for example:
--- POINT (125.753328125 7.3793125)
+-- POINT (125.662934679 7.318551542)
 
 alter table public.cemetery_map
   add column if not exists center_lat double precision,
   add column if not exists center_lng double precision,
   add column if not exists lat_span double precision,
   add column if not exists lng_span double precision;
+
+-- Vector-only QGIS maps do not require legacy raster metadata.
+alter table public.cemetery_map
+  alter column map_image_url drop not null,
+  alter column map_width_meters drop not null,
+  alter column map_height_meters drop not null;
 
 with entrance_point as (
   select
@@ -31,8 +37,8 @@ coords as (
 latest_map_config as (
   select
     map_id,
-    coalesce(center_lat, 7.3793125) as center_lat,
-    coalesce(center_lng, 125.753328125) as center_lng,
+    coalesce(center_lat, 7.318551542) as center_lat,
+    coalesce(center_lng, 125.662934679) as center_lng,
     coalesce(lat_span, 0.0036) as lat_span,
     coalesce(lng_span, 0.0046) as lng_span
   from public.cemetery_map

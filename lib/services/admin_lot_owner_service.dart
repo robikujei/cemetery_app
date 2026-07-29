@@ -96,7 +96,7 @@ class AdminLotOwnerService {
   }
 
   static int totalMonthsForPurchaseTerm(String? purchaseTerm) {
-    return purchaseTerm == 'at_need' ? 24 : 1;
+    return 1;
   }
 
   static Future<List<Map<String, dynamic>>> loadLotOwners() async {
@@ -218,7 +218,7 @@ class AdminLotOwnerService {
   static Future<void> assignOwnerToLot({
     required int lotId,
     required String userId,
-    required int totalMonths,
+    int totalMonths = 1,
     Map<String, dynamic>? lotOwnerProfile,
     Map<String, dynamic>? lotUpdates,
   }) async {
@@ -249,7 +249,8 @@ class AdminLotOwnerService {
           .from('lot_ownership')
           .update({
             'user_id': userId,
-            'total_months': totalMonths,
+            'total_months': 1,
+            'months_paid': 1,
             'status': 'Active',
           })
           .eq('ownership_id', existingForLot['ownership_id']);
@@ -257,8 +258,8 @@ class AdminLotOwnerService {
       await supabase.from('lot_ownership').insert({
         'user_id': userId,
         'lot_id': lotId,
-        'total_months': totalMonths,
-        'months_paid': 0,
+        'total_months': 1,
+        'months_paid': 1,
         'start_date': DateTime.now().toIso8601String(),
         'status': 'Active',
       });

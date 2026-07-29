@@ -1,17 +1,12 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../utils/lot_pricing.dart';
+
 class AdminGraveService {
   const AdminGraveService._();
 
   static const statuses = ['Available', 'Reserved', 'Occupied'];
-  static const lotTypes = [
-    'Lawn Lot - Special Premium',
-    'Lawn Lot - Special Deluxe',
-    'Lawn Lot - Premium',
-    'Lawn Lot - Deluxe',
-    'Mausoleum - 24 Lotter Regular Lot',
-    'Mausoleum - 18 Lotter Regular Lot',
-  ];
+  static final lotTypes = lotPriceCatalog.map((price) => price.type).toList();
 
   static Future<Map<String, List<Map<String, dynamic>>>> loadGravesByLotIds(
     Iterable<dynamic> lotIds,

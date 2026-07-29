@@ -5,15 +5,11 @@ import '../screens/visitor/visitor_shell_screen.dart';
 import '../screens/admin/admin_shell_screen.dart';
 import '../screens/guard/qr_scanner_screen.dart';
 import '../screens/lot_owner/lot_owner_home_screen.dart';
-import '../screens/lot_owner/lot_owner_payment_screen.dart';
 
 final router = GoRouter(
   initialLocation: '/login',
   routes: [
-    GoRoute(
-      path: '/login',
-      builder: (context, state) => const LoginScreen(),
-    ),
+    GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
     GoRoute(
       path: '/register',
       builder: (context, state) => const RegisterScreen(),
@@ -33,10 +29,6 @@ final router = GoRouter(
     GoRoute(
       path: '/lot-owner',
       builder: (context, state) => const LotOwnerHomeScreen(),
-    ),
-    GoRoute(
-      path: '/lot-owner-payment',
-      builder: (context, state) => const LotOwnerPaymentScreen(),
     ),
   ],
 );

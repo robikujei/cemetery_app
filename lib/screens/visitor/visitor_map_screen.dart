@@ -11,8 +11,10 @@ import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../services/map_feature_service.dart';
+import '../../services/supabase_pagination_service.dart';
 import '../../providers/visitor_nav_providers.dart';
 import '../../utils/lot_formatters.dart';
+import '../../utils/lot_pricing.dart';
 import '../../utils/map_feature_geometry.dart';
 import 'visitor_qr_with_grave_screen.dart';
 
@@ -44,8 +46,9 @@ class VisitorMapScreen extends ConsumerStatefulWidget {
 }
 
 class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
-  static final LatLng _tagumMapCenter = LatLng(7.3793125, 125.753328125);
-  static const double _initialZoom = 18;
+  static final LatLng _tagumMapCenter = LatLng(7.318551542, 125.662934679);
+  static const double _initialZoom = 19;
+  static const double _lotDetailZoom = 18.75;
   static const double _markerLatSpan = 0.0036;
   static const double _markerLngSpan = 0.0046;
 
@@ -75,6 +78,8 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
   Map<String, dynamic>? _selectedGrave;
   bool _showNavigationRoute = false;
   double _currentZoom = _initialZoom;
+  LatLngBounds? _visibleLotBounds;
+  Timer? _viewportUpdateTimer;
 
   @override
   void initState() {
@@ -91,6 +96,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
     }
     _searchController.dispose();
     _lotPolygonHitNotifier.dispose();
+    _viewportUpdateTimer?.cancel();
     super.dispose();
   }
 
@@ -127,9 +133,11 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
       }
 
       final results = await Future.wait([
-        supabase
-            .from('lot_markers')
-            .select('''
+        SupabasePaginationService.selectAll(
+          supabase: supabase,
+          table: 'lot_markers',
+          orderColumn: 'marker_id',
+          columns: '''
               marker_id,
               lot_id,
               x_percent,
@@ -152,8 +160,8 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
                   lot_location_no
                 )
               )
-            ''')
-            .order('marker_id'),
+            ''',
+        ),
         supabase
             .from('burial_record')
             .select(
@@ -401,7 +409,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
   }
 
   void _zoomBy(double delta) {
-    _currentZoom = (_currentZoom + delta).clamp(15.0, 20.0);
+    _currentZoom = (_currentZoom + delta).clamp(18.5, 22.0);
     _mapController.move(_mapController.camera.center, _currentZoom);
   }
 
@@ -608,8 +616,11 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
             if (isAvailable && burial == null)
               _buildDetailRow(
                 Icons.payments_outlined,
-                'Price',
-                'PHP ${lot['price'] ?? '--'}',
+                'Fixed Prices',
+                lotPriceForType(lot['lot_class_type']?.toString()) == null
+                    ? 'Unavailable'
+                    : 'At-need: PHP ${lotPriceForType(lot['lot_class_type']?.toString())!.atNeed.toStringAsFixed(2)}\n'
+                          'Pre-need: PHP ${lotPriceForType(lot['lot_class_type']?.toString())!.preNeed.toStringAsFixed(2)}',
                 null,
               ),
             _buildDetailRow(
@@ -1458,18 +1469,28 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
     final basePolylines = mapFeaturePolylines(baseMapFeatures);
     final overlayPolygons = mapFeaturePolygons(overlayMapFeatures);
     final overlayPolylines = mapFeaturePolylines(overlayMapFeatures);
-    final overlayPointMarkers = mapFeaturePointMarkers(overlayMapFeatures);
-    final lotPolygons = lotPolygonsFromMarkers(
-      _lotMarkers,
-      selectedLotId: _selectedLotId,
-      includeHitValues: true,
+    final overlayPointMarkers = mapFeaturePointMarkers(
+      overlayMapFeatures
+          .where((feature) => mapFeatureType(feature) != 'entrance')
+          .toList(),
     );
+    final visibleLotMarkers = _visibleLotBounds == null
+        ? const <Map<String, dynamic>>[]
+        : lotMarkersWithinBounds(_lotMarkers, _visibleLotBounds!);
+    final lotPolygons = _currentZoom >= _lotDetailZoom
+        ? lotPolygonsFromMarkers(
+            visibleLotMarkers,
+            selectedLotId: _selectedLotId,
+            includeHitValues: true,
+            lowDetail: _currentZoom < 20,
+          )
+        : <Polygon<String>>[];
     final markers = <Marker>[
       if (_hasRouteStart)
         Marker(
           point: _routeStart,
-          width: 46,
-          height: 46,
+          width: 28,
+          height: 28,
           child: _buildEntranceMarker(),
         ),
       ..._lotMarkers.where((marker) => !markerHasLotPolygon(marker)).map((
@@ -1507,17 +1528,36 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
       options: MapOptions(
         initialCenter: selectedPoint ?? _routeStart,
         initialZoom: _initialZoom,
-        minZoom: 14,
-        maxZoom: 20,
+        minZoom: 18.5,
+        maxZoom: 22,
+        cameraConstraint: CameraConstraint.containCenter(
+          bounds: _cemeteryCameraBounds,
+        ),
+        onMapReady: () {
+          if (!mounted) return;
+          setState(() {
+            _visibleLotBounds = _mapController.camera.visibleBounds;
+          });
+        },
         onPositionChanged: (position, hasGesture) {
+          final wasShowingLots = _currentZoom >= _lotDetailZoom;
           _currentZoom = position.zoom;
+          final isShowingLots = _currentZoom >= _lotDetailZoom;
+          if (wasShowingLots != isShowingLots && mounted) setState(() {});
+          _viewportUpdateTimer?.cancel();
+          _viewportUpdateTimer = Timer(const Duration(milliseconds: 140), () {
+            if (!mounted) return;
+            setState(() => _visibleLotBounds = position.visibleBounds);
+          });
         },
       ),
       children: [
         TileLayer(
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'com.example.cemetery_app',
-          maxZoom: 20,
+          maxZoom: 22,
+          maxNativeZoom: 19,
+          keepBuffer: 1,
         ),
         if (basePolygons.isNotEmpty) PolygonLayer(polygons: basePolygons),
         if (basePolylines.isNotEmpty) PolylineLayer(polylines: basePolylines),
@@ -1560,6 +1600,16 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
 
   bool get _hasMappedEntrance =>
       _entranceXPercent != null && _entranceYPercent != null;
+
+  LatLngBounds get _cemeteryCameraBounds {
+    const marginFactor = 0.60;
+    final latMargin = _activeMarkerLatSpan * marginFactor;
+    final lngMargin = _activeMarkerLngSpan * marginFactor;
+    return LatLngBounds(
+      LatLng(_mapCenter.latitude - latMargin, _mapCenter.longitude - lngMargin),
+      LatLng(_mapCenter.latitude + latMargin, _mapCenter.longitude + lngMargin),
+    );
+  }
 
   LatLng? _entranceFromMapFeatures() {
     for (final feature in _mapFeatures) {
@@ -1760,26 +1810,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
   double _degreesToRadians(double degrees) => degrees * pi / 180;
 
   Widget _buildEntranceMarker() {
-    return Container(
-      decoration: BoxDecoration(
-        color: _C.secondary,
-        shape: BoxShape.circle,
-        border: Border.all(color: _C.white, width: 2),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x22000000),
-            blurRadius: 12,
-            offset: Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
-          Icon(Icons.door_front_door_rounded, color: _C.white, size: 22),
-        ],
-      ),
-    );
+    return minimalistEntranceMarker(color: _C.secondary);
   }
 
   Widget _buildErrorWidget() {

@@ -1,9 +1,14 @@
 import 'dart:convert';
+import 'dart:collection';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+
+final HashMap<Object, List<List<LatLng>>> _lotGeometryCache =
+    HashMap<Object, List<List<LatLng>>>.identity();
+const int _lotGeometryCacheLimit = 10000;
 
 String mapFeatureType(Map<String, dynamic> feature) {
   final normalized =
@@ -29,6 +34,19 @@ bool isPublicPreviewMapFeature(Map<String, dynamic> feature) {
   final type = mapFeatureType(feature);
   return visiblePreviewTypes.contains(type) &&
       !hiddenPreviewTypes.contains(type);
+}
+
+Widget minimalistEntranceMarker({Color color = const Color(0xFF335538)}) {
+  return DecoratedBox(
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.94),
+      shape: BoxShape.circle,
+      border: Border.all(color: color, width: 1.25),
+    ),
+    child: Center(
+      child: Icon(Icons.sensor_door_outlined, color: color, size: 15),
+    ),
+  );
 }
 
 List<Polygon> mapFeaturePolygons(List<Map<String, dynamic>> features) {
@@ -218,6 +236,7 @@ List<Polygon<String>> lotPolygonsFromMarkers(
   List<Map<String, dynamic>> markers, {
   dynamic selectedLotId,
   bool includeHitValues = false,
+  bool lowDetail = false,
 }) {
   final polygons = <Polygon<String>>[];
   for (final marker in markers) {
@@ -246,7 +265,7 @@ List<Polygon<String>> lotPolygonsFromMarkers(
           points: ring,
           color: fill,
           borderColor: stroke.withValues(alpha: selected ? 0.96 : 0.78),
-          borderStrokeWidth: selected ? 3 : 1.55,
+          borderStrokeWidth: selected ? 2.5 : (lowDetail ? 0.35 : 1.1),
           hitValue: hitValue,
         ),
       );
@@ -255,14 +274,57 @@ List<Polygon<String>> lotPolygonsFromMarkers(
   return polygons;
 }
 
+List<Map<String, dynamic>> lotMarkersWithinBounds(
+  List<Map<String, dynamic>> markers,
+  LatLngBounds bounds, {
+  double paddingFactor = 0.08,
+}) {
+  final latPadding = (bounds.north - bounds.south) * paddingFactor;
+  final lngPadding = (bounds.east - bounds.west) * paddingFactor;
+  final north = bounds.north + latPadding;
+  final south = bounds.south - latPadding;
+  final east = bounds.east + lngPadding;
+  final west = bounds.west - lngPadding;
+
+  return markers.where((marker) {
+    final lot = marker['cemetery_lot'];
+    if (lot is! Map) return false;
+    final rings = geoJsonPolygonRings(lot['polygon_geo']);
+    for (final ring in rings) {
+      if (ring.isEmpty) continue;
+      var ringNorth = ring.first.latitude;
+      var ringSouth = ring.first.latitude;
+      var ringEast = ring.first.longitude;
+      var ringWest = ring.first.longitude;
+      for (final point in ring.skip(1)) {
+        ringNorth = max(ringNorth, point.latitude);
+        ringSouth = min(ringSouth, point.latitude);
+        ringEast = max(ringEast, point.longitude);
+        ringWest = min(ringWest, point.longitude);
+      }
+      if (ringSouth <= north &&
+          ringNorth >= south &&
+          ringWest <= east &&
+          ringEast >= west) {
+        return true;
+      }
+    }
+    return false;
+  }).toList();
+}
+
 bool markerHasLotPolygon(Map<String, dynamic> marker) {
   final lot = marker['cemetery_lot'];
   return lot is Map && geoJsonPolygonRings(lot['polygon_geo']).isNotEmpty;
 }
 
 List<List<LatLng>> geoJsonPolygonRings(Object? geometry) {
+  if (geometry == null) return [];
+  final cached = _lotGeometryCache[geometry];
+  if (cached != null) return cached;
+
   final value = _decodeGeometry(geometry);
-  if (value is! Map) return [];
+  if (value is! Map) return _cacheLotGeometry(geometry, const []);
 
   final type = value['type']?.toString();
   final coordinates = value['coordinates'];
@@ -270,7 +332,7 @@ List<List<LatLng>> geoJsonPolygonRings(Object? geometry) {
     final ring = _geoJsonRing(
       coordinates is List && coordinates.isNotEmpty ? coordinates.first : null,
     );
-    return ring.length < 3 ? [] : [ring];
+    return _cacheLotGeometry(geometry, ring.length < 3 ? const [] : [ring]);
   }
 
   if (type == 'MultiPolygon' && coordinates is List) {
@@ -280,10 +342,21 @@ List<List<LatLng>> geoJsonPolygonRings(Object? geometry) {
       final ring = _geoJsonRing(polygon.first);
       if (ring.length >= 3) rings.add(ring);
     }
-    return rings;
+    return _cacheLotGeometry(geometry, rings);
   }
 
-  return [];
+  return _cacheLotGeometry(geometry, const []);
+}
+
+List<List<LatLng>> _cacheLotGeometry(
+  Object geometry,
+  List<List<LatLng>> rings,
+) {
+  if (_lotGeometryCache.length >= _lotGeometryCacheLimit) {
+    _lotGeometryCache.clear();
+  }
+  _lotGeometryCache[geometry] = rings;
+  return rings;
 }
 
 List<List<LatLng>> wktPolygonRings(String wkt) {
@@ -508,7 +581,15 @@ Object? _decodeGeometry(Object? geometry) {
 
 List<LatLng> _geoJsonRing(Object? ring) {
   if (ring is! List) return [];
-  return ring.map(_geoJsonPoint).whereType<LatLng>().toList();
+  final points = ring.map(_geoJsonPoint).whereType<LatLng>().toList();
+  if (points.length > 3) {
+    final first = points.first;
+    final last = points.last;
+    if (first.latitude == last.latitude && first.longitude == last.longitude) {
+      points.removeLast();
+    }
+  }
+  return points;
 }
 
 LatLng? _geoJsonPoint(Object? point) {

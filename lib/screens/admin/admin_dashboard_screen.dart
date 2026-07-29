@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -11,6 +12,8 @@ import 'package:intl/intl.dart';
 import 'admin_burial_records_screen.dart';
 import 'admin_map_manager_screen.dart';
 import 'admin_reports_screen.dart';
+import '../../services/supabase_pagination_service.dart';
+import '../../utils/map_feature_geometry.dart';
 
 const _background = Color(0xFFFBF9F6);
 const _surface = Color(0xFFFFFFFF);
@@ -51,11 +54,16 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
 
   Map<String, dynamic> _metrics = {
     'total_burials': 0,
+    'total_lots': 0,
+    'occupied_lots': 0,
     'available_lots': 0,
     'visitor_count': 0,
-    'transactions': 0,
+    'lots_sold': 0,
+    'sales_total': 0.0,
     'recent_activities': [],
   };
+  RealtimeChannel? _monitoringChannel;
+  Timer? _realtimeRefreshTimer;
 
   // Chart data
   List<BarChartGroupData> _burialBarData = [];
@@ -68,6 +76,55 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   void initState() {
     super.initState();
     _loadAllData();
+    _subscribeToMonitoringChanges();
+  }
+
+  @override
+  void dispose() {
+    _realtimeRefreshTimer?.cancel();
+    final channel = _monitoringChannel;
+    if (channel != null) {
+      Supabase.instance.client.removeChannel(channel);
+    }
+    super.dispose();
+  }
+
+  void _subscribeToMonitoringChanges() {
+    final supabase = Supabase.instance.client;
+    _monitoringChannel = supabase
+        .channel('admin-dashboard-monitoring')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'visitor_log',
+          callback: (_) => _scheduleRealtimeRefresh(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'cemetery_lot',
+          callback: (_) => _scheduleRealtimeRefresh(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'lot_ownership',
+          callback: (_) => _scheduleRealtimeRefresh(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'burial_record',
+          callback: (_) => _scheduleRealtimeRefresh(),
+        )
+        .subscribe();
+  }
+
+  void _scheduleRealtimeRefresh() {
+    _realtimeRefreshTimer?.cancel();
+    _realtimeRefreshTimer = Timer(const Duration(milliseconds: 500), () {
+      if (mounted && !_isLoading) _loadAllData();
+    });
   }
 
   Future<void> _loadAllData() async {
@@ -143,28 +200,38 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   Future<void> _loadMetrics() async {
     final supabase = Supabase.instance.client;
 
-    final burialsResult = await supabase
-        .from('burial_record')
-        .select('burial_id');
-    final totalBurials = burialsResult.length;
+    final totalBurials = await supabase.from('burial_record').count();
 
-    final lotsResult = await supabase
-        .from('cemetery_lot')
-        .select('lot_id')
-        .eq('status', 'Available');
-    final availableLots = lotsResult.length;
+    final lotStatusRows = await SupabasePaginationService.selectAll(
+      supabase: supabase,
+      table: 'cemetery_lot',
+      columns: 'lot_id, status',
+      orderColumn: 'lot_id',
+    );
+    final availableLots = lotStatusRows
+        .where((lot) => lot['status']?.toString() == 'Available')
+        .length;
+    final occupiedLots = lotStatusRows
+        .where((lot) => lot['status']?.toString() == 'Occupied')
+        .length;
 
     final today = DateTime.now().toIso8601String().substring(0, 10);
-    final visitorsResult = await supabase
+    final visitorCount = await supabase
         .from('visitor_log')
-        .select('log_id')
+        .count()
         .gte('time_in', '$today 00:00:00');
-    final visitorCount = visitorsResult.length;
 
-    final transactionsResult = await supabase
-        .from('transaction_history')
-        .select('transaction_id');
-    final transactions = transactionsResult.length;
+    final sales = await SupabasePaginationService.selectAll(
+      supabase: supabase,
+      table: 'lot_ownership',
+      columns: 'ownership_id, user:user_id(total_amount)',
+      orderColumn: 'ownership_id',
+    );
+    final salesTotal = sales.fold<double>(0, (sum, sale) {
+      final user = sale['user'];
+      if (user is! Map) return sum;
+      return sum + (num.tryParse(user['total_amount']?.toString() ?? '') ?? 0);
+    });
 
     final recentActivities = await supabase
         .from('visitor_log')
@@ -180,9 +247,12 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     setState(() {
       _metrics = {
         'total_burials': totalBurials,
+        'total_lots': lotStatusRows.length,
+        'occupied_lots': occupiedLots,
         'available_lots': availableLots,
         'visitor_count': visitorCount,
-        'transactions': transactions,
+        'lots_sold': sales.length,
+        'sales_total': salesTotal,
         'recent_activities': recentActivities,
       };
     });
@@ -192,7 +262,12 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     final supabase = Supabase.instance.client;
 
     try {
-      final burials = await supabase.from('burial_record').select('death_date');
+      final burials = await SupabasePaginationService.selectAll(
+        supabase: supabase,
+        table: 'burial_record',
+        columns: 'burial_id, death_date',
+        orderColumn: 'burial_id',
+      );
 
       print('📊 Total burial records: ${burials.length}');
 
@@ -260,7 +335,12 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     final supabase = Supabase.instance.client;
 
     try {
-      final visitors = await supabase.from('visitor_log').select('time_in');
+      final visitors = await SupabasePaginationService.selectAll(
+        supabase: supabase,
+        table: 'visitor_log',
+        columns: 'log_id, time_in',
+        orderColumn: 'log_id',
+      );
 
       print('📊 Total visitor logs: ${visitors.length}');
 
@@ -340,10 +420,16 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     final supabase = Supabase.instance.client;
 
     try {
-      final lots = await supabase.from('cemetery_lot').select('''
+      final lots = await SupabasePaginationService.selectAll(
+        supabase: supabase,
+        table: 'cemetery_lot',
+        orderColumn: 'lot_id',
+        columns: '''
+            lot_id,
             block_number,
             burial_record (burial_id)
-          ''');
+          ''',
+      );
 
       Map<String, int> distribution = {};
       for (var lot in lots) {
@@ -438,6 +524,15 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                     badge: 'Open plots',
                   ),
                   _MetricCard(
+                    label: 'Occupied Lots',
+                    value: _metrics['occupied_lots'].toString(),
+                    icon: Icons.maps_home_work_outlined,
+                    color: const Color(0xFF8A5A44),
+                    badge: _metrics['total_lots'] == 0
+                        ? '0% occupancy'
+                        : '${((_metrics['occupied_lots'] as num) * 100 / (_metrics['total_lots'] as num)).toStringAsFixed(1)}% occupancy',
+                  ),
+                  _MetricCard(
                     label: 'Visitors Today',
                     value: _metrics['visitor_count'].toString(),
                     icon: Icons.groups_outlined,
@@ -445,11 +540,12 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                     badge: 'Live count',
                   ),
                   _MetricCard(
-                    label: 'Total Transactions',
-                    value: _metrics['transactions'].toString(),
+                    label: 'Lots Sold',
+                    value: _metrics['lots_sold'].toString(),
                     icon: Icons.receipt_long_outlined,
                     color: const Color(0xFF2F6F50),
-                    badge: 'History',
+                    badge:
+                        'PHP ${NumberFormat('#,##0.00').format(_metrics['sales_total'])}',
                   ),
                 ],
               ),
@@ -1249,7 +1345,7 @@ class _DbscanResult {
 }
 
 class _MapPreviewCardState extends State<_MapPreviewCard> {
-  static final LatLng _tagumMapCenter = LatLng(7.3793125, 125.753328125);
+  static final LatLng _tagumMapCenter = LatLng(7.318551542, 125.662934679);
   static const double _initialZoom = 18;
   static const double _mapLatSpan = 0.0036;
   static const double _mapLngSpan = 0.0046;
@@ -1284,7 +1380,7 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
 
     try {
       final supabase = Supabase.instance.client;
-      final results = await Future.wait([
+      final results = await Future.wait<dynamic>([
         supabase
             .from('cemetery_map')
             .select(
@@ -1293,12 +1389,13 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
             .order('uploaded_at', ascending: false)
             .limit(1)
             .maybeSingle(),
-        supabase
-            .from('lot_markers')
-            .select(
+        SupabasePaginationService.selectAll(
+          supabase: supabase,
+          table: 'lot_markers',
+          columns:
               'marker_id, lot_id, x_percent, y_percent, cemetery_lot(lot_id, lot_number, block_number, price, status)',
-            )
-            .order('marker_id'),
+          orderColumn: 'marker_id',
+        ),
         supabase
             .from('visitor_log')
             .select('burial:burial_id (burial_id, lot_id)')
@@ -1381,6 +1478,16 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
     final lat = _mapCenter.latitude + latOffset;
     final lng = _mapCenter.longitude + lngOffset;
     return LatLng(lat, lng);
+  }
+
+  LatLngBounds get _cemeteryCameraBounds {
+    const marginFactor = 0.60;
+    final latMargin = _activeMapLatSpan * marginFactor;
+    final lngMargin = _activeMapLngSpan * marginFactor;
+    return LatLngBounds(
+      LatLng(_mapCenter.latitude - latMargin, _mapCenter.longitude - lngMargin),
+      LatLng(_mapCenter.latitude + latMargin, _mapCenter.longitude + lngMargin),
+    );
   }
 
   List<_DbscanPoint> _dbscanPoints() {
@@ -1512,14 +1619,7 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
       point: _entranceLatLng,
       width: 28,
       height: 28,
-      child: Container(
-        decoration: BoxDecoration(
-          color: _primary.withValues(alpha: 0.22),
-          shape: BoxShape.circle,
-          border: Border.all(color: _primary, width: 2),
-        ),
-        child: const Icon(Icons.place_rounded, size: 14, color: _primary),
-      ),
+      child: minimalistEntranceMarker(color: _primary),
     );
   }
 
@@ -1618,8 +1718,11 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
                     options: MapOptions(
                       initialCenter: _mapCenter,
                       initialZoom: _initialZoom,
-                      minZoom: 14,
-                      maxZoom: 20,
+                      minZoom: 18.5,
+                      maxZoom: 22,
+                      cameraConstraint: CameraConstraint.containCenter(
+                        bounds: _cemeteryCameraBounds,
+                      ),
                       interactionOptions: const InteractionOptions(
                         flags: InteractiveFlag.all,
                       ),
@@ -1633,7 +1736,9 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
                         urlTemplate:
                             'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                         userAgentPackageName: 'com.example.cemetery_app',
-                        maxZoom: 20,
+                        maxZoom: 22,
+                        maxNativeZoom: 19,
+                        keepBuffer: 1,
                       ),
                       CircleLayer(circles: _heatCircles(heatmap)),
                       MarkerLayer(
@@ -1708,7 +1813,7 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
                   icon: Icons.add,
                   onPressed: () => _mapController.move(
                     _currentCenter,
-                    (_currentZoom + 1).clamp(14, 20),
+                    (_currentZoom + 1).clamp(18.5, 22),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -1716,7 +1821,7 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
                   icon: Icons.remove,
                   onPressed: () => _mapController.move(
                     _currentCenter,
-                    (_currentZoom - 1).clamp(14, 20),
+                    (_currentZoom - 1).clamp(18.5, 22),
                   ),
                 ),
                 const SizedBox(height: 8),

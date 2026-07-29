@@ -6,6 +6,7 @@ import '../../services/admin_delete_service.dart';
 import '../../services/audit_service.dart';
 import '../../utils/lot_formatters.dart';
 import '../../widgets/app_date_field.dart';
+import '../../utils/lot_pricing.dart';
 
 class AdminBurialRecordsScreen extends ConsumerStatefulWidget {
   const AdminBurialRecordsScreen({
@@ -24,14 +25,9 @@ class AdminBurialRecordsScreen extends ConsumerStatefulWidget {
 
 class _AdminBurialRecordsScreenState
     extends ConsumerState<AdminBurialRecordsScreen> {
-  static const _burialCategories = [
-    'Lawn Lot - Special Premium',
-    'Lawn Lot - Special Deluxe',
-    'Lawn Lot - Premium',
-    'Lawn Lot - Deluxe',
-    'Mausoleum - 24 Lotter Regular Lot',
-    'Mausoleum - 18 Lotter Regular Lot',
-  ];
+  static final _burialCategories = lotPriceCatalog
+      .map((lot) => lot.type)
+      .toList(growable: false);
 
   List<Map<String, dynamic>> _burialRecords = [];
   List<Map<String, dynamic>> _filteredRecords = [];
@@ -77,9 +73,7 @@ class _AdminBurialRecordsScreenState
   String? _birthDateError;
   String? _applicationDateError;
   String? _intermentDateError;
-  String? _paymentDateError;
   String? _intermentTimeError;
-  String? _intermentTotalError;
 
   bool _isEditing = false;
   String? _editingId;
@@ -342,9 +336,7 @@ class _AdminBurialRecordsScreenState
       _birthDateError = null;
       _applicationDateError = null;
       _intermentDateError = null;
-      _paymentDateError = null;
       _intermentTimeError = null;
-      _intermentTotalError = null;
     });
 
     if (_nameController.text.trim().isEmpty) {
@@ -440,16 +432,6 @@ class _AdminBurialRecordsScreenState
       return false;
     }
 
-    final paymentDateStr = _paymentDateController.text.trim();
-    if (!_isValidDateFormat(paymentDateStr)) {
-      _showValidationErrorDialog(
-        'Invalid Date Format',
-        'Payment date must be in YYYY-MM-DD format.',
-      );
-      setState(() => _paymentDateError = 'Invalid date format or value');
-      return false;
-    }
-
     final intermentTimeStr = _intermentTimeController.text.trim();
     if (!_isValidTimeFormat(intermentTimeStr)) {
       _showValidationErrorDialog(
@@ -457,16 +439,6 @@ class _AdminBurialRecordsScreenState
         'Interment time must be in 24-hour HH:mm format.\nExample: 14:30',
       );
       setState(() => _intermentTimeError = 'Use HH:mm format');
-      return false;
-    }
-
-    final totalText = _intermentTotalController.text.trim();
-    if (totalText.isNotEmpty && double.tryParse(totalText) == null) {
-      _showValidationErrorDialog(
-        'Invalid Amount',
-        'Total must be a valid number.',
-      );
-      setState(() => _intermentTotalError = 'Enter a valid amount');
       return false;
     }
 
@@ -584,9 +556,7 @@ class _AdminBurialRecordsScreenState
     _birthDateError = null;
     _applicationDateError = null;
     _intermentDateError = null;
-    _paymentDateError = null;
     _intermentTimeError = null;
-    _intermentTotalError = null;
 
     if (record != null) {
       final informant = record['informant'] is Map
@@ -894,7 +864,7 @@ class _AdminBurialRecordsScreenState
                       items: [
                         const DropdownMenuItem<String?>(
                           value: null,
-                          child: Text('Select category'),
+                          child: Text('Select lot type'),
                         ),
                         ..._burialCategories.map(
                           (category) => DropdownMenuItem<String?>(
@@ -977,31 +947,32 @@ class _AdminBurialRecordsScreenState
                       ),
                     ),
                     const SizedBox(height: 18),
-                    _sectionTitle('Payment'),
-                    _fieldRow([
-                      _textField(
-                        controller: _orNumberController,
-                        label: 'OR No.',
-                        icon: Icons.receipt_long_outlined,
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEAF3EB),
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      _textField(
-                        controller: _intermentTotalController,
-                        label: 'Total',
-                        icon: Icons.payments_outlined,
-                        keyboardType: TextInputType.number,
-                        error: _intermentTotalError,
-                      ),
-                    ]),
-                    const SizedBox(height: 12),
-                    AppDateField(
-                      controller: _paymentDateController,
-                      label: 'Payment Date',
-                      icon: Icons.event_available_outlined,
-                      helperText: 'YYYY-MM-DD',
-                      errorText: _paymentDateError,
-                      decoration: _recordFieldDecoration(
-                        labelText: 'Payment Date',
-                        icon: Icons.event_available_outlined,
+                      child: const Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.verified_outlined,
+                            color: Color(0xFF335538),
+                          ),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'The interment fee is already included in the '
+                              'lot payment recorded when the lot owner is '
+                              'assigned.',
+                              style: TextStyle(
+                                color: Color(0xFF335538),
+                                height: 1.35,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 18),

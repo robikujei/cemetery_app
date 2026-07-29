@@ -29,6 +29,14 @@ alter table public.cemetery_map
   add column if not exists lat_span double precision,
   add column if not exists lng_span double precision;
 
+-- The current QGIS/vector map does not require a raster image or physical
+-- raster dimensions. Older database versions made these columns mandatory,
+-- which prevents creation of a new map configuration after a data purge.
+alter table public.cemetery_map
+  alter column map_image_url drop not null,
+  alter column map_width_meters drop not null,
+  alter column map_height_meters drop not null;
+
 with normalized as (
   select
     qgis_feature_id,

@@ -13,12 +13,14 @@ import '../../services/admin_grave_service.dart';
 import '../../services/admin_lot_owner_service.dart';
 import '../../services/audit_service.dart';
 import '../../services/map_feature_service.dart';
+import '../../services/supabase_pagination_service.dart';
 import '../../utils/lot_formatters.dart';
+import '../../utils/lot_pricing.dart';
 import '../../utils/map_feature_geometry.dart';
 import '../../widgets/app_date_field.dart';
 
 const _lotColumnsSelect =
-    'lot_id, lot_number, lot_label, block_number, lot_class_type, price, status, qgis_feature_id, polygon_geo, burial_record(burial_id, name_of_deceased, birth_date, death_date, burial_date, interment_date, burial_category, lot_id)';
+    'lot_id, lot_number, lot_label, block_number, lot_class_type, pricing_type, price, status, qgis_feature_id, polygon_geo, burial_record(burial_id, name_of_deceased, birth_date, death_date, burial_date, interment_date, burial_category, lot_id)';
 const _lotMarkerSelect =
     'marker_id, lot_id, x_percent, y_percent, cemetery_lot($_lotColumnsSelect)';
 
@@ -59,8 +61,9 @@ class AdminMapManagerScreen extends ConsumerStatefulWidget {
 }
 
 class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
-  static final LatLng _tagumMapCenter = LatLng(7.3793125, 125.753328125);
-  static const double _initialZoom = 18;
+  static final LatLng _tagumMapCenter = LatLng(7.318551542, 125.662934679);
+  static const double _initialZoom = 19;
+  static const double _lotDetailZoom = 18.75;
   static const double _mapLatSpan = 0.0036;
   static const double _mapLngSpan = 0.0046;
 
@@ -97,6 +100,8 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
   double _activeMapLngSpan = _mapLngSpan;
   LatLng _currentCenter = _tagumMapCenter;
   int? _draggingNodeId;
+  LatLngBounds? _visibleLotBounds;
+  Timer? _viewportUpdateTimer;
 
   @override
   void initState() {
@@ -125,6 +130,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
     _lotClassTypeController.dispose();
     _priceController.dispose();
     _lotPolygonHitNotifier.dispose();
+    _viewportUpdateTimer?.cancel();
     super.dispose();
   }
 
@@ -183,7 +189,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
     });
     try {
       final supabase = Supabase.instance.client;
-      final results = await Future.wait([
+      final results = await Future.wait<dynamic>([
         supabase
             .from('cemetery_map')
             .select(
@@ -192,10 +198,12 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
             .order('uploaded_at', ascending: false)
             .limit(1)
             .maybeSingle(),
-        supabase
-            .from('lot_markers')
-            .select(_lotMarkerSelect)
-            .order('marker_id'),
+        SupabasePaginationService.selectAll(
+          supabase: supabase,
+          table: 'lot_markers',
+          columns: _lotMarkerSelect,
+          orderColumn: 'marker_id',
+        ),
         supabase.from('path_nodes').select('*').order('node_id'),
         supabase.from('path_edges').select('*').order('edge_id'),
         supabase
@@ -853,9 +861,15 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
     _blockNumberController.clear();
     _lotNumberController.clear();
     _lotLabelController.clear();
-    _lotClassTypeController.clear();
-    _priceController.clear();
+    _lotClassTypeController.text = 'Regular Lot';
+    _priceController.text = atNeedPriceForType(
+      'Regular Lot',
+    )!.toStringAsFixed(2);
     String selectedStatus = 'Available';
+    String selectedPricingType = 'pre_need';
+    _priceController.text = preNeedPriceForType(
+      'Regular Lot',
+    )!.toStringAsFixed(2);
 
     final created = await showDialog<bool>(
       context: context,
@@ -896,12 +910,57 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: _lotClassTypeController,
+                DropdownButtonFormField<String>(
+                  initialValue: _lotClassTypeController.text,
                   decoration: _mapFieldDecoration(
                     labelText: 'Lot Class / Type',
                     icon: Icons.category_outlined,
                   ),
+                  items: lotPriceCatalog
+                      .map(
+                        (entry) => DropdownMenuItem(
+                          value: entry.type,
+                          child: Text(entry.type),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    final pricing = lotPriceForType(value);
+                    setDialogState(() {
+                      _lotClassTypeController.text = value ?? '';
+                      final price = selectedPricingType == 'at_need'
+                          ? pricing?.atNeed
+                          : pricing?.preNeed;
+                      _priceController.text = price?.toStringAsFixed(2) ?? '';
+                    });
+                  },
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedPricingType,
+                  decoration: _mapFieldDecoration(
+                    labelText: 'Pricing Type',
+                    icon: Icons.sell_outlined,
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'at_need', child: Text('At-Need')),
+                    DropdownMenuItem(
+                      value: 'pre_need',
+                      child: Text('Pre-Need'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    setDialogState(() {
+                      selectedPricingType = value!;
+                      final pricing = lotPriceForType(
+                        _lotClassTypeController.text,
+                      );
+                      final price = selectedPricingType == 'at_need'
+                          ? pricing?.atNeed
+                          : pricing?.preNeed;
+                      _priceController.text = price?.toStringAsFixed(2) ?? '';
+                    });
+                  },
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -910,7 +969,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                     labelText: 'Price',
                     icon: Icons.payments_outlined,
                   ),
-                  keyboardType: TextInputType.number,
+                  readOnly: true,
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
@@ -983,8 +1042,8 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
 
     if (created != true) return;
     if (_lotNumberController.text.trim().isEmpty ||
-        _priceController.text.trim().isEmpty) {
-      _snack('Lot number and price are required.', error: true);
+        lotPriceForType(_lotClassTypeController.text) == null) {
+      _snack('Lot number and a valid lot type are required.', error: true);
       return;
     }
 
@@ -994,6 +1053,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
         ? _defaultLotLabel(blockNumber: blockNumber, lotNumber: lotNumber)
         : _lotLabelController.text.trim();
     final lotClassType = _lotClassTypeController.text.trim();
+    final pricing = lotPriceForType(lotClassType)!;
 
     setState(() => _isSaving = true);
     try {
@@ -1005,7 +1065,10 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
             'lot_number': lotNumber,
             'lot_label': lotLabel.isEmpty ? lotNumber : lotLabel,
             'lot_class_type': lotClassType.isEmpty ? null : lotClassType,
-            'price': double.parse(_priceController.text.trim()),
+            'pricing_type': selectedPricingType,
+            'price': selectedPricingType == 'at_need'
+                ? pricing.atNeed
+                : pricing.preNeed,
             'status': selectedStatus,
             'x_coord': lotPoint.longitude,
             'y_coord': lotPoint.latitude,
@@ -1058,8 +1121,17 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
     final lotClassTypeController = TextEditingController(
       text: lotText(lot, 'lot_class_type'),
     );
+    final initialPricing = lotPriceForType(lotText(lot, 'lot_class_type'));
+    String selectedPricingType = lot['pricing_type']?.toString() == 'at_need'
+        ? 'at_need'
+        : 'pre_need';
     final priceController = TextEditingController(
-      text: lot['price']?.toString() ?? '',
+      text:
+          (selectedPricingType == 'at_need'
+                  ? initialPricing?.atNeed
+                  : initialPricing?.preNeed)
+              ?.toStringAsFixed(2) ??
+          '',
     );
     final xController = TextEditingController(
       text: ((marker['x_percent'] as num?)?.toDouble() ?? 0).toStringAsFixed(2),
@@ -1112,12 +1184,60 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
-                    controller: lotClassTypeController,
+                  DropdownButtonFormField<String>(
+                    initialValue: initialPricing?.type,
                     decoration: _mapFieldDecoration(
                       labelText: 'Lot Class / Type',
                       icon: Icons.category_outlined,
                     ),
+                    items: lotPriceCatalog
+                        .map(
+                          (entry) => DropdownMenuItem(
+                            value: entry.type,
+                            child: Text(entry.type),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      final pricing = lotPriceForType(value);
+                      setDialogState(() {
+                        lotClassTypeController.text = value ?? '';
+                        final price = selectedPricingType == 'at_need'
+                            ? pricing?.atNeed
+                            : pricing?.preNeed;
+                        priceController.text = price?.toStringAsFixed(2) ?? '';
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedPricingType,
+                    decoration: _mapFieldDecoration(
+                      labelText: 'Pricing Type',
+                      icon: Icons.sell_outlined,
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'at_need',
+                        child: Text('At-Need'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'pre_need',
+                        child: Text('Pre-Need'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      setDialogState(() {
+                        selectedPricingType = value!;
+                        final pricing = lotPriceForType(
+                          lotClassTypeController.text,
+                        );
+                        final price = selectedPricingType == 'at_need'
+                            ? pricing?.atNeed
+                            : pricing?.preNeed;
+                        priceController.text = price?.toStringAsFixed(2) ?? '';
+                      });
+                    },
                   ),
                   const SizedBox(height: 12),
                   TextField(
@@ -1126,7 +1246,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                       labelText: 'Price',
                       icon: Icons.payments_outlined,
                     ),
-                    keyboardType: TextInputType.number,
+                    readOnly: true,
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
@@ -1225,7 +1345,6 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
         ? _defaultLotLabel(blockNumber: blockNumber, lotNumber: lotNumber)
         : lotLabelController.text.trim();
     final lotClassType = lotClassTypeController.text.trim();
-    final priceInput = priceController.text.trim();
     final xInput = xController.text.trim();
     final yInput = yController.text.trim();
     blockNumberController.dispose();
@@ -1237,14 +1356,14 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
     yController.dispose();
     if (saved != true) return;
 
-    final price = double.tryParse(priceInput);
+    final pricing = lotPriceForType(lotClassType);
     final xPercent = double.tryParse(xInput);
     final yPercent = double.tryParse(yInput);
     if (lotNumber.isEmpty ||
-        price == null ||
+        pricing == null ||
         xPercent == null ||
         yPercent == null) {
-      _snack('Lot number, price, and position are required.', error: true);
+      _snack('Lot number, lot type, and position are required.', error: true);
       return;
     }
 
@@ -1259,7 +1378,10 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
             'lot_number': lotNumber,
             'lot_label': lotLabel.isEmpty ? lotNumber : lotLabel,
             'lot_class_type': lotClassType.isEmpty ? null : lotClassType,
-            'price': price,
+            'pricing_type': selectedPricingType,
+            'price': selectedPricingType == 'at_need'
+                ? pricing.atNeed
+                : pricing.preNeed,
             'status': selectedStatus,
             'x_coord': _percentToLatLng(normalizedX, normalizedY).longitude,
             'y_coord': _percentToLatLng(normalizedX, normalizedY).latitude,
@@ -1514,7 +1636,10 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
     if (mounted) setState(() => _isSaving = false);
     if (!mounted) return;
 
+    var assignmentMode = 'existing';
     String? selectedBurialId;
+    final deceasedNameController = TextEditingController();
+    final deathDateController = TextEditingController();
     final assignedBurials = burials
         .where((record) => _sameRecordId(record['lot_id'], lotId))
         .toList();
@@ -1575,37 +1700,94 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                       ),
                     ),
                   const Divider(height: 28),
-                  DropdownButtonFormField<String>(
-                    initialValue: selectedBurialId,
-                    decoration: _mapFieldDecoration(
-                      labelText: 'Deceased Record',
-                      icon: Icons.person_search_rounded,
-                    ),
-                    items: [
-                      const DropdownMenuItem<String>(
-                        value: null,
-                        child: Text('Select a deceased record'),
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(
+                        value: 'existing',
+                        label: Text('Existing record'),
+                        icon: Icon(Icons.person_search_rounded),
                       ),
-                      ...burials.map((burial) {
-                        final assignedLot = burial['cemetery_lot'];
-                        final currentLotId = burial['lot_id'];
-                        final status = currentLotId == null
-                            ? 'unassigned'
-                            : _sameRecordId(currentLotId, lotId)
-                            ? 'already here'
-                            : 'assigned to Lot ${lotReference(assignedLot)}';
-                        return DropdownMenuItem<String>(
-                          value: burial['burial_id'].toString(),
-                          child: Text(
-                            '${burial['name_of_deceased'] ?? 'Unknown'} ($status)',
-                          ),
-                        );
-                      }),
+                      ButtonSegment(
+                        value: 'new',
+                        label: Text('New deceased'),
+                        icon: Icon(Icons.person_add_alt_1_rounded),
+                      ),
                     ],
-                    onChanged: (value) {
-                      setDialogState(() => selectedBurialId = value);
+                    selected: {assignmentMode},
+                    onSelectionChanged: (selection) {
+                      setDialogState(() {
+                        assignmentMode = selection.first;
+                      });
                     },
                   ),
+                  const SizedBox(height: 16),
+                  if (assignmentMode == 'existing')
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedBurialId,
+                      decoration: _mapFieldDecoration(
+                        labelText: 'Deceased Record',
+                        icon: Icons.person_search_rounded,
+                      ),
+                      items: [
+                        const DropdownMenuItem<String>(
+                          value: null,
+                          child: Text('Select a deceased record'),
+                        ),
+                        ...burials.map((burial) {
+                          final assignedLot = burial['cemetery_lot'];
+                          final currentLotId = burial['lot_id'];
+                          final status = currentLotId == null
+                              ? 'unassigned'
+                              : _sameRecordId(currentLotId, lotId)
+                              ? 'already here'
+                              : 'assigned to Lot ${lotReference(assignedLot)}';
+                          return DropdownMenuItem<String>(
+                            value: burial['burial_id'].toString(),
+                            child: Text(
+                              '${burial['name_of_deceased'] ?? 'Unknown'} ($status)',
+                            ),
+                          );
+                        }),
+                      ],
+                      onChanged: (value) {
+                        setDialogState(() => selectedBurialId = value);
+                      },
+                    )
+                  else ...[
+                    TextField(
+                      controller: deceasedNameController,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: _mapFieldDecoration(
+                        labelText: 'Full Name of Deceased',
+                        icon: Icons.person_outline_rounded,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: deathDateController,
+                      readOnly: true,
+                      decoration: _mapFieldDecoration(
+                        labelText: 'Date of Death',
+                        icon: Icons.calendar_today_rounded,
+                      ),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime(1800),
+                          lastDate: DateTime.now(),
+                        );
+                        if (picked != null) {
+                          setDialogState(() {
+                            deathDateController.text =
+                                '${picked.year.toString().padLeft(4, '0')}-'
+                                '${picked.month.toString().padLeft(2, '0')}-'
+                                '${picked.day.toString().padLeft(2, '0')}';
+                          });
+                        }
+                      },
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -1623,12 +1805,27 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
               child: const Text('Cancel'),
             ),
             FilledButton(
-              onPressed: selectedBurialId == null
-                  ? null
-                  : () => Navigator.pop(context, {
-                      'action': 'assign',
-                      'burial_id': selectedBurialId,
-                    }),
+              onPressed: () {
+                if (assignmentMode == 'existing') {
+                  if (selectedBurialId == null) return;
+                  Navigator.pop(context, {
+                    'action': 'assign',
+                    'burial_id': selectedBurialId,
+                  });
+                  return;
+                }
+                final name = deceasedNameController.text.trim();
+                final deathDate = deathDateController.text.trim();
+                if (name.isEmpty || deathDate.isEmpty) {
+                  _snack('Name and date of death are required.', error: true);
+                  return;
+                }
+                Navigator.pop(context, {
+                  'action': 'create',
+                  'name_of_deceased': name,
+                  'death_date': deathDate,
+                });
+              },
               style: FilledButton.styleFrom(
                 backgroundColor: _C.primary,
                 foregroundColor: _C.white,
@@ -1640,14 +1837,27 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
-              child: const Text('Assign'),
+              child: Text(
+                assignmentMode == 'new' ? 'Create & Assign' : 'Assign',
+              ),
             ),
           ],
         ),
       ),
     );
 
+    deceasedNameController.dispose();
+    deathDateController.dispose();
     if (result == null) return;
+    if (result['action'] == 'create') {
+      await _createAndAssignBurial(
+        name: result['name_of_deceased'].toString(),
+        deathDate: result['death_date'].toString(),
+        lotId: lotId,
+        lot: lot,
+      );
+      return;
+    }
     final burialId = int.tryParse(result['burial_id'].toString());
     if (burialId == null) {
       _snack('Selected burial record is invalid.', error: true);
@@ -1658,6 +1868,51 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
       await _unassignBurialFromLot(burialId: burialId, lotId: lotId);
     } else {
       await _assignBurialToLot(burialId: burialId, lotId: lotId, lot: lot);
+    }
+  }
+
+  Future<void> _createAndAssignBurial({
+    required String name,
+    required String deathDate,
+    required int lotId,
+    required Map<String, dynamic> lot,
+  }) async {
+    setState(() => _isSaving = true);
+    try {
+      final supabase = Supabase.instance.client;
+      final created = await supabase
+          .from('burial_record')
+          .insert({
+            'name_of_deceased': name,
+            'death_date': deathDate,
+            'lot_id': lotId,
+            'lot_location_no': lotReference(lot),
+            'death_certificate_submitted': false,
+            'ownership_certificate_submitted': false,
+            'authority_document_submitted': false,
+          })
+          .select('burial_id')
+          .single();
+      final burialId = int.parse(created['burial_id'].toString());
+
+      await supabase
+          .from('cemetery_lot')
+          .update({'status': 'Occupied'})
+          .eq('lot_id', lotId);
+      await _refreshLotMarker(lotId);
+
+      await AuditService.log(
+        action: 'CREATE',
+        entityType: 'burial',
+        entityId: burialId.toString(),
+        details:
+            'Created $name and assigned the record to Lot ${lotReference(lot)}',
+      );
+      _snack('New deceased record created and assigned to the lot.');
+    } catch (e) {
+      _snack('Unable to create and assign deceased: $e', error: true);
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -2166,7 +2421,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
   }
 
   void _zoomBy(double delta) {
-    _currentZoom = (_currentZoom + delta).clamp(14.0, 20.0);
+    _currentZoom = (_currentZoom + delta).clamp(18.5, 22.0);
     _moveMap(_currentCenter, _currentZoom);
   }
 
@@ -2219,13 +2474,19 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
     final routePoints = _selectedMarker == null
         ? <LatLng>[]
         : _routeFromEntranceToLot(_selectedMarker!);
-    final lotPolygons = lotPolygonsFromMarkers(
-      _lotMarkers,
-      selectedLotId: _selectedMarker == null
-          ? null
-          : _markerLotId(_selectedMarker!),
-      includeHitValues: true,
-    );
+    final visibleLotMarkers = _visibleLotBounds == null
+        ? const <Map<String, dynamic>>[]
+        : lotMarkersWithinBounds(_lotMarkers, _visibleLotBounds!);
+    final lotPolygons = _currentZoom >= _lotDetailZoom
+        ? lotPolygonsFromMarkers(
+            visibleLotMarkers,
+            selectedLotId: _selectedMarker == null
+                ? null
+                : _markerLotId(_selectedMarker!),
+            includeHitValues: true,
+            lowDetail: _currentZoom < 20,
+          )
+        : <Polygon<String>>[];
     final baseMapFeatures = _mapFeatures.where(isMapLayerFeature).toList();
     final overlayMapFeatures = _mapFeatures
         .where((feature) => !isMapLayerFeature(feature))
@@ -2234,7 +2495,11 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
     final basePolylines = mapFeaturePolylines(baseMapFeatures);
     final overlayPolygons = mapFeaturePolygons(overlayMapFeatures);
     final overlayPolylines = mapFeaturePolylines(overlayMapFeatures);
-    final overlayPointMarkers = mapFeaturePointMarkers(overlayMapFeatures);
+    final overlayPointMarkers = mapFeaturePointMarkers(
+      overlayMapFeatures
+          .where((feature) => mapFeatureType(feature) != 'entrance')
+          .toList(),
+    );
 
     return Container(
       key: _mapKey,
@@ -2244,27 +2509,43 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
         options: MapOptions(
           initialCenter: _mapCenter,
           initialZoom: _initialZoom,
-          minZoom: 14,
-          maxZoom: 20,
+          minZoom: 18.5,
+          maxZoom: 22,
+          cameraConstraint: CameraConstraint.containCenter(
+            bounds: _cemeteryCameraBounds,
+          ),
           onMapReady: () {
             if (mounted) {
-              setState(() => _mapReady = true);
+              setState(() {
+                _mapReady = true;
+                _visibleLotBounds = _mapController.camera.visibleBounds;
+              });
             } else {
               _mapReady = true;
             }
           },
           onTap: _handleMapTap,
           onPositionChanged: (position, hasGesture) {
+            final wasShowingLots = _currentZoom >= _lotDetailZoom;
             _currentZoom = position.zoom;
             _currentCenter = position.center;
             _lastPointer = position.center;
+            final isShowingLots = _currentZoom >= _lotDetailZoom;
+            if (wasShowingLots != isShowingLots && mounted) setState(() {});
+            _viewportUpdateTimer?.cancel();
+            _viewportUpdateTimer = Timer(const Duration(milliseconds: 140), () {
+              if (!mounted) return;
+              setState(() => _visibleLotBounds = position.visibleBounds);
+            });
           },
         ),
         children: [
           TileLayer(
             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
             userAgentPackageName: 'com.example.cemetery_app',
-            maxZoom: 20,
+            maxZoom: 22,
+            maxNativeZoom: 19,
+            keepBuffer: 1,
           ),
           if (basePolygons.isNotEmpty) PolygonLayer(polygons: basePolygons),
           if (basePolylines.isNotEmpty) PolylineLayer(polylines: basePolylines),
@@ -2334,9 +2615,9 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
       if (_entranceXPercent != null && _entranceYPercent != null)
         Marker(
           point: _entranceLatLng,
-          width: 58,
-          height: 58,
-          child: _mapBadge(Icons.login_rounded, _C.entrance),
+          width: 28,
+          height: 28,
+          child: minimalistEntranceMarker(color: _C.entrance),
         ),
       ..._lotMarkers.where((marker) => !markerHasLotPolygon(marker)).map((
         marker,
@@ -3445,6 +3726,16 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
     );
   }
 
+  LatLngBounds get _cemeteryCameraBounds {
+    const marginFactor = 0.60;
+    final latMargin = _activeMapLatSpan * marginFactor;
+    final lngMargin = _activeMapLngSpan * marginFactor;
+    return LatLngBounds(
+      LatLng(_mapCenter.latitude - latMargin, _mapCenter.longitude - lngMargin),
+      LatLng(_mapCenter.latitude + latMargin, _mapCenter.longitude + lngMargin),
+    );
+  }
+
   (double, double) _latLngToPercent(LatLng point) {
     final x =
         ((point.longitude - _mapCenter.longitude) / _activeMapLngSpan + 0.5) *
@@ -3583,7 +3874,7 @@ class _LotOwnerAssignmentDialogState extends State<_LotOwnerAssignmentDialog> {
   String? _selectedOwnerId;
   String? _civilStatus;
   String? _gender;
-  String _purchaseTerm = 'cash';
+  String _purchaseTerm = 'pre_need';
 
   @override
   void initState() {
@@ -3598,11 +3889,6 @@ class _LotOwnerAssignmentDialogState extends State<_LotOwnerAssignmentDialog> {
             )
         ? currentOwnerId
         : null;
-    final totalMonths = int.tryParse(
-      widget.currentOwnership?['total_months']?.toString() ?? '',
-    );
-    if (totalMonths != null && totalMonths > 1) _purchaseTerm = 'at_need';
-
     _controlNumberController = TextEditingController();
     _firstNameController = TextEditingController();
     _middleNameController = TextEditingController();
@@ -3626,8 +3912,13 @@ class _LotOwnerAssignmentDialogState extends State<_LotOwnerAssignmentDialog> {
       text: lotText(lot, 'lot_number'),
     );
     _numberOfLotsController = TextEditingController(text: '1');
-    _lotPriceController = TextEditingController(text: _moneyText(lot['price']));
-    _intermentFeeController = TextEditingController();
+    final pricing = lotPriceForType(lot['lot_class_type']?.toString());
+    _lotPriceController = TextEditingController(
+      text: (pricing?.preNeed ?? lot['price'] as num? ?? 0).toStringAsFixed(2),
+    );
+    _intermentFeeController = TextEditingController(
+      text: defaultIntermentFee.toStringAsFixed(2),
+    );
     _certificationFeeController = TextEditingController();
     _burialPermitFeeController = TextEditingController();
     _totalAmountController = TextEditingController();
@@ -3836,7 +4127,6 @@ class _LotOwnerAssignmentDialogState extends State<_LotOwnerAssignmentDialog> {
               [
                 name == null || name.isEmpty ? 'Current owner' : name,
                 if (email != null && email.isNotEmpty) email,
-                '${ownership['total_months'] ?? 1} month term',
               ].join(' - '),
               style: const TextStyle(
                 color: Color(0xFF00210A),
@@ -4064,7 +4354,10 @@ class _LotOwnerAssignmentDialogState extends State<_LotOwnerAssignmentDialog> {
         ),
       ]),
       const SizedBox(height: 18),
-      const _DialogSectionTitle(icon: Icons.payments_outlined, title: 'Terms'),
+      const _DialogSectionTitle(
+        icon: Icons.payments_outlined,
+        title: 'Purchase Pricing',
+      ),
       const SizedBox(height: 12),
       _purchaseTermControl(),
       const SizedBox(height: 18),
@@ -4074,8 +4367,22 @@ class _LotOwnerAssignmentDialogState extends State<_LotOwnerAssignmentDialog> {
       ),
       const SizedBox(height: 12),
       _fieldGrid([
-        _moneyField(_lotPriceController, 'Lot Price'),
-        _moneyField(_intermentFeeController, 'Interment Fee'),
+        _field(
+          controller: _lotPriceController,
+          label: 'Fixed Lot Price',
+          icon: Icons.payments_outlined,
+          keyboardType: TextInputType.number,
+          prefixText: 'PHP ',
+          readOnly: true,
+        ),
+        _field(
+          controller: _intermentFeeController,
+          label: 'Interment Fee (Included)',
+          icon: Icons.payments_outlined,
+          keyboardType: TextInputType.number,
+          prefixText: 'PHP ',
+          readOnly: true,
+        ),
         _moneyField(_certificationFeeController, 'Certification Fee'),
         _moneyField(_burialPermitFeeController, 'Burial Permit Fee'),
         _field(
@@ -4135,13 +4442,16 @@ class _LotOwnerAssignmentDialogState extends State<_LotOwnerAssignmentDialog> {
       alignment: Alignment.centerLeft,
       child: SegmentedButton<String>(
         segments: const [
-          ButtonSegment(value: 'cash', label: Text('Cash')),
-          ButtonSegment(value: 'at_need', label: Text('At Need')),
+          ButtonSegment(value: 'at_need', label: Text('At-Need')),
+          ButtonSegment(value: 'pre_need', label: Text('Pre-Need')),
         ],
         selected: {_purchaseTerm},
         showSelectedIcon: false,
         onSelectionChanged: (values) {
-          setState(() => _purchaseTerm = values.first);
+          setState(() {
+            _purchaseTerm = values.first;
+            _applyFixedLotPrice();
+          });
         },
       ),
     );
@@ -4169,8 +4479,18 @@ class _LotOwnerAssignmentDialogState extends State<_LotOwnerAssignmentDialog> {
       ],
       onChanged: (value) {
         _lotClassTypeController.text = value ?? '';
+        _applyFixedLotPrice();
       },
     );
+  }
+
+  void _applyFixedLotPrice() {
+    final pricing = lotPriceForType(_lotClassTypeController.text);
+    final price = _purchaseTerm == 'at_need'
+        ? pricing?.atNeed
+        : pricing?.preNeed;
+    _lotPriceController.text = price?.toStringAsFixed(2) ?? '';
+    _updateTotalAmount();
   }
 
   Widget _moneyField(TextEditingController controller, String label) {
@@ -4388,12 +4708,6 @@ class _LotOwnerAssignmentDialogState extends State<_LotOwnerAssignmentDialog> {
         .replaceAll(',', '');
     if (text.isEmpty) return null;
     return double.tryParse(text);
-  }
-
-  String _moneyText(dynamic value) {
-    if (value == null) return '';
-    final numeric = value is num ? value.toDouble() : double.tryParse('$value');
-    return numeric == null ? value.toString() : numeric.toStringAsFixed(2);
   }
 }
 

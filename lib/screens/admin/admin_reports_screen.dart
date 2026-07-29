@@ -1,12 +1,10 @@
-// ignore: avoid_web_libraries_in_flutter, deprecated_member_use
-import 'dart:html' as html;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../utils/lot_formatters.dart';
+import '../../utils/csv_download.dart';
 
 class AdminReportsScreen extends ConsumerStatefulWidget {
   const AdminReportsScreen({super.key});
@@ -120,18 +118,6 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
     }
   }
 
-  void _downloadAsCSV(String csvContent, String fileName) {
-    final blob = html.Blob([csvContent], 'text/csv');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    final anchor = html.AnchorElement(href: url)
-      ..target = 'blank'
-      ..download = fileName;
-    html.document.body?.append(anchor);
-    anchor.click();
-    anchor.remove();
-    html.Url.revokeObjectUrl(url);
-  }
-
   Future<void> _exportReport() async {
     setState(() {
       _isLoading = true;
@@ -242,7 +228,7 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
           break;
       }
 
-      _downloadAsCSV(csvContent, fileName);
+      await downloadCsv(csvContent, fileName);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

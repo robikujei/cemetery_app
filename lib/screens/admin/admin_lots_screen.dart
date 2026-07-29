@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/admin_delete_service.dart';
 import '../../services/admin_grave_service.dart';
 import '../../utils/lot_formatters.dart';
+import '../../utils/lot_pricing.dart';
 import '../../widgets/app_date_field.dart';
 
 const _lotColumnsSelect =
@@ -39,8 +40,6 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
 
   // For Reserved - lot owner selection
   String? _selectedOwnerId;
-  int? _selectedInstallmentMonths;
-
   String? _editingId;
 
   @override
@@ -168,8 +167,6 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
 
   Future<void> _showEditDialog(Map<String, dynamic> lot) async {
     _selectedOwnerId = null;
-    _selectedInstallmentMonths = null;
-
     _editingId = lot['lot_id'].toString();
     _blockNumberController.text = lotText(lot, 'block_number');
     _lotNumberController.text = lotText(lot, 'lot_number');
@@ -180,7 +177,6 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
 
     if (lot['ownership'] != null) {
       _selectedOwnerId = lot['ownership']['user_id'];
-      _selectedInstallmentMonths = lot['ownership']['total_months'];
     }
 
     showDialog(
@@ -247,21 +243,50 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
-                    controller: _lotClassTypeController,
+                  DropdownButtonFormField<String>(
+                    initialValue: lotPriceForType(
+                      _lotClassTypeController.text,
+                    )?.type,
                     decoration: _fieldDecoration(
                       labelText: 'Lot Class / Type',
                       icon: Icons.category_outlined,
                     ),
+                    items: lotPriceCatalog
+                        .map(
+                          (entry) => DropdownMenuItem(
+                            value: entry.type,
+                            child: Text(entry.type),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      final pricing = lotPriceForType(value);
+                      setDialogState(() {
+                        _lotClassTypeController.text = value ?? '';
+                        _priceController.text =
+                            pricing?.atNeed.toStringAsFixed(2) ?? '';
+                      });
+                    },
                   ),
                   const SizedBox(height: 12),
-                  TextField(
-                    controller: _priceController,
-                    decoration: _fieldDecoration(
-                      labelText: 'Price (PHP) *',
-                      icon: Icons.payments_outlined,
-                    ),
-                    keyboardType: TextInputType.number,
+                  Builder(
+                    builder: (context) {
+                      final pricing = lotPriceForType(
+                        _lotClassTypeController.text,
+                      );
+                      return InputDecorator(
+                        decoration: _fieldDecoration(
+                          labelText: 'Fixed prices',
+                          icon: Icons.payments_outlined,
+                        ),
+                        child: Text(
+                          pricing == null
+                              ? 'Select a lot type'
+                              : 'At-need: PHP ${pricing.atNeed.toStringAsFixed(2)}  •  '
+                                    'Pre-need: PHP ${pricing.preNeed.toStringAsFixed(2)}',
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
@@ -288,7 +313,6 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
                       setDialogState(() {
                         _selectedStatus = value;
                         _selectedOwnerId = null;
-                        _selectedInstallmentMonths = null;
                       });
                     },
                   ),
@@ -320,41 +344,6 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
                           onChanged: (value) {
                             setDialogState(() {
                               _selectedOwnerId = value;
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<int>(
-                          initialValue: _selectedInstallmentMonths,
-                          decoration: _fieldDecoration(
-                            labelText: 'Installment Terms *',
-                            icon: Icons.calendar_month_rounded,
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 12,
-                              child: Text('12 months (1 year)'),
-                            ),
-                            DropdownMenuItem(
-                              value: 24,
-                              child: Text('24 months (2 years)'),
-                            ),
-                            DropdownMenuItem(
-                              value: 36,
-                              child: Text('36 months (3 years)'),
-                            ),
-                            DropdownMenuItem(
-                              value: 48,
-                              child: Text('48 months (4 years)'),
-                            ),
-                            DropdownMenuItem(
-                              value: 60,
-                              child: Text('60 months (5 years)'),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            setDialogState(() {
-                              _selectedInstallmentMonths = value;
                             });
                           },
                         ),
@@ -778,16 +767,12 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
       _showError('Lot number is required');
       return false;
     }
-    if (_priceController.text.trim().isEmpty) {
-      _showError('Price is required');
+    if (lotPriceForType(_lotClassTypeController.text) == null) {
+      _showError('Please select a valid lot type');
       return false;
     }
     if (_selectedStatus == 'Reserved' && _selectedOwnerId == null) {
       _showError('Please select a lot owner for reserved lot');
-      return false;
-    }
-    if (_selectedStatus == 'Reserved' && _selectedInstallmentMonths == null) {
-      _showError('Please select installment terms');
       return false;
     }
     return true;
@@ -827,12 +812,13 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
           ? _defaultLotLabel(blockNumber: blockNumber, lotNumber: lotNumber)
           : _lotLabelController.text.trim();
       final lotClassType = _lotClassTypeController.text.trim();
+      final pricing = lotPriceForType(lotClassType)!;
       final data = {
         'block_number': blockNumber.isEmpty ? null : blockNumber,
         'lot_number': lotNumber,
         'lot_label': lotLabel.isEmpty ? lotNumber : lotLabel,
         'lot_class_type': lotClassType.isEmpty ? null : lotClassType,
-        'price': double.parse(_priceController.text.trim()),
+        'price': pricing.atNeed,
         'status': _selectedStatus,
       };
 
@@ -852,15 +838,16 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
               .from('lot_ownership')
               .update({
                 'user_id': _selectedOwnerId,
-                'total_months': _selectedInstallmentMonths,
+                'total_months': 1,
+                'months_paid': 1,
               })
               .eq('lot_id', lotId);
         } else {
           await supabase.from('lot_ownership').insert({
             'user_id': _selectedOwnerId,
             'lot_id': lotId,
-            'total_months': _selectedInstallmentMonths ?? 24,
-            'months_paid': 0,
+            'total_months': 1,
+            'months_paid': 1,
             'start_date': DateTime.now().toIso8601String(),
             'status': 'Active',
           });
@@ -1256,7 +1243,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
                           _LotInfoChip(
                             icon: Icons.assignment_ind_outlined,
                             label:
-                                'Reserved for ${ownership['user']?['name'] ?? 'Unknown'} (${ownership['total_months']} months)',
+                                'Reserved for ${ownership['user']?['name'] ?? 'Unknown'}',
                             color: const Color(0xFFB67C33),
                           ),
                       ],

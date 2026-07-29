@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,13 +9,14 @@ import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../services/map_feature_service.dart';
+import '../../services/supabase_pagination_service.dart';
 import '../../utils/lot_formatters.dart';
+import '../../utils/lot_pricing.dart';
 import '../../utils/map_feature_geometry.dart';
 
 const _background = Color(0xFFFBF9F6);
 const _surface = Color(0xFFFFFFFF);
 const _surfaceLow = Color(0xFFF5F3F0);
-const _surfaceHigh = Color(0xFFEAE8E5);
 const _primary = Color(0xFF335538);
 const _primaryContainer = Color(0xFFC5EDC6);
 const _onSurface = Color(0xFF1B1C1A);
@@ -230,10 +233,6 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
         _isLoadingAvailable = false;
       });
     }
-  }
-
-  void _goToPayment() {
-    context.push('/lot-owner-payment');
   }
 
   Future<void> _loadAdminContact() async {
@@ -609,28 +608,6 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
     return value;
   }
 
-  Widget _buildPaymentButton() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
-      child: FilledButton.icon(
-        onPressed: _goToPayment,
-        icon: const Icon(Icons.payment_rounded, size: 22),
-        label: const Text(
-          'Make a Payment',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-        ),
-        style: FilledButton.styleFrom(
-          backgroundColor: _primary,
-          foregroundColor: Colors.white,
-          minimumSize: const Size(double.infinity, 56),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -666,11 +643,6 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                   : const Icon(Icons.refresh_rounded),
               onPressed: _refreshData,
               tooltip: 'Refresh',
-            ),
-            IconButton(
-              icon: const Icon(Icons.payment_rounded),
-              onPressed: _goToPayment,
-              tooltip: 'Make Payment',
             ),
             IconButton(
               icon: const Icon(Icons.edit_outlined),
@@ -732,13 +704,6 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                   _buildMapTab(),
                 ],
               ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: _goToPayment,
-          icon: const Icon(Icons.payment_rounded),
-          label: const Text('Make Payment'),
-          backgroundColor: _primary,
-          foregroundColor: Colors.white,
-        ),
       ),
     );
   }
@@ -747,7 +712,6 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
     if (_ownedLots.isEmpty) {
       return Column(
         children: [
-          _buildPaymentButton(),
           Expanded(
             child: Center(
               child: Column(
@@ -782,7 +746,6 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
 
     return Column(
       children: [
-        _buildPaymentButton(),
         Expanded(
           child: RefreshIndicator(
             onRefresh: _refreshData,
@@ -800,24 +763,13 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
 
                 final ownership = _ownedLots[index - 2];
                 final lot = ownership['cemetery_lot'] ?? {};
-                final transactions =
-                    ownership['transaction_history'] as List? ?? [];
                 final locationText = lotMeta(lot).isEmpty
                     ? lotBlockLabel(lot)
                     : lotMeta(lot);
 
-                final lotPrice = (lot['price'] as num?)?.toDouble() ?? 0;
-                final totalPaid = transactions.fold<double>(
-                  0,
-                  (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0),
+                final pricing = lotPriceForType(
+                  lot['lot_class_type']?.toString(),
                 );
-                final remaining = lotPrice - totalPaid;
-                final totalMonths = (ownership['total_months'] as int?) ?? 0;
-                final monthsPaid = (ownership['months_paid'] as int?) ?? 0;
-                final monthsRemaining = totalMonths - monthsPaid;
-                final paymentProgress = totalMonths > 0
-                    ? monthsPaid / totalMonths
-                    : 0.0;
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 16),
@@ -853,71 +805,31 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                         padding: const EdgeInsets.all(16),
                         child: Column(
                           children: [
-                            _buildInfoRow('Price', _formatCurrency(lotPrice)),
+                            _buildInfoRow(
+                              'Lot Type',
+                              lot['lot_class_type']?.toString() ?? 'Unknown',
+                            ),
+                            const SizedBox(height: 8),
+                            _buildInfoRow(
+                              'At-Need Price',
+                              pricing == null
+                                  ? '--'
+                                  : _formatCurrency(pricing.atNeed),
+                            ),
+                            const SizedBox(height: 8),
+                            _buildInfoRow(
+                              'Pre-Need Price',
+                              pricing == null
+                                  ? '--'
+                                  : _formatCurrency(pricing.preNeed),
+                            ),
                             const SizedBox(height: 8),
                             _buildInfoRow('Status', lot['status'] ?? 'Active'),
-                            const SizedBox(height: 8),
-                            _buildInfoRow(
-                              'Start Date',
-                              _formatDate(ownership['start_date']),
-                            ),
-                            const SizedBox(height: 8),
-                            _buildInfoRow(
-                              'Payment Plan',
-                              '$monthsPaid/$totalMonths months',
-                            ),
-                            const SizedBox(height: 8),
-                            _buildInfoRow(
-                              'Total Paid',
-                              _formatCurrency(totalPaid),
-                            ),
-                            const SizedBox(height: 8),
-                            _buildInfoRow(
-                              'Remaining Balance',
-                              _formatCurrency(remaining),
-                            ),
-                            const SizedBox(height: 16),
-                            LinearProgressIndicator(
-                              value: paymentProgress,
-                              minHeight: 8,
-                              borderRadius: BorderRadius.circular(999),
-                              backgroundColor: _surfaceHigh,
-                              color: _primary,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '$monthsRemaining months remaining',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
                             const SizedBox(height: 18),
                             _buildLotProfilePanel(lot),
                             const SizedBox(height: 12),
                             _buildAmountPayablePanel(),
                           ],
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: () => _showPaymentHistory(
-                              transactions,
-                              lotReference(lot),
-                            ),
-                            icon: const Icon(Icons.history),
-                            label: const Text('View Payment History'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: _primary,
-                              side: const BorderSide(color: _outlineVariant),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                          ),
                         ),
                       ),
                     ],
@@ -1134,7 +1046,6 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
     if (_availableLots.isEmpty) {
       return Column(
         children: [
-          _buildPaymentButton(),
           Expanded(
             child: const Center(
               child: Column(
@@ -1161,7 +1072,6 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
 
     return Column(
       children: [
-        _buildPaymentButton(),
         Expanded(
           child: RefreshIndicator(
             onRefresh: _refreshData,
@@ -1238,7 +1148,6 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
   Widget _buildMapTab() {
     return Column(
       children: [
-        _buildPaymentButton(),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
@@ -1275,63 +1184,6 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
       ],
     );
   }
-
-  void _showPaymentHistory(List<dynamic> transactions, String lotNumber) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Payment History - Lot $lotNumber',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            if (transactions.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(32),
-                child: Text('No payment records found'),
-              )
-            else
-              ListView.builder(
-                shrinkWrap: true,
-                itemCount: transactions.length,
-                itemBuilder: (context, index) {
-                  final t = transactions[index];
-                  final amount = (t['amount'] as num?)?.toDouble() ?? 0;
-                  return ListTile(
-                    leading: const Icon(
-                      Icons.receipt,
-                      color: Color(0xFF4B6E4F),
-                    ),
-                    title: Text(_formatCurrency(amount)),
-                    subtitle: Text(_formatDate(t['payment_date'])),
-                    trailing: const Icon(
-                      Icons.check_circle,
-                      color: Colors.green,
-                    ),
-                  );
-                },
-              ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4B6E4F),
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Close'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _LotMapPreview extends StatefulWidget {
@@ -1344,8 +1196,9 @@ class _LotMapPreview extends StatefulWidget {
 }
 
 class _LotMapPreviewState extends State<_LotMapPreview> {
-  static final LatLng _tagumMapCenter = LatLng(7.3793125, 125.753328125);
-  static const double _initialZoom = 18;
+  static final LatLng _tagumMapCenter = LatLng(7.318551542, 125.662934679);
+  static const double _initialZoom = 19;
+  static const double _lotDetailZoom = 18.75;
   static const double _mapLatSpan = 0.0036;
   static const double _mapLngSpan = 0.0046;
 
@@ -1356,11 +1209,14 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
   double? _entranceXPercent;
   double? _entranceYPercent;
   LatLng _mapCenter = _tagumMapCenter;
+  double _currentZoom = _initialZoom;
   double _activeMapLatSpan = _mapLatSpan;
   double _activeMapLngSpan = _mapLngSpan;
   List<Map<String, dynamic>> _lotMarkers = [];
   List<Map<String, dynamic>> _mapFeatures = [];
   Map<String, dynamic>? _selectedAvailableLot;
+  LatLngBounds? _visibleLotBounds;
+  Timer? _viewportUpdateTimer;
 
   @override
   void initState() {
@@ -1371,13 +1227,14 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
   @override
   void dispose() {
     _lotPolygonHitNotifier.dispose();
+    _viewportUpdateTimer?.cancel();
     super.dispose();
   }
 
   Future<void> _loadPreviewData() async {
     try {
       final supabase = Supabase.instance.client;
-      final results = await Future.wait([
+      final results = await Future.wait<dynamic>([
         supabase
             .from('cemetery_map')
             .select(
@@ -1386,9 +1243,11 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
             .order('uploaded_at', ascending: false)
             .limit(1)
             .maybeSingle(),
-        supabase
-            .from('lot_markers')
-            .select('''
+        SupabasePaginationService.selectAll(
+          supabase: supabase,
+          table: 'lot_markers',
+          orderColumn: 'marker_id',
+          columns: '''
               marker_id,
               lot_id,
               x_percent,
@@ -1403,8 +1262,8 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
                 price,
                 status
               )
-            ''')
-            .order('marker_id'),
+            ''',
+        ),
       ]);
       final mapFeatures = await MapFeatureService.loadVisible(supabase);
 
@@ -1453,6 +1312,16 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
     return LatLng(lat, lng);
   }
 
+  LatLngBounds get _cemeteryCameraBounds {
+    const marginFactor = 0.60;
+    final latMargin = _activeMapLatSpan * marginFactor;
+    final lngMargin = _activeMapLngSpan * marginFactor;
+    return LatLngBounds(
+      LatLng(_mapCenter.latitude - latMargin, _mapCenter.longitude - lngMargin),
+      LatLng(_mapCenter.latitude + latMargin, _mapCenter.longitude + lngMargin),
+    );
+  }
+
   LatLng _markerToLatLng(Map<String, dynamic> marker) {
     final x = (marker['x_percent'] as num?)?.toDouble() ?? 50;
     final y = (marker['y_percent'] as num?)?.toDouble() ?? 50;
@@ -1499,14 +1368,9 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
       if (_hasMappedEntrance)
         Marker(
           point: _entranceLatLng,
-          width: 40,
-          height: 40,
-          child: _PreviewPin(
-            color: _primary,
-            icon: Icons.place_rounded,
-            size: 40,
-            filled: true,
-          ),
+          width: 28,
+          height: 28,
+          child: minimalistEntranceMarker(color: _primary),
         ),
       ..._lotMarkers.where((marker) => !markerHasLotPolygon(marker)).map((
         marker,
@@ -1576,11 +1440,17 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
       }),
     ];
     final selectedLotId = _selectedAvailableLot?['lot_id'];
-    final lotPolygons = lotPolygonsFromMarkers(
-      _lotMarkers,
-      selectedLotId: selectedLotId,
-      includeHitValues: true,
-    );
+    final visibleLotMarkers = _visibleLotBounds == null
+        ? const <Map<String, dynamic>>[]
+        : lotMarkersWithinBounds(_lotMarkers, _visibleLotBounds!);
+    final lotPolygons = _currentZoom >= _lotDetailZoom
+        ? lotPolygonsFromMarkers(
+            visibleLotMarkers,
+            selectedLotId: selectedLotId,
+            includeHitValues: true,
+            lowDetail: _currentZoom < 20,
+          )
+        : <Polygon<String>>[];
     final previewMapFeatures = _mapFeatures
         .where(isPublicPreviewMapFeature)
         .toList();
@@ -1594,7 +1464,11 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
     final basePolylines = mapFeaturePolylines(baseMapFeatures);
     final overlayPolygons = mapFeaturePolygons(overlayMapFeatures);
     final overlayPolylines = mapFeaturePolylines(overlayMapFeatures);
-    final overlayPointMarkers = mapFeaturePointMarkers(overlayMapFeatures);
+    final overlayPointMarkers = mapFeaturePointMarkers(
+      overlayMapFeatures
+          .where((feature) => mapFeatureType(feature) != 'entrance')
+          .toList(),
+    );
 
     return Stack(
       children: [
@@ -1603,17 +1477,42 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
           options: MapOptions(
             initialCenter: _entranceLatLng,
             initialZoom: _initialZoom,
-            minZoom: 14,
-            maxZoom: 20,
+            minZoom: 18.5,
+            maxZoom: 22,
+            cameraConstraint: CameraConstraint.containCenter(
+              bounds: _cemeteryCameraBounds,
+            ),
+            onMapReady: () {
+              if (!mounted) return;
+              setState(() {
+                _visibleLotBounds = _mapController.camera.visibleBounds;
+              });
+            },
             interactionOptions: const InteractionOptions(
               flags: InteractiveFlag.all,
             ),
+            onPositionChanged: (position, _) {
+              final wasShowingLots = _currentZoom >= _lotDetailZoom;
+              _currentZoom = position.zoom;
+              final isShowingLots = _currentZoom >= _lotDetailZoom;
+              if (wasShowingLots != isShowingLots && mounted) setState(() {});
+              _viewportUpdateTimer?.cancel();
+              _viewportUpdateTimer = Timer(
+                const Duration(milliseconds: 140),
+                () {
+                  if (!mounted) return;
+                  setState(() => _visibleLotBounds = position.visibleBounds);
+                },
+              );
+            },
           ),
           children: [
             TileLayer(
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
               userAgentPackageName: 'com.example.cemetery_app',
-              maxZoom: 20,
+              maxZoom: 22,
+              maxNativeZoom: 19,
+              keepBuffer: 1,
             ),
             if (basePolygons.isNotEmpty) PolygonLayer(polygons: basePolygons),
             if (basePolylines.isNotEmpty)
@@ -1657,9 +1556,19 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
               borderRadius: BorderRadius.circular(999),
               border: Border.all(color: _outlineVariant.withValues(alpha: 0.5)),
             ),
-            child: const Text(
-              '9QH3+P8G, Tagum, Davao del Norte',
-              style: TextStyle(fontWeight: FontWeight.w700, color: _onSurface),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.map_outlined, size: 17, color: _onSurface),
+                SizedBox(width: 7),
+                Text(
+                  'Cemetery Map',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: _onSurface,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
