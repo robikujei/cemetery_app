@@ -656,7 +656,7 @@ class _AdminBurialRecordsScreenState
     }
 
     if (!mounted) return;
-    showDialog(
+    final dialogResult = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
@@ -1031,7 +1031,7 @@ class _AdminBurialRecordsScreenState
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(context, false),
                 style: TextButton.styleFrom(
                   foregroundColor: const Color(0xFF424841),
                   padding: const EdgeInsets.symmetric(
@@ -1044,7 +1044,7 @@ class _AdminBurialRecordsScreenState
               ElevatedButton(
                 onPressed: () async {
                   if (_validateForm()) {
-                    Navigator.pop(context);
+                    Navigator.pop(context, true);
                     await _saveRecord();
                   }
                 },
@@ -1067,6 +1067,12 @@ class _AdminBurialRecordsScreenState
         },
       ),
     );
+    if (mounted &&
+        widget.closeAfterCreate &&
+        dialogResult != true &&
+        Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
   }
 
   bool get _hasInformantDetails {
@@ -1327,6 +1333,18 @@ class _AdminBurialRecordsScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFBF9F6),
+      appBar: widget.closeAfterCreate
+          ? AppBar(
+              backgroundColor: const Color(0xFFFBF9F6),
+              surfaceTintColor: Colors.transparent,
+              leading: IconButton(
+                tooltip: 'Back to map',
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.arrow_back_rounded),
+              ),
+              title: const Text('Add Deceased'),
+            )
+          : null,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
