@@ -18,6 +18,7 @@ import '../../utils/lot_formatters.dart';
 import '../../utils/lot_pricing.dart';
 import '../../utils/map_feature_geometry.dart';
 import '../../widgets/app_date_field.dart';
+import 'admin_burial_records_screen.dart';
 
 const _lotColumnsSelect =
     'lot_id, lot_number, lot_label, block_number, lot_class_type, pricing_type, price, status, qgis_feature_id, polygon_geo, burial_record(burial_id, name_of_deceased, birth_date, death_date, burial_date, interment_date, burial_category, lot_id)';
@@ -1638,8 +1639,6 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
 
     var assignmentMode = 'existing';
     String? selectedBurialId;
-    final deceasedNameController = TextEditingController();
-    final deathDateController = TextEditingController();
     final assignedBurials = burials
         .where((record) => _sameRecordId(record['lot_id'], lotId))
         .toList();
@@ -1754,38 +1753,18 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                       },
                     )
                   else ...[
-                    TextField(
-                      controller: deceasedNameController,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: _mapFieldDecoration(
-                        labelText: 'Full Name of Deceased',
-                        icon: Icons.person_outline_rounded,
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: _C.primaryFixed.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: deathDateController,
-                      readOnly: true,
-                      decoration: _mapFieldDecoration(
-                        labelText: 'Date of Death',
-                        icon: Icons.calendar_today_rounded,
+                      child: const Text(
+                        'The complete Interment Application form will open '
+                        'next. The selected lot will be filled in '
+                        'automatically.',
+                        style: TextStyle(color: _C.onSurfaceVariant),
                       ),
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: DateTime.now(),
-                          firstDate: DateTime(1800),
-                          lastDate: DateTime.now(),
-                        );
-                        if (picked != null) {
-                          setDialogState(() {
-                            deathDateController.text =
-                                '${picked.year.toString().padLeft(4, '0')}-'
-                                '${picked.month.toString().padLeft(2, '0')}-'
-                                '${picked.day.toString().padLeft(2, '0')}';
-                          });
-                        }
-                      },
                     ),
                   ],
                 ],
@@ -1814,17 +1793,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                   });
                   return;
                 }
-                final name = deceasedNameController.text.trim();
-                final deathDate = deathDateController.text.trim();
-                if (name.isEmpty || deathDate.isEmpty) {
-                  _snack('Name and date of death are required.', error: true);
-                  return;
-                }
-                Navigator.pop(context, {
-                  'action': 'create',
-                  'name_of_deceased': name,
-                  'death_date': deathDate,
-                });
+                Navigator.pop(context, {'action': 'open_full_form'});
               },
               style: FilledButton.styleFrom(
                 backgroundColor: _C.primary,
@@ -1837,25 +1806,16 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
-              child: Text(
-                assignmentMode == 'new' ? 'Create & Assign' : 'Assign',
-              ),
+              child: Text(assignmentMode == 'new' ? 'Continue' : 'Assign'),
             ),
           ],
         ),
       ),
     );
 
-    deceasedNameController.dispose();
-    deathDateController.dispose();
     if (result == null) return;
-    if (result['action'] == 'create') {
-      await _createAndAssignBurial(
-        name: result['name_of_deceased'].toString(),
-        deathDate: result['death_date'].toString(),
-        lotId: lotId,
-        lot: lot,
-      );
+    if (result['action'] == 'open_full_form') {
+      await _openFullBurialFormForLot(lotId: lotId, lot: lot);
       return;
     }
     final burialId = int.tryParse(result['burial_id'].toString());
@@ -1871,46 +1831,34 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
     }
   }
 
-  Future<void> _createAndAssignBurial({
-    required String name,
-    required String deathDate,
+  Future<void> _openFullBurialFormForLot({
     required int lotId,
     required Map<String, dynamic> lot,
   }) async {
+    final burialId = await Navigator.of(context).push<int>(
+      MaterialPageRoute(
+        builder: (_) => AdminBurialRecordsScreen(
+          initialLot: lot,
+          openAddForm: true,
+          closeAfterCreate: true,
+        ),
+      ),
+    );
+    if (!mounted || burialId == null) return;
+
     setState(() => _isSaving = true);
     try {
-      final supabase = Supabase.instance.client;
-      final created = await supabase
-          .from('burial_record')
-          .insert({
-            'name_of_deceased': name,
-            'death_date': deathDate,
-            'lot_id': lotId,
-            'lot_location_no': lotReference(lot),
-            'death_certificate_submitted': false,
-            'ownership_certificate_submitted': false,
-            'authority_document_submitted': false,
-          })
-          .select('burial_id')
-          .single();
-      final burialId = int.parse(created['burial_id'].toString());
-
-      await supabase
+      await Supabase.instance.client
           .from('cemetery_lot')
           .update({'status': 'Occupied'})
           .eq('lot_id', lotId);
       await _refreshLotMarker(lotId);
-
-      await AuditService.log(
-        action: 'CREATE',
-        entityType: 'burial',
-        entityId: burialId.toString(),
-        details:
-            'Created $name and assigned the record to Lot ${lotReference(lot)}',
-      );
       _snack('New deceased record created and assigned to the lot.');
     } catch (e) {
-      _snack('Unable to create and assign deceased: $e', error: true);
+      _snack(
+        'Record created, but the lot could not be refreshed: $e',
+        error: true,
+      );
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

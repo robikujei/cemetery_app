@@ -13,10 +13,16 @@ class AdminBurialRecordsScreen extends ConsumerStatefulWidget {
     super.key,
     this.onMenuPressed,
     this.onLogoutPressed,
+    this.initialLot,
+    this.openAddForm = false,
+    this.closeAfterCreate = false,
   });
 
   final VoidCallback? onMenuPressed;
   final VoidCallback? onLogoutPressed;
+  final Map<String, dynamic>? initialLot;
+  final bool openAddForm;
+  final bool closeAfterCreate;
 
   @override
   ConsumerState<AdminBurialRecordsScreen> createState() =>
@@ -81,7 +87,13 @@ class _AdminBurialRecordsScreenState
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _loadData().then((_) {
+      if (mounted && widget.openAddForm) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _showAddEditDialog();
+        });
+      }
+    });
   }
 
   @override
@@ -614,7 +626,10 @@ class _AdminBurialRecordsScreenState
       _religionController.clear();
       _intermentDateController.clear();
       _intermentTimeController.clear();
-      _selectedBurialCategory = null;
+      final initialLotType = widget.initialLot?['lot_class_type']?.toString();
+      _selectedBurialCategory = _burialCategories.contains(initialLotType)
+          ? initialLotType
+          : null;
       _selectedInformantId = null;
       _informantNameController.clear();
       _informantRelationshipController.clear();
@@ -627,7 +642,9 @@ class _AdminBurialRecordsScreenState
       _bldgNoController.clear();
       _nicheNoController.clear();
       _levelController.clear();
-      _lotLocationNoController.clear();
+      _lotLocationNoController.text = widget.initialLot == null
+          ? ''
+          : lotReference(widget.initialLot, fallback: '');
       _registeredLotOwnerController.clear();
       _registeredOwnerContactController.clear();
       _orNumberController.clear();
@@ -1149,6 +1166,9 @@ class _AdminBurialRecordsScreenState
         'ownership_certificate_submitted': _ownershipCertificateSubmitted,
         'authority_document_submitted': _authorityDocumentSubmitted,
       };
+      if (!_isEditing && widget.initialLot?['lot_id'] != null) {
+        data['lot_id'] = widget.initialLot!['lot_id'];
+      }
 
       if (_isEditing && _editingId != null) {
         await supabase
@@ -1191,6 +1211,10 @@ class _AdminBurialRecordsScreenState
             backgroundColor: Colors.green,
           ),
         );
+        if (widget.closeAfterCreate) {
+          Navigator.of(context).pop(int.tryParse(newId));
+          return;
+        }
       }
 
       await _loadData();

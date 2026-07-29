@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../services/admin_delete_service.dart';
 import '../../services/admin_grave_service.dart';
+import '../../services/supabase_pagination_service.dart';
 import '../../utils/lot_formatters.dart';
 import '../../utils/lot_pricing.dart';
 import '../../widgets/app_date_field.dart';
@@ -29,6 +30,18 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
   String? _errorMessage;
   String _searchQuery = '';
   String _filterStatus = 'All';
+  static const int _pageSize = 100;
+  int _currentPage = 0;
+
+  int get _pageCount =>
+      _filteredLots.isEmpty ? 1 : (_filteredLots.length / _pageSize).ceil();
+
+  List<Map<String, dynamic>> get _pagedLots {
+    final start = _currentPage * _pageSize;
+    if (start >= _filteredLots.length) return const [];
+    final end = (start + _pageSize).clamp(0, _filteredLots.length);
+    return _filteredLots.sublist(start, end);
+  }
 
   // Form controllers
   final _blockNumberController = TextEditingController();
@@ -72,39 +85,63 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
           .select('user_id, name, email')
           .eq('role', 'lot_owner');
 
-      final lots = await supabase
-          .from('cemetery_lot')
-          .select(_lotColumnsSelect)
-          .order('block_number')
-          .order('lot_number');
+      final results = await Future.wait([
+        SupabasePaginationService.selectAll(
+          supabase: supabase,
+          table: 'cemetery_lot',
+          columns: _lotColumnsSelect,
+          orderColumn: 'lot_id',
+        ),
+        SupabasePaginationService.selectAll(
+          supabase: supabase,
+          table: 'burial_record',
+          columns: 'burial_id, name_of_deceased, lot_id',
+          orderColumn: 'burial_id',
+        ),
+        SupabasePaginationService.selectAll(
+          supabase: supabase,
+          table: 'lot_ownership',
+          columns:
+              'ownership_id, lot_id, user_id, total_months, months_paid, user:user_id (name)',
+          orderColumn: 'ownership_id',
+        ),
+      ]);
+      final lots = results[0];
+      final burialRows = results[1];
+      final ownershipRows = results[2];
       final gravesByLotId = await AdminGraveService.loadGravesByLotIds(
-        (lots as List).map((lot) => lot['lot_id']),
+        lots.map((lot) => lot['lot_id']),
       );
+
+      final burialsByLotId = <String, List<Map<String, dynamic>>>{};
+      for (final burial in burialRows) {
+        final lotId = burial['lot_id']?.toString();
+        if (lotId == null) continue;
+        burialsByLotId.putIfAbsent(lotId, () => []).add(burial);
+      }
+      final ownershipByLotId = <String, Map<String, dynamic>>{};
+      for (final ownership in ownershipRows) {
+        final lotId = ownership['lot_id']?.toString();
+        if (lotId != null) ownershipByLotId[lotId] = ownership;
+      }
 
       final lotsWithDetails = <Map<String, dynamic>>[];
       for (var lot in lots) {
         final lotId = lot['lot_id'];
-
-        final burialRecords = await supabase
-            .from('burial_record')
-            .select('burial_id, name_of_deceased')
-            .eq('lot_id', lotId)
-            .order('name_of_deceased');
-
-        final ownership = await supabase
-            .from('lot_ownership')
-            .select('user_id, total_months, months_paid, user:user_id (name)')
-            .eq('lot_id', lotId)
-            .maybeSingle();
-
         var lotWithDetails = Map<String, dynamic>.from(lot);
         final lotBurials = List<Map<String, dynamic>>.from(
-          burialRecords as List,
+          burialsByLotId[lotId?.toString()] ?? const [],
+        );
+        lotBurials.sort(
+          (a, b) => (a['name_of_deceased'] ?? '').toString().compareTo(
+            (b['name_of_deceased'] ?? '').toString(),
+          ),
         );
         if (lotBurials.isNotEmpty) {
           lotWithDetails['burial_record'] = lotBurials.first;
           lotWithDetails['burial_records'] = lotBurials;
         }
+        final ownership = ownershipByLotId[lotId?.toString()];
         if (ownership != null) {
           lotWithDetails['ownership'] = ownership;
         }
@@ -116,6 +153,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
         _lotOwners = List<Map<String, dynamic>>.from(owners);
         _lots = lotsWithDetails;
         _filteredLots = List<Map<String, dynamic>>.from(lotsWithDetails);
+        _currentPage = 0;
         _isLoading = false;
       });
     } catch (e) {
@@ -138,6 +176,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
 
         return matchesSearch && matchesStatus;
       }).toList();
+      _currentPage = 0;
     });
   }
 
@@ -978,17 +1017,16 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
                     _filteredLots.isEmpty
                         ? _buildEmptyState()
                         : Column(
-                            children: List.generate(
-                              _filteredLots.length,
-                              (index) => Padding(
-                                padding: EdgeInsets.only(
-                                  bottom: index == _filteredLots.length - 1
-                                      ? 0
-                                      : 16,
+                            children: [
+                              ...List.generate(
+                                _pagedLots.length,
+                                (index) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 16),
+                                  child: _buildLotCard(_pagedLots[index]),
                                 ),
-                                child: _buildLotCard(_filteredLots[index]),
                               ),
-                            ),
+                              _buildPaginationControls(),
+                            ],
                           ),
                   ],
                 ),
@@ -1058,6 +1096,58 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildPaginationControls() {
+    final firstRecord = _filteredLots.isEmpty
+        ? 0
+        : (_currentPage * _pageSize) + 1;
+    final lastRecord = ((_currentPage + 1) * _pageSize).clamp(
+      0,
+      _filteredLots.length,
+    );
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F3F0),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Showing $firstRecord–$lastRecord of ${_filteredLots.length} lots',
+              style: const TextStyle(
+                color: Color(0xFF424841),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Previous page',
+            onPressed: _currentPage == 0
+                ? null
+                : () => setState(() => _currentPage--),
+            icon: const Icon(Icons.chevron_left_rounded),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              'Page ${_currentPage + 1} of $_pageCount',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Next page',
+            onPressed: _currentPage >= _pageCount - 1
+                ? null
+                : () => setState(() => _currentPage++),
+            icon: const Icon(Icons.chevron_right_rounded),
+          ),
+        ],
+      ),
     );
   }
 
