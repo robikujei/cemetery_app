@@ -8,7 +8,10 @@ import 'package:latlong2/latlong.dart';
 
 final HashMap<Object, List<List<LatLng>>> _lotGeometryCache =
     HashMap<Object, List<List<LatLng>>>.identity();
+final HashMap<List<LatLng>, List<LatLng>> _lowResolutionRingCache =
+    HashMap<List<LatLng>, List<LatLng>>.identity();
 const int _lotGeometryCacheLimit = 10000;
+const double _lowResolutionToleranceMeters = 0.20;
 
 String mapFeatureType(Map<String, dynamic> feature) {
   final normalized =
@@ -260,9 +263,10 @@ List<Polygon<String>> lotPolygonsFromMarkers(
 
     for (final ring in rings) {
       if (ring.length < 3) continue;
+      final renderRing = lowDetail ? _lowResolutionRing(ring) : ring;
       polygons.add(
         Polygon<String>(
-          points: ring,
+          points: renderRing,
           color: fill,
           borderColor: stroke.withValues(alpha: selected ? 0.96 : 0.78),
           borderStrokeWidth: selected ? 2.5 : (lowDetail ? 0.35 : 1.1),
@@ -354,9 +358,124 @@ List<List<LatLng>> _cacheLotGeometry(
 ) {
   if (_lotGeometryCache.length >= _lotGeometryCacheLimit) {
     _lotGeometryCache.clear();
+    _lowResolutionRingCache.clear();
   }
   _lotGeometryCache[geometry] = rings;
   return rings;
+}
+
+List<LatLng> _lowResolutionRing(List<LatLng> ring) {
+  final cached = _lowResolutionRingCache[ring];
+  if (cached != null) return cached;
+
+  final simplified = simplifyPolygonRing(
+    ring,
+    toleranceMeters: _lowResolutionToleranceMeters,
+  );
+  _lowResolutionRingCache[ring] = simplified;
+  return simplified;
+}
+
+/// Reduces polygon vertices with the Ramer-Douglas-Peucker algorithm.
+///
+/// Rings remain open, as expected by flutter_map, and are never reduced below
+/// three vertices. Coordinates are projected locally to metres before measuring
+/// the tolerance so the result is stable for latitude/longitude geometry.
+List<LatLng> simplifyPolygonRing(
+  List<LatLng> ring, {
+  double toleranceMeters = _lowResolutionToleranceMeters,
+}) {
+  if (ring.length <= 3 || toleranceMeters <= 0) return ring;
+
+  final points = List<LatLng>.of(ring);
+  if (points.length > 3 && _samePoint(points.first, points.last)) {
+    points.removeLast();
+  }
+  if (points.length <= 3) return points;
+
+  // Treat the closed polygon as two open paths split at the point furthest
+  // from the first vertex. This avoids creating a zero-length start/end line.
+  var splitIndex = 1;
+  var greatestDistance = -1.0;
+  for (var i = 1; i < points.length; i++) {
+    final distance = _distanceSquaredMeters(points.first, points[i]);
+    if (distance > greatestDistance) {
+      greatestDistance = distance;
+      splitIndex = i;
+    }
+  }
+
+  final firstHalf = _simplifyOpenLine(
+    points.sublist(0, splitIndex + 1),
+    toleranceMeters,
+  );
+  final secondHalf = _simplifyOpenLine([
+    ...points.sublist(splitIndex),
+    points.first,
+  ], toleranceMeters);
+  final simplified = <LatLng>[...firstHalf, ...secondHalf.skip(1)];
+  if (simplified.length > 3 && _samePoint(simplified.first, simplified.last)) {
+    simplified.removeLast();
+  }
+  return simplified.length >= 3 ? simplified : points;
+}
+
+List<LatLng> _simplifyOpenLine(List<LatLng> points, double toleranceMeters) {
+  if (points.length <= 2) return points;
+
+  var furthestIndex = -1;
+  var furthestDistance = 0.0;
+  for (var i = 1; i < points.length - 1; i++) {
+    final distance = _pointToSegmentDistanceMeters(
+      points[i],
+      points.first,
+      points.last,
+    );
+    if (distance > furthestDistance) {
+      furthestDistance = distance;
+      furthestIndex = i;
+    }
+  }
+
+  if (furthestIndex == -1 || furthestDistance <= toleranceMeters) {
+    return [points.first, points.last];
+  }
+  final left = _simplifyOpenLine(
+    points.sublist(0, furthestIndex + 1),
+    toleranceMeters,
+  );
+  final right = _simplifyOpenLine(
+    points.sublist(furthestIndex),
+    toleranceMeters,
+  );
+  return [...left, ...right.skip(1)];
+}
+
+double _pointToSegmentDistanceMeters(LatLng point, LatLng start, LatLng end) {
+  final latitudeRadians = point.latitude * pi / 180;
+  final xScale = 111320 * cos(latitudeRadians);
+  const yScale = 110540.0;
+  final px = (point.longitude - start.longitude) * xScale;
+  final py = (point.latitude - start.latitude) * yScale;
+  final ex = (end.longitude - start.longitude) * xScale;
+  final ey = (end.latitude - start.latitude) * yScale;
+  final lengthSquared = ex * ex + ey * ey;
+  if (lengthSquared == 0) return sqrt(px * px + py * py);
+  final t = ((px * ex + py * ey) / lengthSquared).clamp(0.0, 1.0);
+  final dx = px - ex * t;
+  final dy = py - ey * t;
+  return sqrt(dx * dx + dy * dy);
+}
+
+double _distanceSquaredMeters(LatLng a, LatLng b) {
+  final latitudeRadians = ((a.latitude + b.latitude) / 2) * pi / 180;
+  final dx = (a.longitude - b.longitude) * 111320 * cos(latitudeRadians);
+  final dy = (a.latitude - b.latitude) * 110540;
+  return dx * dx + dy * dy;
+}
+
+bool _samePoint(LatLng a, LatLng b) {
+  return a.latitude == b.latitude && a.longitude == b.longitude;
 }
 
 List<List<LatLng>> wktPolygonRings(String wkt) {
