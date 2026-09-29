@@ -1,37 +1,34 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuditService {
-  static final supabase = Supabase.instance.client;
-  
-  // Centralized audit logging method
   static Future<void> log({
     required String action,
-    required String entityType,
+    String? entityType,
     String? entityId,
     String? details,
   }) async {
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
     try {
-      final user = supabase.auth.currentUser;
-      if (user == null) {
-        print('⚠️ AUDIT: No user logged in, skipping log');
-        return;
-      }
-      
-      print('📝 AUDIT: Logging $action for $entityType');
-      
+      final profile = await supabase
+          .from('users')
+          .select('role')
+          .eq('user_id', user.id)
+          .maybeSingle();
       await supabase.from('audit_log').insert({
+        'user_id': user.id,
         'user_email': user.email,
-        'user_role': 'admin', // You can fetch from users table if needed
+        'user_role': profile?['role'] ?? 'unknown',
         'action': action,
         'entity_type': entityType,
         'entity_id': entityId,
         'details': details,
-        'created_at': DateTime.now().toIso8601String(),
+        'created_at': DateTime.now().toUtc().toIso8601String(),
       });
-      
-      print('✅ AUDIT: Successfully logged');
     } catch (e) {
-      print('❌ AUDIT ERROR: $e');
+      debugPrint('Audit logging failed: $e');
     }
   }
 }

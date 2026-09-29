@@ -1117,8 +1117,20 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
       text: lotText(lot, 'lot_number'),
     );
     final lotLabelController = TextEditingController(
-      text: lotText(lot, 'lot_label'),
+      text: _defaultLotLabel(
+        blockNumber: blockNumberController.text.trim(),
+        lotNumber: lotNumberController.text.trim(),
+      ),
     );
+    void updateLotLabel() {
+      lotLabelController.text = _defaultLotLabel(
+        blockNumber: blockNumberController.text.trim(),
+        lotNumber: lotNumberController.text.trim(),
+      );
+    }
+
+    blockNumberController.addListener(updateLotLabel);
+    lotNumberController.addListener(updateLotLabel);
     final lotClassTypeController = TextEditingController(
       text: lotText(lot, 'lot_class_type'),
     );
@@ -1179,6 +1191,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                   const SizedBox(height: 12),
                   TextField(
                     controller: lotLabelController,
+                    readOnly: true,
                     decoration: _mapFieldDecoration(
                       labelText: 'Lot Label',
                       icon: Icons.label_outline_rounded,

@@ -1,3 +1,4 @@
+import '../../services/audit_service.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -31,6 +32,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
   Map<String, dynamic>? _lastPayload;
   bool _isProcessing = false;
+  String _direction = 'entry';
   String? _scanMessage;
   Color _messageColor = _primary;
   List<Map<String, dynamic>> _todayVisitors = [];
@@ -60,6 +62,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
           .select('''
             log_id,
             time_in,
+            time_out,
             method,
             user:user_id (name, email),
             burial:burial_id (
@@ -108,6 +111,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     );
 
     if (confirm == true) {
+      await AuditService.log(action: 'LOGOUT', entityType: 'session');
       await Supabase.instance.client.auth.signOut();
       if (mounted) context.go('/login');
     }
@@ -175,7 +179,9 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       if (!created) return;
 
       setState(() {
-        _scanMessage = burialId != null
+        _scanMessage = _direction == 'exit'
+            ? '$visitorName checked out'
+            : burialId != null
             ? '$visitorName checked in to visit $deceasedName (Lot $lotNumber)'
             : '$visitorName checked in';
         _messageColor = _primary;
@@ -207,77 +213,26 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     required String? deceasedName,
     required String? lotNumber,
   }) async {
-    final now = DateTime.now();
-    final today = DateFormat('yyyy-MM-dd').format(now);
-
-    try {
-      final existingCheckin = await supabase
-          .from('visitor_log')
-          .select('log_id')
-          .eq('user_id', visitorId)
-          .gte('time_in', '$today 00:00:00')
-          .maybeSingle();
-
-      if (existingCheckin != null) {
-        setState(() {
-          _scanMessage = '$visitorName already checked in today';
-          _messageColor = _warning;
-        });
-        return false;
-      }
-
-      await supabase.from('visitor_log').insert({
-        'user_id': visitorId,
-        'burial_id': burialId,
-        'time_in': now.toIso8601String(),
-        'method': 'QR',
+    final result = await supabase.rpc(
+      'record_gate_visit',
+      params: {
+        'p_visitor_id': visitorId,
+        'p_burial_id': burialId == null
+            ? null
+            : int.tryParse(burialId.toString()),
+        'p_direction': _direction,
+      },
+    );
+    if (!mounted) return false;
+    if (result is Map && result['alreadyCheckedIn'] == true) {
+      setState(() {
+        _scanMessage =
+            '$visitorName is already checked in. Use Exit to check out.';
+        _messageColor = _warning;
       });
-
-      final currentUser = supabase.auth.currentUser;
-      await supabase.from('audit_log').insert({
-        'user_email': currentUser?.email,
-        'user_role': 'gate_officer',
-        'action': 'SCAN_QR',
-        'entity_type': 'visitor_log',
-        'details':
-            'Scanned QR for $visitorName${deceasedName != null ? ' visiting $deceasedName' : ''}',
-        'created_at': now.toIso8601String(),
-      });
-
-      return true;
-    } catch (e) {
-      debugPrint('Direct insert failed, falling back to function: $e');
-
-      final response = await supabase.functions.invoke(
-        'visitor-checkin',
-        body: {
-          'visitorId': visitorId,
-          'visitorName': visitorName,
-          'burialId': burialId,
-          'deceasedName': deceasedName,
-          'lotNumber': lotNumber,
-        },
-      );
-
-      final data = response.data;
-      if (data is Map<String, dynamic>) {
-        if (data['error'] != null) {
-          throw Exception(data['error']);
-        }
-
-        if (data['alreadyCheckedIn'] == true) {
-          setState(() {
-            _scanMessage =
-                data['message']?.toString() ??
-                '$visitorName already checked in today';
-            _messageColor = _warning;
-          });
-          return false;
-        }
-      }
-
-      return true;
+      return false;
     }
+    return true;
   }
 
   Future<String?> _resolveVisitorUserId({
@@ -419,6 +374,27 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
   Widget _buildScannerTab() {
     return Column(
       children: [
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(
+                value: 'entry',
+                label: Text('Entry'),
+                icon: Icon(Icons.login),
+              ),
+              ButtonSegment(
+                value: 'exit',
+                label: Text('Exit'),
+                icon: Icon(Icons.logout),
+              ),
+            ],
+            selected: {_direction},
+            onSelectionChanged: _isProcessing
+                ? null
+                : (value) => setState(() => _direction = value.first),
+          ),
+        ),
         Expanded(
           child: Stack(
             children: [
@@ -730,11 +706,16 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                   if (lotReference(lot, fallback: '').isNotEmpty)
                     Text('Lot ${lotReference(lot)} - ${lotBlockLabel(lot)}'),
                   Text(
-                    'Time: $timeIn',
+                    'Entry: $timeIn',
                     style: const TextStyle(
                       color: _primary,
                       fontWeight: FontWeight.w600,
                     ),
+                  ),
+                  Text(
+                    log['time_out'] == null
+                        ? 'Not checked out'
+                        : 'Exit: ${DateFormat('h:mm a').format(DateTime.parse(log['time_out']).toLocal())}',
                   ),
                 ],
               ),

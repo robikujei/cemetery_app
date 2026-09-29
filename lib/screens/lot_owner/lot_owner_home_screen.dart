@@ -1,3 +1,4 @@
+import '../../services/audit_service.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../services/map_feature_service.dart';
+import '../payment_requests_screen.dart';
 import '../../services/supabase_pagination_service.dart';
 import '../../utils/lot_formatters.dart';
 import '../../utils/lot_pricing.dart';
@@ -558,6 +560,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
     );
 
     if (confirm == true) {
+      await AuditService.log(action: 'LOGOUT', entityType: 'session');
       await Supabase.instance.client.auth.signOut();
       if (mounted) {
         context.go('/login');
@@ -630,6 +633,18 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
             fontWeight: FontWeight.w800,
           ),
           actions: [
+            IconButton(
+              icon: const Icon(Icons.payments_outlined),
+              tooltip: 'Payment requests',
+              onPressed: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const PaymentRequestsScreen(),
+                  ),
+                );
+                if (mounted) await _refreshData();
+              },
+            ),
             IconButton(
               icon: _isRefreshing
                   ? const SizedBox(

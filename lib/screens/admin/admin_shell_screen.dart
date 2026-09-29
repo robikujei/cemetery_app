@@ -1,3 +1,4 @@
+import '../../services/audit_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +11,7 @@ import 'admin_dashboard_screen.dart';
 import 'admin_lots_screen.dart';
 import 'admin_map_manager_screen.dart';
 import 'admin_reports_screen.dart';
+import '../payment_requests_screen.dart';
 import 'admin_visitor_logs_screen.dart';
 import 'admin_user_management_screen.dart';
 
@@ -45,6 +47,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
     );
 
     if (confirm == true) {
+      await AuditService.log(action: 'LOGOUT', entityType: 'session');
       await Supabase.instance.client.auth.signOut();
       ref.read(sessionProvider.notifier).state = null;
       if (mounted) {
@@ -193,6 +196,12 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
                       label: 'Audit Trail',
                       onTap: () => _go(6),
                     ),
+                    _NavTile(
+                      selected: _selected == 8,
+                      icon: Icons.payments_outlined,
+                      label: 'Payment Review',
+                      onTap: () => _go(8),
+                    ),
                   ],
                 ),
               ),
@@ -250,6 +259,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
           AdminUserManagementScreen(
             onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
           ),
+          const PaymentRequestsScreen(admin: true),
         ],
       ),
     );
@@ -275,6 +285,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
       5 => 'Reports & Analytics',
       6 => 'Audit Trail',
       7 => 'User Management',
+      8 => 'Payment Review',
       _ => 'Cemetery Admin',
     };
   }

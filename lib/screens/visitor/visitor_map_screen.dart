@@ -10,8 +10,8 @@ import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../services/map_feature_service.dart';
-import '../../services/supabase_pagination_service.dart';
+import '../../services/visitor_map_data_service.dart';
+import '../../services/gps_tracker.dart';
 import '../../providers/visitor_nav_providers.dart';
 import '../../utils/lot_formatters.dart';
 import '../../utils/lot_pricing.dart';
@@ -45,7 +45,8 @@ class VisitorMapScreen extends ConsumerStatefulWidget {
   ConsumerState<VisitorMapScreen> createState() => _VisitorMapScreenState();
 }
 
-class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
+class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
+    with WidgetsBindingObserver {
   static final LatLng _tagumMapCenter = LatLng(7.318551542, 125.662934679);
   static const double _initialZoom = 19;
   static const double _lotDetailZoom = 18.75;
@@ -53,6 +54,11 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
   static const double _markerLngSpan = 0.0046;
 
   bool _isLoading = true;
+  bool _hasMapData = false;
+  bool _loadInProgress = false;
+  int _loadGeneration = 0;
+  String _loadingStage = '';
+  String? _loadWarning;
   String? _errorMessage;
 
   List<Map<String, dynamic>> _lotMarkers = [];
@@ -80,16 +86,25 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
   double _currentZoom = _initialZoom;
   LatLngBounds? _visibleLotBounds;
   Timer? _viewportUpdateTimer;
+  final GpsTracker _gps = GpsTracker();
+  bool _mapReady = false;
+  bool _centerOnNextFix = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _gps.addListener(_onGpsChanged);
     _loadMapData();
     _subscribeToLotChanges();
   }
 
   @override
   void dispose() {
+    _loadGeneration++;
+    WidgetsBinding.instance.removeObserver(this);
+    _gps.removeListener(_onGpsChanged);
+    _gps.dispose();
     final lotChangesChannel = _lotChangesChannel;
     if (lotChangesChannel != null) {
       unawaited(Supabase.instance.client.removeChannel(lotChangesChannel));
@@ -97,112 +112,133 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
     _searchController.dispose();
     _lotPolygonHitNotifier.dispose();
     _viewportUpdateTimer?.cancel();
+    _mapController.dispose();
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_gps.active &&
+        (state == AppLifecycleState.paused ||
+            state == AppLifecycleState.hidden ||
+            state == AppLifecycleState.detached)) {
+      _gps.stop(
+        message: 'GPS paused while the app was hidden. Tap GPS to resume.',
+      );
+    }
+  }
+
+  void _onGpsChanged() {
+    if (!mounted) return;
+    setState(() {});
+    if (_centerOnNextFix && _gps.position != null && _mapReady) {
+      _centerOnNextFix = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _recenterGps());
+    }
+  }
+
+  void _recenterGps() {
+    final fix = _gps.position;
+    if (!mounted || !_mapReady || fix == null) return;
+    final zoom = fix.accuracy > 1000
+        ? 13.0
+        : fix.accuracy > 100
+        ? 16.0
+        : 19.0;
+    _mapController.move(LatLng(fix.latitude, fix.longitude), zoom);
+  }
+
+  void _startOrCenterGps() {
+    if (_gps.active) {
+      if (_gps.position != null) _recenterGps();
+      return;
+    }
+    _centerOnNextFix = true;
+    unawaited(_gps.start());
+  }
+
   Future<void> _loadMapData() async {
+    if (_loadInProgress) return;
+    final generation = ++_loadGeneration;
+    bool current() => mounted && generation == _loadGeneration;
     setState(() {
-      _isLoading = true;
+      _loadInProgress = true;
+      _isLoading = !_hasMapData;
       _errorMessage = null;
+      _loadWarning = null;
+      _loadingStage = 'Loading cemetery map…';
     });
-
+    final service = VisitorMapDataService(Supabase.instance.client);
     try {
-      final supabase = Supabase.instance.client;
-
-      final mapConfig = await supabase
-          .from('cemetery_map')
-          .select('*')
-          .order('uploaded_at', ascending: false)
-          .limit(1)
-          .maybeSingle();
-
-      if (mapConfig != null) {
-        final centerLat = (mapConfig['center_lat'] as num?)?.toDouble();
-        final centerLng = (mapConfig['center_lng'] as num?)?.toDouble();
-        if (centerLat != null && centerLng != null) {
-          _mapCenter = LatLng(centerLat, centerLng);
-        }
-        _activeMarkerLatSpan =
-            (mapConfig['lat_span'] as num?)?.toDouble() ?? _markerLatSpan;
-        _activeMarkerLngSpan =
-            (mapConfig['lng_span'] as num?)?.toDouble() ?? _markerLngSpan;
-        _entranceXPercent = (mapConfig['entrance_x_percent'] as num?)
-            ?.toDouble();
-        _entranceYPercent = (mapConfig['entrance_y_percent'] as num?)
-            ?.toDouble();
-      }
-
-      final results = await Future.wait([
-        SupabasePaginationService.selectAll(
-          supabase: supabase,
-          table: 'lot_markers',
-          orderColumn: 'marker_id',
-          columns: '''
-              marker_id,
-              lot_id,
-              x_percent,
-              y_percent,
-              cemetery_lot (
-                lot_id,
-                lot_number,
-                lot_label,
-                block_number,
-                lot_class_type,
-                polygon_geo,
-                price,
-                status,
-                burial_record (
-                  burial_id,
-                  name_of_deceased,
-                  birth_date,
-                  death_date,
-                  burial_date,
-                  lot_location_no
-                )
-              )
-            ''',
-        ),
-        supabase
-            .from('burial_record')
-            .select(
-              'burial_id, name_of_deceased, birth_date, death_date, burial_date, lot_id, lot_location_no',
-            )
-            .order('name_of_deceased'),
-        supabase.from('path_nodes').select('*').order('node_id'),
-        supabase.from('path_edges').select('*').order('edge_id'),
-      ]);
-      final lotMarkers = _markersWithBurials(
-        List<Map<String, dynamic>>.from(results[0] as List),
-        List<Map<String, dynamic>>.from(results[1] as List),
-      );
-      final gravesByLotId = await _loadGravesByLotIds(
-        supabase,
-        lotMarkers.map(_markerLotId),
-      );
-      final mapFeatures = await MapFeatureService.loadVisible(supabase);
-
-      if (!mounted) return;
-
+      final base = await service.loadBase();
+      if (!current()) return;
+      final config = base.config;
       setState(() {
-        _lotMarkers = lotMarkers;
-        _pathNodes = List<Map<String, dynamic>>.from(results[2] as List);
-        _pathEdges = List<Map<String, dynamic>>.from(results[3] as List);
-        _mapFeatures = mapFeatures;
-        _gravesByLotId = gravesByLotId;
+        final lat = (config?['center_lat'] as num?)?.toDouble();
+        final lng = (config?['center_lng'] as num?)?.toDouble();
+        if (lat != null && lng != null) _mapCenter = LatLng(lat, lng);
+        _activeMarkerLatSpan =
+            (config?['lat_span'] as num?)?.toDouble() ?? _markerLatSpan;
+        _activeMarkerLngSpan =
+            (config?['lng_span'] as num?)?.toDouble() ?? _markerLngSpan;
+        _entranceXPercent = (config?['entrance_x_percent'] as num?)?.toDouble();
+        _entranceYPercent = (config?['entrance_y_percent'] as num?)?.toDouble();
+        _pathNodes = base.nodes;
+        _pathEdges = base.edges;
+        _mapFeatures = base.features;
+        _hasMapData = true;
         _isLoading = false;
+        _loadingStage = 'Loading cemetery lots…';
       });
-
-      if (widget.initialLotId != null) {
+      final markers = <Map<String, dynamic>>[];
+      var initialSelected = _selectedMarker != null;
+      await for (final page in service.markerPages(isCurrent: current)) {
+        if (!current()) return;
+        markers.addAll(_markersWithBurials(page, const []));
+        setState(() {
+          _lotMarkers = List.of(markers);
+          _loadingStage = 'Loading cemetery lots… ${markers.length} loaded';
+        });
+        if (!initialSelected &&
+            widget.initialLotId != null &&
+            markers.any(
+              (m) => _sameRecordId(_markerLotId(m), widget.initialLotId),
+            )) {
+          initialSelected = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (current()) _selectInitialLot();
+          });
+        }
+      }
+      if (!current()) return;
+      setState(() => _loadingStage = 'Loading grave details…');
+      final graves = await service.loadGraves(isCurrent: current);
+      if (!current()) return;
+      setState(() => _gravesByLotId = graves);
+      if (!initialSelected && widget.initialLotId != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          _selectInitialLot();
+          if (current()) _selectInitialLot();
         });
       }
     } catch (e) {
-      if (!mounted) return;
+      if (!current()) return;
+      final message = e is TimeoutException
+          ? 'The map request timed out. Check your connection and tap Retry.'
+          : 'Some map data could not load. Check your connection and tap Retry.';
       setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
+        if (_hasMapData) {
+          _loadWarning = message;
+        } else {
+          _errorMessage = message;
+        }
       });
+    } finally {
+      if (current()) {
+        setState(() {
+          _isLoading = false;
+          _loadInProgress = false;
+        });
+      }
     }
   }
 
@@ -409,7 +445,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
   }
 
   void _zoomBy(double delta) {
-    _currentZoom = (_currentZoom + delta).clamp(18.5, 22.0);
+    _currentZoom = (_currentZoom + delta).clamp(_gps.active ? 3.0 : 18.5, 22.0);
     _mapController.move(_mapController.camera.center, _currentZoom);
   }
 
@@ -424,57 +460,6 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
       return;
     }
     ref.read(visitorNavIndexProvider.notifier).state = 0;
-  }
-
-  Future<Map<String, List<Map<String, dynamic>>>> _loadGravesByLotIds(
-    SupabaseClient supabase,
-    Iterable<dynamic> lotIds,
-  ) async {
-    final normalizedIds = lotIds
-        .where((id) => id != null)
-        .map((id) => int.tryParse(id.toString()))
-        .whereType<int>()
-        .toSet()
-        .toList();
-
-    if (normalizedIds.isEmpty) return {};
-
-    try {
-      final rows = await supabase
-          .from('graves')
-          .select('''
-            grave_id,
-            lot_id,
-            grave_label,
-            status,
-            burial_id,
-            notes,
-            burial:burial_id (
-              burial_id,
-              name_of_deceased,
-              birth_date,
-              death_date,
-              burial_date,
-              interment_date,
-              interment_time,
-              religion,
-              burial_category
-            )
-          ''')
-          .inFilter('lot_id', normalizedIds)
-          .order('grave_label');
-
-      final grouped = <String, List<Map<String, dynamic>>>{};
-      for (final row in rows as List) {
-        final grave = Map<String, dynamic>.from(row as Map);
-        final lotId = grave['lot_id']?.toString();
-        if (lotId == null) continue;
-        grouped.putIfAbsent(lotId, () => []).add(grave);
-      }
-      return grouped;
-    } catch (_) {
-      return {};
-    }
   }
 
   void _showLotDetails(
@@ -940,12 +925,49 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
                   child: Column(
                     children: [
                       _buildTopBar(),
+                      if (_loadInProgress || _loadWarning != null)
+                        Material(
+                          color: _C.white,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            child: Row(
+                              children: [
+                                if (_loadInProgress) ...[
+                                  const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                ],
+                                Expanded(
+                                  child: Text(
+                                    _loadWarning ?? _loadingStage,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                                if (_loadWarning != null)
+                                  TextButton(
+                                    onPressed: _loadMapData,
+                                    child: const Text('Retry'),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
                       Expanded(
                         child: Stack(
                           children: [
                             _buildSearchBar(),
                             _buildLegend(),
                             _buildControls(),
+                            if (_gps.active || _gps.message != null)
+                              _buildGpsStatus(),
                           ],
                         ),
                       ),
@@ -1006,7 +1028,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
                   icon: const Icon(Icons.close_rounded, color: _C.onSurface),
                 ),
               IconButton(
-                onPressed: _loadMapData,
+                onPressed: _loadInProgress ? null : _loadMapData,
                 tooltip: 'Refresh map',
                 icon: const Icon(Icons.refresh_rounded, color: _C.onSurface),
               ),
@@ -1117,12 +1139,69 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
           _glass(
             borderRadius: 18,
             child: _controlButton(
-              Icons.my_location_rounded,
+              Icons.home_rounded,
               _resetView,
               color: _C.primary,
             ),
           ),
+          const SizedBox(height: 14),
+          _glass(
+            borderRadius: 18,
+            child: Column(
+              children: [
+                IconButton(
+                  tooltip: _gps.active
+                      ? 'Recenter on my location'
+                      : 'Start GPS tracking',
+                  onPressed: _startOrCenterGps,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 50,
+                    height: 50,
+                  ),
+                  icon: Icon(
+                    Icons.my_location_rounded,
+                    color: _gps.active ? Colors.blue : _C.onSurfaceVariant,
+                  ),
+                ),
+                if (_gps.active)
+                  IconButton(
+                    tooltip: 'Stop GPS tracking',
+                    onPressed: () => _gps.stop(),
+                    constraints: const BoxConstraints.tightFor(
+                      width: 50,
+                      height: 50,
+                    ),
+                    icon: const Icon(Icons.location_disabled_outlined),
+                  ),
+              ],
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildGpsStatus() {
+    final fix = _gps.position;
+    final outside =
+        fix != null &&
+        !_cemeteryCameraBounds.contains(LatLng(fix.latitude, fix.longitude));
+    return Positioned(
+      top: 260,
+      left: 24,
+      right: 90,
+      child: _glass(
+        borderRadius: 14,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Text(
+            _gps.message ??
+                '${_gps.stale ? 'Last known position' : 'GPS active'} · accuracy ±${fix!.accuracy.round()} m'
+                    '${outside ? '\nOutside the mapped cemetery area.' : ''}'
+                    '${fix.accuracy > 50 ? '\nApproximate location; it may not identify an individual lot.' : ''}',
+            style: const TextStyle(fontSize: 12, color: _C.onSurface),
+          ),
+        ),
       ),
     );
   }
@@ -1528,16 +1607,21 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
       options: MapOptions(
         initialCenter: selectedPoint ?? _routeStart,
         initialZoom: _initialZoom,
-        minZoom: 18.5,
+        minZoom: _gps.active ? 3 : 18.5,
         maxZoom: 22,
-        cameraConstraint: CameraConstraint.containCenter(
-          bounds: _cemeteryCameraBounds,
-        ),
+        cameraConstraint: _gps.active
+            ? const CameraConstraint.unconstrained()
+            : CameraConstraint.containCenter(bounds: _cemeteryCameraBounds),
         onMapReady: () {
           if (!mounted) return;
           setState(() {
+            _mapReady = true;
             _visibleLotBounds = _mapController.camera.visibleBounds;
           });
+          if (_centerOnNextFix && _gps.position != null) {
+            _centerOnNextFix = false;
+            WidgetsBinding.instance.addPostFrameCallback((_) => _recenterGps());
+          }
         },
         onPositionChanged: (position, hasGesture) {
           final wasShowingLots = _currentZoom >= _lotDetailZoom;
@@ -1585,6 +1669,45 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
         if (overlayPointMarkers.isNotEmpty)
           MarkerLayer(markers: overlayPointMarkers),
         MarkerLayer(markers: markers),
+        if (_gps.position case final fix?) ...[
+          if (fix.accuracy <= 5000)
+            CircleLayer(
+              circles: [
+                CircleMarker(
+                  point: LatLng(fix.latitude, fix.longitude),
+                  radius: fix.accuracy,
+                  useRadiusInMeter: true,
+                  color: (_gps.stale ? Colors.grey : Colors.blue).withValues(
+                    alpha: 0.15,
+                  ),
+                  borderColor: _gps.stale ? Colors.grey : Colors.blue,
+                  borderStrokeWidth: 1,
+                ),
+              ],
+            ),
+          MarkerLayer(
+            markers: [
+              Marker(
+                point: LatLng(fix.latitude, fix.longitude),
+                width: 26,
+                height: 26,
+                child: Tooltip(
+                  message: _gps.stale ? 'Last known position' : 'You are here',
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _gps.stale ? Colors.grey : Colors.blue,
+                      border: Border.all(color: Colors.white, width: 3),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black26, blurRadius: 5),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
         RichAttributionWidget(
           attributions: [
             TextSourceAttribution('OpenStreetMap contributors', onTap: () {}),

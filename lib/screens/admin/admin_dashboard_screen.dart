@@ -13,6 +13,7 @@ import 'admin_burial_records_screen.dart';
 import 'admin_map_manager_screen.dart';
 import 'admin_reports_screen.dart';
 import '../../services/supabase_pagination_service.dart';
+import '../../services/cemetery_analytics.dart';
 import '../../utils/map_feature_geometry.dart';
 
 const _background = Color(0xFFFBF9F6);
@@ -71,6 +72,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   List<BarChartGroupData> _visitorBarData = [];
   List<String> _visitorMonths = [];
   Map<String, int> _blockDistribution = {};
+  List<BlockDemand> _demand = [];
 
   @override
   void initState() {
@@ -205,7 +207,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     final lotStatusRows = await SupabasePaginationService.selectAll(
       supabase: supabase,
       table: 'cemetery_lot',
-      columns: 'lot_id, status',
+      columns: 'lot_id, status, block_number',
       orderColumn: 'lot_id',
     );
     final availableLots = lotStatusRows
@@ -224,10 +226,13 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     final sales = await SupabasePaginationService.selectAll(
       supabase: supabase,
       table: 'lot_ownership',
-      columns: 'ownership_id, user:user_id(total_amount)',
+      columns:
+          'ownership_id, lot_id, user_id, status, user:user_id(total_amount)',
       orderColumn: 'ownership_id',
     );
+    final seenOwners = <String>{};
     final salesTotal = sales.fold<double>(0, (sum, sale) {
+      if (!seenOwners.add(sale['user_id'].toString())) return sum;
       final user = sale['user'];
       if (user is! Map) return sum;
       return sum + (num.tryParse(user['total_amount']?.toString() ?? '') ?? 0);
@@ -245,6 +250,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         .limit(5);
 
     setState(() {
+      _demand = classifyDemand(lotStatusRows, sales);
       _metrics = {
         'total_burials': totalBurials,
         'total_lots': lotStatusRows.length,
@@ -265,7 +271,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       final burials = await SupabasePaginationService.selectAll(
         supabase: supabase,
         table: 'burial_record',
-        columns: 'burial_id, death_date',
+        columns: 'burial_id, burial_date, interment_date',
         orderColumn: 'burial_id',
       );
 
@@ -281,13 +287,13 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
 
       Map<int, int> yearlyCount = {};
       for (var burial in burials) {
-        if (burial['death_date'] != null &&
-            burial['death_date'].toString().isNotEmpty) {
+        final burialDate = burial['interment_date'] ?? burial['burial_date'];
+        if (burialDate != null && burialDate.toString().isNotEmpty) {
           try {
-            final year = DateTime.parse(burial['death_date']).year;
+            final year = DateTime.parse(burialDate.toString()).year;
             yearlyCount[year] = (yearlyCount[year] ?? 0) + 1;
           } catch (e) {
-            print('Error parsing death_date: ${burial['death_date']}');
+            debugPrint('Error parsing burial date: $burialDate');
           }
         }
       }
@@ -550,6 +556,51 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                 ],
               ),
               const SizedBox(height: 32),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Lot demand by block',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const Text(
+                        'Current occupied or sold share: High ≥70%, Medium ≥30%, Low <30%.',
+                      ),
+                      Wrap(
+                        spacing: 8,
+                        children: _demand
+                            .map(
+                              (block) => Chip(
+                                avatar: CircleAvatar(
+                                  radius: 5,
+                                  backgroundColor: block.level() == 'High'
+                                      ? Colors.red
+                                      : block.level() == 'Medium'
+                                      ? Colors.orange
+                                      : _primary,
+                                ),
+                                label: Text(
+                                  '${block.block}: ${block.level()} (${block.score.round()}%)',
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                      TextButton(
+                        onPressed: _openReports,
+                        child: const Text('Explore trends and hotspots'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
               if (isWide)
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,

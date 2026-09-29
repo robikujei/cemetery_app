@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -11,7 +11,8 @@ class VisitorProfileScreen extends ConsumerStatefulWidget {
   const VisitorProfileScreen({super.key});
 
   @override
-  ConsumerState<VisitorProfileScreen> createState() => _VisitorProfileScreenState();
+  ConsumerState<VisitorProfileScreen> createState() =>
+      _VisitorProfileScreenState();
 }
 
 class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
@@ -71,12 +72,12 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
         _userData = userData;
         _editNameController.text = userData['name'] ?? '';
         _avatarUrl = userData['avatar_url']?.toString();
-        
+
         final memorialsResult = await supabase
             .from('visitor_log')
             .select('log_id')
             .eq('user_id', user.id);
-        
+
         _savedMemorials = memorialsResult.length;
       }
 
@@ -94,9 +95,9 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
   Future<void> _updateDisplayName() async {
     final newName = _editNameController.text.trim();
     if (newName.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Name cannot be empty')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Name cannot be empty')));
       return;
     }
 
@@ -131,7 +132,10 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Name updated!'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('Name updated!'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
@@ -154,7 +158,9 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
     final newPassword = _newPasswordController.text;
     final confirmPassword = _confirmPasswordController.text;
 
-    if (currentPassword.isEmpty || newPassword.isEmpty || confirmPassword.isEmpty) {
+    if (currentPassword.isEmpty ||
+        newPassword.isEmpty ||
+        confirmPassword.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill all password fields')),
       );
@@ -181,14 +187,15 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
 
     try {
       final supabase = Supabase.instance.client;
-      
-      await supabase.auth.updateUser(
-        UserAttributes(password: newPassword),
-      );
+
+      await supabase.auth.updateUser(UserAttributes(password: newPassword));
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Password changed!'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('Password changed!'),
+            backgroundColor: Colors.green,
+          ),
         );
         _currentPasswordController.clear();
         _newPasswordController.clear();
@@ -198,7 +205,10 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error changing password: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Error changing password: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -263,9 +273,12 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       if (user == null) throw Exception('Not logged in');
 
       final bytes = await image.readAsBytes();
-      final filePath = '${user.id}/${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final filePath =
+          '${user.id}/${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-      await supabase.storage.from(_avatarBucket).uploadBinary(
+      await supabase.storage
+          .from(_avatarBucket)
+          .uploadBinary(
             filePath,
             bytes,
             fileOptions: const FileOptions(
@@ -274,9 +287,14 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
             ),
           );
 
-      final publicUrl = supabase.storage.from(_avatarBucket).getPublicUrl(filePath);
+      final publicUrl = supabase.storage
+          .from(_avatarBucket)
+          .getPublicUrl(filePath);
 
-      await supabase.from('users').update({'avatar_url': publicUrl}).eq('email', user.email!);
+      await supabase
+          .from('users')
+          .update({'avatar_url': publicUrl})
+          .eq('email', user.email!);
 
       if (!mounted) return;
       setState(() {
@@ -287,12 +305,18 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile photo updated!'), backgroundColor: Colors.green),
+        const SnackBar(
+          content: Text('Profile photo updated!'),
+          backgroundColor: Colors.green,
+        ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error uploading photo: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Error uploading photo: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       if (mounted) {
@@ -309,7 +333,10 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       final user = supabase.auth.currentUser;
       if (user == null) throw Exception('Not logged in');
 
-      await supabase.from('users').update({'avatar_url': null}).eq('email', user.email!);
+      await supabase
+          .from('users')
+          .update({'avatar_url': null})
+          .eq('email', user.email!);
 
       if (!mounted) return;
       setState(() {
@@ -320,12 +347,18 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile photo removed!'), backgroundColor: Colors.green),
+        const SnackBar(
+          content: Text('Profile photo removed!'),
+          backgroundColor: Colors.green,
+        ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error removing photo: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Error removing photo: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       if (mounted) {
@@ -360,7 +393,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
 
   void _showEditNameDialog() {
     _editNameController.text = _userData?['name'] ?? '';
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -413,7 +446,9 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
               foregroundColor: Colors.white,
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
             ),
             child: const Text('Save'),
           ),
@@ -426,7 +461,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
     _currentPasswordController.clear();
     _newPasswordController.clear();
     _confirmPasswordController.clear();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -442,7 +477,10 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                 color: const Color(0xFFC5EDC6),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Icon(Icons.lock_outline_rounded, color: Color(0xFF335538)),
+              child: const Icon(
+                Icons.lock_outline_rounded,
+                color: Color(0xFF335538),
+              ),
             ),
             const SizedBox(width: 12),
             const Expanded(
@@ -500,7 +538,9 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
               foregroundColor: Colors.white,
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
             ),
             child: const Text('Change Password'),
           ),
@@ -530,14 +570,15 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
 
     if (confirm == true) {
       final user = Supabase.instance.client.auth.currentUser;
-      
+
       await AuditService.log(
         action: 'LOGOUT',
         entityType: 'user',
         entityId: user?.id,
         details: 'User logged out',
       );
-      
+
+      await AuditService.log(action: 'LOGOUT', entityType: 'session');
       await Supabase.instance.client.auth.signOut();
       ref.read(sessionProvider.notifier).state = null;
       if (mounted) {
@@ -555,9 +596,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
     final email = _userData?['email'] ?? '';
     final role = _userData?['role']?.toString().toUpperCase() ?? 'VISITOR';
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (_errorMessage != null) {
@@ -641,7 +680,10 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       actions: [
         IconButton(
           onPressed: () {},
-          icon: const Icon(Icons.notifications_outlined, color: Color(0xFF335538)),
+          icon: const Icon(
+            Icons.notifications_outlined,
+            color: Color(0xFF335538),
+          ),
           tooltip: 'Notifications',
         ),
         const SizedBox(width: 8),
@@ -686,8 +728,8 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                       backgroundColor: const Color(0xFFC5EDC6),
                       backgroundImage:
                           _avatarUrl != null && _avatarUrl!.isNotEmpty
-                              ? NetworkImage(_avatarUrl!)
-                              : null,
+                          ? NetworkImage(_avatarUrl!)
+                          : null,
                       child: _avatarUrl == null || _avatarUrl!.isEmpty
                           ? Text(
                               _initials(displayName),
@@ -752,7 +794,10 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                       ),
                       const SizedBox(height: 10),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFC7E4F3),
                           borderRadius: BorderRadius.circular(999),
@@ -833,6 +878,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       ],
     );
   }
+
   Widget _buildSettingsCard() {
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
@@ -894,7 +940,9 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
           foregroundColor: const Color(0xFF93000A),
           elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
         icon: const Icon(Icons.logout_rounded),
         label: const Text('Logout from Account'),
@@ -903,10 +951,15 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
   }
 
   String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty).toList();
+    final parts = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList();
     if (parts.isEmpty) return '?';
     if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
-    return '${parts.first.substring(0, 1)}${parts.last.substring(0, 1)}'.toUpperCase();
+    return '${parts.first.substring(0, 1)}${parts.last.substring(0, 1)}'
+        .toUpperCase();
   }
 }
 
@@ -965,7 +1018,11 @@ class _ProfileSettingTile extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: Color(0xFF727971), size: 20),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: Color(0xFF727971),
+                size: 20,
+              ),
             ],
           ),
         ),

@@ -45,6 +45,7 @@ class _AdminVisitorLogsScreenState
           .select('''
             log_id,
             time_in,
+            time_out,
             method,
             user:user_id (
               user_id,
@@ -372,7 +373,7 @@ class _AdminVisitorLogsScreenState
                                         'Lot $lotNumber - ${lotBlockLabel(lot)}',
                                       ),
                                     Text(
-                                      timeIn,
+                                      'Entry: $timeIn',
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: Colors.grey.shade600,
@@ -380,15 +381,26 @@ class _AdminVisitorLogsScreenState
                                     ),
                                   ],
                                 ),
-                                trailing: Chip(
-                                  label: Text(method),
-                                  backgroundColor: _getMethodColor(
-                                    method,
-                                  ).withValues(alpha: 0.1),
-                                  labelStyle: TextStyle(
-                                    color: _getMethodColor(method),
-                                    fontSize: 11,
-                                  ),
+                                trailing: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      log['time_out'] == null
+                                          ? 'Not checked out'
+                                          : 'Exit: ${_formatDateTime(log['time_out'])}',
+                                      style: const TextStyle(fontSize: 11),
+                                    ),
+                                    Chip(
+                                      label: Text(method),
+                                      backgroundColor: _getMethodColor(
+                                        method,
+                                      ).withValues(alpha: 0.1),
+                                      labelStyle: TextStyle(
+                                        color: _getMethodColor(method),
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 isThreeLine: true,
                               ),
