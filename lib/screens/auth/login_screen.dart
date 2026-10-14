@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/audit_service.dart';
 import '../../models/app_user.dart';
 import '../../providers/session_providers.dart';
+import '../../utils/sign_in_error_message.dart';
 
 // ── Design tokens (mirrors the HTML template's Tailwind config) ──────────────
 class _C {
@@ -103,10 +104,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       } else {
         _showErrorSnackBar('Invalid email or password. Please try again.');
       }
-    } on AuthException catch (e) {
-      _showErrorSnackBar(e.message);
-    } catch (_) {
-      _showErrorSnackBar('An error occurred. Please try again.');
+    } catch (e) {
+      _showErrorSnackBar(signInErrorMessage(e));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

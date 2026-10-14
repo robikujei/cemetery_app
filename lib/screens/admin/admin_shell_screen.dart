@@ -11,6 +11,7 @@ import 'admin_dashboard_screen.dart';
 import 'admin_lots_screen.dart';
 import 'admin_map_manager_screen.dart';
 import 'admin_reports_screen.dart';
+import 'admin_profile_screen.dart';
 import '../payment_requests_screen.dart';
 import 'admin_visitor_logs_screen.dart';
 import 'admin_user_management_screen.dart';
@@ -202,6 +203,12 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
                       label: 'Payment Review',
                       onTap: () => _go(8),
                     ),
+                    _NavTile(
+                      selected: _selected == 9,
+                      icon: Icons.manage_accounts_outlined,
+                      label: 'Profile Settings',
+                      onTap: () => _go(9),
+                    ),
                   ],
                 ),
               ),
@@ -260,6 +267,10 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
             onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
           ),
           const PaymentRequestsScreen(admin: true),
+          if (_selected == 9)
+            const AdminProfileScreen()
+          else
+            const SizedBox.shrink(),
         ],
       ),
     );
@@ -286,6 +297,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
       6 => 'Audit Trail',
       7 => 'User Management',
       8 => 'Payment Review',
+      9 => 'Profile Settings',
       _ => 'Cemetery Admin',
     };
   }
