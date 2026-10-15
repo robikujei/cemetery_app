@@ -34,7 +34,8 @@ Table burial_record {
   burial_id int [pk, not null, increment]
   name_of_deceased varchar(100) [not null]
   birth_date date
-  death_date date [not null]
+  death_date date [note: 'Required unless register_import_key identifies a historical import']
+  register_import_key text [unique]
   burial_date date
   lot_id int
   application_date date
@@ -156,9 +157,11 @@ Table lot_markers {
 Table lot_ownership {
   ownership_id int [pk, not null, increment]
   lot_id int
-  total_months int [not null]
+  total_months int [note: 'Required unless register_import_key identifies a historical import']
   months_paid int
-  start_date date [not null]
+  start_date date [note: 'Required unless register_import_key identifies a historical import']
+  register_import_key text [unique]
+  purchase_note text
   status varchar(20)
   user_id uuid
 
@@ -241,8 +244,9 @@ Table transaction_history {
 
 Table users {
   name varchar(100) [not null]
-  email varchar(100) [not null]
-  password varchar(255) [not null]
+  email varchar(100) [note: 'Required except for imported non-login lot-owner profiles']
+  password varchar(255) [note: 'Required except for imported non-login lot-owner profiles']
+  register_import_key text [unique]
   role varchar(20) [not null]
   created_at timestamp
   user_id uuid [pk, not null]

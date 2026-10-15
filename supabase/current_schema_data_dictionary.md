@@ -12,8 +12,9 @@ The `users` table replaces the old Visitor table. It stores all system accounts,
 | --- | --- | --- | --- | --- |
 | user_id | UUID | 16 | PK, NOT NULL | Unique identifier of the user account. |
 | name | VARCHAR | 100 | NOT NULL | Display name or full name of the user. |
-| email | VARCHAR | 100 | UNIQUE, NOT NULL | Email address used for login and account lookup. |
-| password | VARCHAR | 255 | NOT NULL | Encrypted or hashed account password. |
+| email | VARCHAR | 100 | UNIQUE, conditionally required | Email address; NULL for imported non-login lot-owner profiles. |
+| password | VARCHAR | 255 | Conditionally required | Credential field; NULL for imported non-login lot-owner profiles. |
+| register_import_key | TEXT | - | UNIQUE, NULLABLE | Stable historical import identifier. Imported profiles do not create Auth accounts. |
 | role | VARCHAR | 20 | NOT NULL | User role such as visitor, admin, guard, or lot_owner. |
 | created_at | TIMESTAMP | - | DEFAULT CURRENT_TIMESTAMP | Date and time the account was created. |
 | phone | VARCHAR | 20 | NULLABLE | Contact number of the user. |
@@ -89,7 +90,8 @@ The `burial_record` table stores deceased-person and interment details. It suppo
 | burial_id | INT | 32 | PK, AUTO INCREMENT, NOT NULL | Unique identifier of the burial record. |
 | name_of_deceased | VARCHAR | 100 | NOT NULL | Full name of the deceased person. |
 | birth_date | DATE | - | NULLABLE | Birth date of the deceased. |
-| death_date | DATE | - | NOT NULL | Date of death. |
+| death_date | DATE | - | Conditionally required | Date of death; may be unknown for an imported historical record. |
+| register_import_key | TEXT | - | UNIQUE, NULLABLE | Required when an imported burial has no known death date. |
 | burial_date | DATE | - | NULLABLE | Date of burial. |
 | lot_id | INT | 32 | FK, NULLABLE | References `cemetery_lot.lot_id`. |
 | application_date | DATE | - | NULLABLE | Date the burial or interment application was filed. |
@@ -138,9 +140,11 @@ The `lot_ownership` table connects a lot owner account to a cemetery lot. It sup
 | ownership_id | INT | 32 | PK, AUTO INCREMENT, NOT NULL | Unique identifier of the ownership record. |
 | lot_id | INT | 32 | FK, UNIQUE, NULLABLE | References `cemetery_lot.lot_id`. |
 | user_id | UUID | 16 | FK, NULLABLE | References `users.user_id`. |
-| total_months | INT | 32 | NOT NULL | Total installment months. |
+| total_months | INT | 32 | Conditionally required | Total installment months; unknown for incomplete imported records. |
 | months_paid | INT | 32 | NULLABLE | Number of months already paid. |
-| start_date | DATE | - | NOT NULL | Start date of ownership or installment term. |
+| start_date | DATE | - | Conditionally required | Purchase/start date; unknown dates are allowed for imported records. |
+| register_import_key | TEXT | - | UNIQUE, NULLABLE | Historical import identifier allowing unknown start date/terms. |
+| purchase_note | TEXT | - | NULLABLE | Original register purchase note; does not establish payment status. |
 | status | VARCHAR | 20 | NULLABLE | Ownership or payment status. |
 
 ### Table 7. Transaction History
