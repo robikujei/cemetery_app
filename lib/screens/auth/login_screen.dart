@@ -1,3 +1,4 @@
+import '../../core/surface_style.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -287,17 +288,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(32),
-                    decoration: BoxDecoration(
+                    decoration: SurfaceStyle.panel(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: _C.surfaceContainerHighest),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x0F335538),
-                          blurRadius: 24,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
+                      radius: 24,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -1,3 +1,4 @@
+import '../../core/surface_style.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,7 +12,6 @@ class _C {
   static const primaryContainer = Color(0xFF4B6E4F);
   static const primaryFixed = Color(0xFFC5EDC6);
   static const surfaceContainerLow = Color(0xFFF5F3F0);
-  static const surfaceContainerHighest = Color(0xFFE4E2DF);
   static const onSurface = Color(0xFF1B1C1A);
   static const onSurfaceVariant = Color(0xFF424841);
   static const error = Color(0xFFBA1A1A);
@@ -220,17 +220,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
+                    decoration: SurfaceStyle.panel(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: _C.surfaceContainerHighest),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x0F335538),
-                          blurRadius: 24,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
+                      radius: 24,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,

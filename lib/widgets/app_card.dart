@@ -1,3 +1,4 @@
+import '../core/surface_style.dart';
 import 'package:flutter/material.dart';
 
 class AppCard extends StatelessWidget {
@@ -13,11 +14,11 @@ class AppCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
+      child: Ink(
+        decoration: SurfaceStyle.panel(radius: 20),
         padding: padding,
         child: child,
       ),
     );
   }
 }
-

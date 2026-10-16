@@ -1,4 +1,5 @@
 import '../../services/audit_service.dart';
+import '../../core/surface_style.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -92,18 +93,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
               Container(
                 margin: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                 padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: const Color(0xFFE4E2DF)),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x0A000000),
-                      blurRadius: 16,
-                      offset: Offset(0, 6),
-                    ),
-                  ],
-                ),
+                decoration: SurfaceStyle.panel(color: Colors.white, radius: 24),
                 child: Row(
                   children: [
                     Container(
