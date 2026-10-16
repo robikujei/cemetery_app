@@ -1,11 +1,8 @@
-import '../../services/audit_service.dart';
+import '../../widgets/logout_dialog.dart';
 import '../../core/surface_style.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../providers/session_providers.dart';
 import 'admin_audit_trail_screen.dart';
 import 'admin_burial_records_screen.dart';
 import 'admin_dashboard_screen.dart';
@@ -29,34 +26,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
   int _selected = 0;
   int _mapRefreshToken = 0;
 
-  Future<void> _logout() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Logout', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      await AuditService.log(action: 'LOGOUT', entityType: 'session');
-      await Supabase.instance.client.auth.signOut();
-      ref.read(sessionProvider.notifier).state = null;
-      if (mounted) {
-        context.go('/login');
-      }
-    }
-  }
+  Future<void> _logout() => showLogoutDialog(context);
 
   @override
   Widget build(BuildContext context) {

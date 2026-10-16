@@ -1,4 +1,4 @@
-import '../../services/audit_service.dart';
+import '../../widgets/logout_dialog.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../services/map_feature_service.dart';
 import '../payment_requests_screen.dart';
@@ -537,36 +536,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
     }
   }
 
-  Future<void> _logout() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: _background,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Logout', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      await AuditService.log(action: 'LOGOUT', entityType: 'session');
-      await Supabase.instance.client.auth.signOut();
-      if (mounted) {
-        context.go('/login');
-      }
-    }
-  }
+  Future<void> _logout() => showLogoutDialog(context);
 
   String _formatCurrency(double? amount) {
     if (amount == null) return 'N/A';

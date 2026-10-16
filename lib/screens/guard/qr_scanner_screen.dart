@@ -1,8 +1,7 @@
-import '../../services/audit_service.dart';
+import '../../widgets/logout_dialog.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -91,31 +90,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     }
   }
 
-  Future<void> _logout() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Logout', style: TextStyle(color: _error)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      await AuditService.log(action: 'LOGOUT', entityType: 'session');
-      await Supabase.instance.client.auth.signOut();
-      if (mounted) context.go('/login');
-    }
-  }
+  Future<void> _logout() => showLogoutDialog(context);
 
   Future<void> _handleScan(Map<String, dynamic> payload) async {
     if (_isProcessing) return;

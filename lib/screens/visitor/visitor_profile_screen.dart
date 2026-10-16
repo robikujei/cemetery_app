@@ -1,9 +1,8 @@
+import '../../widgets/logout_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../services/audit_service.dart';
 import '../../providers/session_providers.dart';
 import '../../models/app_user.dart';
 
@@ -549,43 +548,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
     );
   }
 
-  Future<void> _logout() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Logout', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      final user = Supabase.instance.client.auth.currentUser;
-
-      await AuditService.log(
-        action: 'LOGOUT',
-        entityType: 'user',
-        entityId: user?.id,
-        details: 'User logged out',
-      );
-
-      await AuditService.log(action: 'LOGOUT', entityType: 'session');
-      await Supabase.instance.client.auth.signOut();
-      ref.read(sessionProvider.notifier).state = null;
-      if (mounted) {
-        context.go('/login');
-      }
-    }
-  }
+  Future<void> _logout() => showLogoutDialog(context);
 
   @override
   Widget build(BuildContext context) {
@@ -699,183 +662,195 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 2,
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x0F47626F),
-                  blurRadius: 18,
-                  offset: Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    CircleAvatar(
-                      radius: 48,
-                      backgroundColor: const Color(0xFFC5EDC6),
-                      backgroundImage:
-                          _avatarUrl != null && _avatarUrl!.isNotEmpty
-                          ? NetworkImage(_avatarUrl!)
-                          : null,
-                      child: _avatarUrl == null || _avatarUrl!.isEmpty
-                          ? Text(
-                              _initials(displayName),
-                              style: const TextStyle(
-                                color: Color(0xFF2C4E32),
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            )
-                          : null,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 700;
+        final available = constraints.maxWidth - 16;
+        return Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          children: [
+            SizedBox(
+              width: compact ? constraints.maxWidth : available * 2 / 3,
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x0F47626F),
+                      blurRadius: 18,
+                      offset: Offset(0, 6),
                     ),
-                    Positioned(
-                      right: -2,
-                      bottom: -2,
-                      child: InkWell(
-                        onTap: _isUploadingPhoto ? null : _showEditPhotoDialog,
-                        borderRadius: BorderRadius.circular(20),
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF335538),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                          child: _isUploadingPhoto
-                              ? const SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
+                  ],
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        CircleAvatar(
+                          radius: 48,
+                          backgroundColor: const Color(0xFFC5EDC6),
+                          backgroundImage:
+                              _avatarUrl != null && _avatarUrl!.isNotEmpty
+                              ? NetworkImage(_avatarUrl!)
+                              : null,
+                          child: _avatarUrl == null || _avatarUrl!.isEmpty
+                              ? Text(
+                                  _initials(displayName),
+                                  style: const TextStyle(
+                                    color: Color(0xFF2C4E32),
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800,
                                   ),
                                 )
-                              : const Icon(
-                                  Icons.edit_rounded,
-                                  size: 14,
+                              : null,
+                        ),
+                        Positioned(
+                          right: -2,
+                          bottom: -2,
+                          child: InkWell(
+                            onTap: _isUploadingPhoto
+                                ? null
+                                : _showEditPhotoDialog,
+                            borderRadius: BorderRadius.circular(20),
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF335538),
+                                shape: BoxShape.circle,
+                                border: Border.all(
                                   color: Colors.white,
+                                  width: 2,
                                 ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        displayName,
-                        style: textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: colorScheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        email,
-                        style: textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 7,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFC7E4F3),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.verified_rounded,
-                              size: 14,
-                              color: colorScheme.onSecondaryContainer,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              role == 'LOT_OWNER' ? 'Lot Owner' : role,
-                              style: textTheme.labelSmall?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: colorScheme.onSecondaryContainer,
                               ),
+                              child: _isUploadingPhoto
+                                  ? const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(
+                                      Icons.edit_rounded,
+                                      size: 14,
+                                      color: Colors.white,
+                                    ),
                             ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Container(
-            height: 172,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFF4B6E4F),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Saved Memorials',
-                      style: textTheme.labelLarge?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.82),
-                        fontWeight: FontWeight.w600,
+                      ],
+                    ),
+                    const SizedBox(width: 20),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            displayName,
+                            style: textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            email,
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 7,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFC7E4F3),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.verified_rounded,
+                                  size: 14,
+                                  color: colorScheme.onSecondaryContainer,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  role == 'LOT_OWNER' ? 'Lot Owner' : role,
+                                  style: textTheme.labelSmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: colorScheme.onSecondaryContainer,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const Icon(Icons.bookmark_rounded, color: Colors.white),
                   ],
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  _savedMemorials.toString(),
-                  style: textTheme.displayMedium?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _savedMemorials == 1
-                      ? '1 visit recorded'
-                      : '$_savedMemorials visits recorded',
-                  style: textTheme.labelSmall?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.75),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-        ),
-      ],
+            SizedBox(
+              width: compact ? constraints.maxWidth : available / 3,
+              child: Container(
+                height: 172,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4B6E4F),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Saved Memorials',
+                          style: textTheme.labelLarge?.copyWith(
+                            color: Colors.white.withValues(alpha: 0.82),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const Icon(Icons.bookmark_rounded, color: Colors.white),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      _savedMemorials.toString(),
+                      style: textTheme.displayMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _savedMemorials == 1
+                          ? '1 visit recorded'
+                          : '$_savedMemorials visits recorded',
+                      style: textTheme.labelSmall?.copyWith(
+                        color: Colors.white.withValues(alpha: 0.75),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
