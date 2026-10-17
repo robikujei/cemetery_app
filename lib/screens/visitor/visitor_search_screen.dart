@@ -114,7 +114,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
             backgroundColor: _C.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(12),
             ),
           ),
         );
@@ -294,7 +294,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: _C.surfaceContainerHigh,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                             color: _C.outlineVariant.withOpacity(0.3),
                           ),
@@ -352,7 +352,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                                 ),
                                 decoration: BoxDecoration(
                                   color: _C.surfaceContainerLow,
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: DropdownButton<String>(
                                   value: _searchType,
@@ -466,7 +466,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: _C.surfaceContainerLowest,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(color: _C.surfaceContainerLow),
             boxShadow: const [
               BoxShadow(
@@ -572,10 +572,10 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                                   horizontal: 12,
                                 ),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(20),
                                 ),
                                 textStyle: const TextStyle(
-                                  fontFamily: 'Segoe UI',
+                                  fontFamily: '.SF Pro Text',
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -603,10 +603,10 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                                   horizontal: 12,
                                 ),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(20),
                                 ),
                                 textStyle: const TextStyle(
-                                  fontFamily: 'Segoe UI',
+                                  fontFamily: '.SF Pro Text',
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -729,10 +729,10 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                                 vertical: 0,
                               ),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(20),
                               ),
                               textStyle: const TextStyle(
-                                fontFamily: 'Segoe UI',
+                                fontFamily: '.SF Pro Text',
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -754,10 +754,10 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                                 vertical: 0,
                               ),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(20),
                               ),
                               textStyle: const TextStyle(
-                                fontFamily: 'Segoe UI',
+                                fontFamily: '.SF Pro Text',
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -785,7 +785,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
       isScrollControlled: true,
       backgroundColor: _C.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) => Padding(
         padding: const EdgeInsets.all(24),
@@ -844,7 +844,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                         foregroundColor: _C.primary,
                         side: const BorderSide(color: _C.primaryContainer),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                       ),
                     ),
@@ -865,7 +865,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                         backgroundColor: _C.primaryContainer,
                         foregroundColor: _C.onPrimaryContainer,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                       ),
                     ),

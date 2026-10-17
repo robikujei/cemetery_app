@@ -140,7 +140,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
               behavior: SnackBarBehavior.floating,
               backgroundColor: _C.primaryContainer,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
           );
@@ -238,7 +238,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
 
                 // ── Welcome Hero ──────────────────────────────────────────
                 Text(
-                  'VISITOR SERVICES',
+                  'Your cemetery companion',
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -250,7 +250,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                 Text(
                   'Welcome back, $_userName',
                   style: const TextStyle(
-                    fontSize: 28,
+                    fontSize: 34,
                     fontWeight: FontWeight.w600,
                     height: 1.25,
                     color: _C.onSurface,
@@ -315,7 +315,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           textStyle: const TextStyle(
-                            fontFamily: 'Segoe UI',
+                            fontFamily: '.SF Pro Text',
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                           ),
@@ -432,7 +432,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
       color: bgColor,
       elevation: 1,
       shadowColor: const Color(0x14000000),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(20),
       clipBehavior: Clip.antiAlias,
       child: Ink(
         decoration: SurfaceStyle.panel(color: bgColor),
@@ -449,7 +449,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: iconBgColor,
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(icon, color: iconColor, size: 28),
                 ),
@@ -479,7 +479,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
   }) {
     return Material(
       color: _C.white,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(20),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
@@ -487,7 +487,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             border: Border.all(color: _C.surfaceContainer),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(20),
           ),
           child: Row(
             children: [
@@ -497,7 +497,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                 height: 48,
                 decoration: BoxDecoration(
                   color: _C.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
                   Icons.person_outline_rounded,

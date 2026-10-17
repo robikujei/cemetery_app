@@ -295,7 +295,7 @@ class _AdminVisitorLogsScreenState
                             ),
                             decoration: BoxDecoration(
                               color: Colors.blue.shade50,
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
                               '${_startDate != null ? DateFormat('MMM d, y').format(_startDate!) : 'Any'} - ${_endDate != null ? DateFormat('MMM d, y').format(_endDate!) : 'Any'}',
@@ -344,7 +344,7 @@ class _AdminVisitorLogsScreenState
                             return Card(
                               margin: const EdgeInsets.only(bottom: 12),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(20),
                               ),
                               child: ListTile(
                                 leading: CircleAvatar(

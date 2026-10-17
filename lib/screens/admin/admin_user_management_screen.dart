@@ -544,7 +544,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Delete user?'),
         content: Text(
           'Remove ${user['name'] ?? 'this user'} from the directory?',
@@ -639,7 +639,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: const Color(0xFFFFDAD6),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
                 _errorMessage!,
@@ -685,7 +685,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
                     vertical: 16,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(20),
                   ),
                 ),
               ),
@@ -853,15 +853,15 @@ class _SearchField extends StatelessWidget {
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(20),
           borderSide: const BorderSide(color: AppColors.surfaceHighest),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(20),
           borderSide: const BorderSide(color: AppColors.surfaceHighest),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(20),
           borderSide: const BorderSide(color: AppColors.brandDark, width: 1.2),
         ),
       ),
@@ -909,7 +909,7 @@ class _RoleChips extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(20),
               side: BorderSide.none,
             ),
           ),
@@ -991,7 +991,7 @@ class _CompactSummary extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.surfaceHighest),
       ),
       child: Column(
@@ -1051,7 +1051,7 @@ class _SummaryCard extends StatelessWidget {
             height: 44,
             decoration: BoxDecoration(
               color: color,
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: textColor),
           ),
@@ -1112,7 +1112,7 @@ class _UserCard extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.surfaceHighest),
         boxShadow: const [
           BoxShadow(
@@ -1129,7 +1129,7 @@ class _UserCard extends StatelessWidget {
             height: 52,
             decoration: BoxDecoration(
               color: roleStyle.background,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(20),
             ),
             child: Center(
               child: Text(
@@ -1474,7 +1474,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: AppColors.background,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: AppColors.surfaceHighest),
         ),
         child: Form(
@@ -1574,7 +1574,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(20),
                           ),
                         ),
                         child: Text(isEditing ? 'Save Changes' : 'Create User'),
@@ -2079,15 +2079,15 @@ class _UserFormDialogState extends State<_UserFormDialog> {
       filled: true,
       fillColor: Colors.white,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         borderSide: const BorderSide(color: AppColors.surfaceHighest),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         borderSide: const BorderSide(color: AppColors.surfaceHighest),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         borderSide: const BorderSide(color: AppColors.brandDark, width: 1.2),
       ),
     );
@@ -2152,15 +2152,15 @@ class _DateField extends StatelessWidget {
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(20),
           borderSide: const BorderSide(color: AppColors.surfaceHighest),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(20),
           borderSide: const BorderSide(color: AppColors.surfaceHighest),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(20),
           borderSide: const BorderSide(color: AppColors.brandDark, width: 1.2),
         ),
       ),
@@ -2210,15 +2210,15 @@ class _Field extends StatelessWidget {
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(20),
           borderSide: const BorderSide(color: AppColors.surfaceHighest),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(20),
           borderSide: const BorderSide(color: AppColors.surfaceHighest),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(20),
           borderSide: const BorderSide(color: AppColors.brandDark, width: 1.2),
         ),
       ),

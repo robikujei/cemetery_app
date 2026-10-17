@@ -4,11 +4,11 @@ import 'app_colors.dart';
 class AppTheme {
   static ThemeData light() {
     const controlShape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.all(Radius.circular(4)),
+      borderRadius: BorderRadius.all(Radius.circular(12)),
     );
     const panelShape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.all(Radius.circular(8)),
-      side: BorderSide(color: AppColors.borderSubtle),
+      borderRadius: BorderRadius.all(Radius.circular(20)),
+      side: BorderSide.none,
     );
     final scheme = ColorScheme.fromSeed(seedColor: AppColors.brand).copyWith(
       primary: AppColors.brand,
@@ -30,8 +30,13 @@ class AppTheme {
     final base = ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      fontFamily: 'Segoe UI',
-      fontFamilyFallback: const ['Roboto', 'Arial', 'sans-serif'],
+      fontFamily: '.SF Pro Text',
+      fontFamilyFallback: const [
+        'Helvetica Neue',
+        'Arial',
+        'Roboto',
+        'sans-serif',
+      ],
     );
     final primaryButton = ButtonStyle(
       minimumSize: const WidgetStatePropertyAll(Size(64, 44)),
@@ -41,7 +46,7 @@ class AppTheme {
       shape: const WidgetStatePropertyAll(controlShape),
       textStyle: const WidgetStatePropertyAll(
         TextStyle(
-          fontFamily: 'Segoe UI',
+          fontFamily: '.SF Pro Text',
           fontSize: 14,
           fontWeight: FontWeight.w600,
         ),
@@ -50,7 +55,7 @@ class AppTheme {
       backgroundColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.disabled)) return AppColors.surfaceHigh;
         if (states.contains(WidgetState.pressed))
-          return const Color(0xFF0C3B5E);
+          return const Color(0xFF004C99);
         if (states.contains(WidgetState.hovered)) return AppColors.brandDark;
         return AppColors.brand;
       }),
@@ -62,7 +67,7 @@ class AppTheme {
     );
     OutlineInputBorder inputBorder(Color color, [double width = 1]) =>
         OutlineInputBorder(
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: color, width: width),
         );
     return base.copyWith(
@@ -73,7 +78,7 @@ class AppTheme {
       textTheme: base.textTheme
           .copyWith(
             headlineLarge: const TextStyle(
-              fontSize: 32,
+              fontSize: 34,
               height: 1.25,
               fontWeight: FontWeight.w600,
               color: AppColors.text,
@@ -91,13 +96,13 @@ class AppTheme {
               color: AppColors.text,
             ),
             titleMedium: const TextStyle(
-              fontSize: 16,
+              fontSize: 17,
               height: 1.4,
               fontWeight: FontWeight.w600,
               color: AppColors.text,
             ),
             bodyLarge: const TextStyle(
-              fontSize: 16,
+              fontSize: 17,
               height: 1.5,
               color: AppColors.text,
             ),
@@ -107,9 +112,9 @@ class AppTheme {
               color: AppColors.text,
             ),
           )
-          .apply(fontFamily: 'Segoe UI'),
+          .apply(fontFamily: '.SF Pro Text'),
       cardTheme: const CardThemeData(
-        elevation: 1,
+        elevation: 0,
         shadowColor: Color(0x1A000000),
         surfaceTintColor: Colors.transparent,
         color: AppColors.surface,
@@ -117,7 +122,7 @@ class AppTheme {
         margin: EdgeInsets.zero,
       ),
       appBarTheme: const AppBarTheme(
-        centerTitle: false,
+        centerTitle: true,
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.text,
         surfaceTintColor: Colors.transparent,
@@ -125,7 +130,7 @@ class AppTheme {
         scrolledUnderElevation: 1,
         shadowColor: Color(0x14000000),
         titleTextStyle: TextStyle(
-          fontFamily: 'Segoe UI',
+          fontFamily: '.SF Pro Text',
           fontSize: 20,
           fontWeight: FontWeight.w600,
           color: AppColors.text,
@@ -142,7 +147,7 @@ class AppTheme {
           side: const BorderSide(color: AppColors.border),
           shape: controlShape,
           textStyle: const TextStyle(
-            fontFamily: 'Segoe UI',
+            fontFamily: '.SF Pro Text',
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -186,7 +191,7 @@ class AppTheme {
       ),
       dividerTheme: const DividerThemeData(
         space: 24,
-        thickness: 1,
+        thickness: 0.5,
         color: AppColors.borderSubtle,
       ),
       chipTheme: ChipThemeData(

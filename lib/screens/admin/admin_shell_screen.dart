@@ -79,7 +79,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
         Container(
           margin: const EdgeInsets.fromLTRB(16, 16, 16, 12),
           padding: const EdgeInsets.all(20),
-          decoration: SurfaceStyle.panel(color: Colors.white, radius: 8),
+          decoration: SurfaceStyle.panel(color: Colors.white, radius: 20),
           child: Row(
             children: [
               Container(
@@ -87,7 +87,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
                 height: 48,
                 decoration: BoxDecoration(
                   color: AppColors.brandLight,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Icon(
                   Icons.apartment_rounded,
@@ -193,7 +193,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
           child: Container(
             decoration: BoxDecoration(
               color: const Color(0xFFFFDAD6),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(20),
             ),
             child: ListTile(
               leading: const Icon(
@@ -311,22 +311,9 @@ class _NavTile extends StatelessWidget {
             tileColor: selected ? AppColors.brandLight : null,
             selectedTileColor: AppColors.brandLight,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(20),
             ),
           ),
-          if (selected)
-            Positioned(
-              left: 0,
-              top: 14,
-              bottom: 14,
-              child: Container(
-                width: 3,
-                decoration: BoxDecoration(
-                  color: AppColors.brand,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
         ],
       ),
     );

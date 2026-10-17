@@ -278,7 +278,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: _background,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('Inquire about Lot $lotNumber'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -288,7 +288,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: _surfaceLow,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: _outlineVariant.withValues(alpha: 0.45),
                 ),
@@ -307,7 +307,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: _primaryContainer.withValues(alpha: 0.45),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: _outlineVariant.withValues(alpha: 0.35),
                 ),
@@ -362,7 +362,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
             backgroundColor: _background,
             surfaceTintColor: Colors.transparent,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(20),
             ),
             title: const Text('Edit Profile'),
             content: SingleChildScrollView(
@@ -437,7 +437,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                   backgroundColor: _primary,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 child: const Text('Save Changes'),
@@ -459,15 +459,15 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
       filled: true,
       fillColor: _surface,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         borderSide: const BorderSide(color: _outlineVariant),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         borderSide: const BorderSide(color: _outlineVariant),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         borderSide: const BorderSide(color: _primary, width: 1.4),
       ),
     );
@@ -648,7 +648,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
                 color: _surfaceLow,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: _outlineVariant.withValues(alpha: 0.45),
                 ),
@@ -658,7 +658,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                 indicatorSize: TabBarIndicatorSize.tab,
                 indicator: BoxDecoration(
                   color: _primaryContainer,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 labelColor: _primary,
                 unselectedLabelColor: _onSurfaceVariant,
@@ -761,7 +761,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
                     color: _surface,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: _outlineVariant.withValues(alpha: 0.45),
                     ),
@@ -912,7 +912,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
       width: double.infinity,
       decoration: BoxDecoration(
         color: _surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: _outlineVariant.withValues(alpha: 0.45)),
         boxShadow: [
           BoxShadow(
@@ -946,7 +946,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: _surfaceLow,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: _outlineVariant.withValues(alpha: 0.45)),
       ),
       child: Column(
@@ -1074,7 +1074,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
                     color: _surface,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: _outlineVariant.withValues(alpha: 0.45),
                     ),
@@ -1117,7 +1117,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                         backgroundColor: _primary,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                       ),
                     ),
@@ -1140,7 +1140,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
             child: Container(
               decoration: BoxDecoration(
                 color: _surface,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: _outlineVariant.withValues(alpha: 0.4),
                 ),
@@ -1565,7 +1565,7 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.94),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(color: _outlineVariant.withValues(alpha: 0.5)),
             ),
             child: Wrap(
@@ -1629,7 +1629,7 @@ class _AvailableLotMapCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.96),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: _outlineVariant.withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
@@ -1646,7 +1646,7 @@ class _AvailableLotMapCard extends StatelessWidget {
             height: 46,
             decoration: BoxDecoration(
               color: _primaryContainer,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(20),
             ),
             child: const Icon(Icons.location_on_rounded, color: _primary),
           ),
@@ -1694,7 +1694,7 @@ class _AvailableLotMapCard extends StatelessWidget {
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(20),
               ),
             ),
             child: const Text('Inquire'),

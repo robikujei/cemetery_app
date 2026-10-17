@@ -315,7 +315,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                 toY: count.toDouble(),
                 color: AppColors.brand,
                 width: 40,
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(12),
               ),
             ],
           ),
@@ -400,7 +400,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                 toY: count.toDouble(),
                 color: Colors.blue,
                 width: 40,
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(12),
               ),
             ],
           ),
@@ -677,7 +677,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   Widget _buildChartsSection(TextTheme t, ColorScheme cs) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -999,7 +999,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             height: 16,
             decoration: BoxDecoration(
               color: colors[index % colors.length],
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(12),
             ),
           ),
           const SizedBox(width: 4),
@@ -1119,7 +1119,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                 child: Row(
                   children: [
                     const CircleAvatar(
-                      radius: 8,
+                      radius: 20,
                       backgroundColor: _primaryFixed,
                       child: Icon(
                         Icons.account_circle_outlined,
@@ -1211,7 +1211,7 @@ class _MetricCard extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     return Container(
       padding: const EdgeInsets.all(22),
-      decoration: SurfaceStyle.panel(color: _surfaceContainerLow, radius: 8),
+      decoration: SurfaceStyle.panel(color: _surfaceContainerLow, radius: 20),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1224,7 +1224,7 @@ class _MetricCard extends StatelessWidget {
                 height: 48,
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Icon(icon, color: color),
               ),
@@ -1285,11 +1285,11 @@ class _QuickActionButton extends StatelessWidget {
     final foreground = filled ? Colors.white : _onSurfaceVariant;
     return Material(
       color: filled ? _primary : _surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(20),
       elevation: filled ? 3 : 0,
       shadowColor: _primary.withValues(alpha: 0.25),
       child: InkWell(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         onTap: onPressed,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
@@ -1328,7 +1328,7 @@ class AppCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: padding,
-      decoration: SurfaceStyle.panel(color: _surface, radius: 8),
+      decoration: SurfaceStyle.panel(color: _surface, radius: 20),
       child: child,
     );
   }
@@ -1806,7 +1806,7 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.92),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: AppColors.border.withValues(alpha: 0.7),
                 ),
@@ -1868,9 +1868,9 @@ class _MapToolButton extends StatelessWidget {
       color: Colors.white,
       elevation: 5,
       shadowColor: Colors.black.withValues(alpha: 0.16),
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: BorderRadius.circular(12),
       child: InkWell(
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(12),
         onTap: onPressed,
         child: SizedBox(
           width: 42,

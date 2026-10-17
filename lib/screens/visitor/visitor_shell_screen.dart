@@ -1,3 +1,5 @@
+import 'dart:ui';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -43,7 +45,7 @@ class VisitorShellScreen extends ConsumerWidget {
                   useIndicator: true,
                   indicatorColor: AppColors.brandLight,
                   indicatorShape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   selectedIconTheme: const IconThemeData(
                     color: AppColors.brand,
@@ -52,12 +54,12 @@ class VisitorShellScreen extends ConsumerWidget {
                     color: AppColors.textSecondary,
                   ),
                   selectedLabelTextStyle: const TextStyle(
-                    fontFamily: 'Segoe UI',
+                    fontFamily: '.SF Pro Text',
                     color: AppColors.brandDark,
                     fontWeight: FontWeight.w600,
                   ),
                   unselectedLabelTextStyle: const TextStyle(
-                    fontFamily: 'Segoe UI',
+                    fontFamily: '.SF Pro Text',
                     color: AppColors.textSecondary,
                   ),
                   leading: const Padding(
@@ -76,22 +78,22 @@ class VisitorShellScreen extends ConsumerWidget {
                   ),
                   destinations: const [
                     NavigationRailDestination(
-                      icon: Icon(Icons.home_outlined),
-                      selectedIcon: Icon(Icons.home_rounded),
+                      icon: Icon(CupertinoIcons.house),
+                      selectedIcon: Icon(CupertinoIcons.house_fill),
                       label: Text('Home'),
                     ),
                     NavigationRailDestination(
-                      icon: Icon(Icons.map_outlined),
-                      selectedIcon: Icon(Icons.map_rounded),
+                      icon: Icon(CupertinoIcons.map),
+                      selectedIcon: Icon(CupertinoIcons.map_fill),
                       label: Text('Cemetery map'),
                     ),
                     NavigationRailDestination(
-                      icon: Icon(Icons.qr_code_2),
+                      icon: Icon(CupertinoIcons.qrcode),
                       label: Text('My QR code'),
                     ),
                     NavigationRailDestination(
-                      icon: Icon(Icons.person_outline),
-                      selectedIcon: Icon(Icons.person),
+                      icon: Icon(CupertinoIcons.person),
+                      selectedIcon: Icon(CupertinoIcons.person_fill),
                       label: Text('Profile'),
                     ),
                   ],
@@ -107,39 +109,46 @@ class VisitorShellScreen extends ConsumerWidget {
               decoration: const BoxDecoration(
                 border: Border(top: BorderSide(color: AppColors.borderSubtle)),
               ),
-              child: BottomNavigationBar(
-                type: BottomNavigationBarType.fixed,
-                currentIndex: index,
-                onTap: select,
-                backgroundColor: AppColors.surface,
-                selectedItemColor: AppColors.brand,
-                unselectedItemColor: AppColors.textSecondary,
-                showUnselectedLabels: true,
-                elevation: 0,
-                selectedLabelStyle: const TextStyle(
-                  fontWeight: FontWeight.w600,
+              child: ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                  child: BottomNavigationBar(
+                    type: BottomNavigationBarType.fixed,
+                    currentIndex: index,
+                    onTap: select,
+                    backgroundColor: AppColors.surface.withValues(alpha: 0.88),
+                    selectedItemColor: AppColors.brand,
+                    unselectedItemColor: AppColors.textSecondary,
+                    showUnselectedLabels: true,
+                    selectedFontSize: 11,
+                    unselectedFontSize: 11,
+                    elevation: 0,
+                    selectedLabelStyle: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                    ),
+                    items: const [
+                      BottomNavigationBarItem(
+                        icon: Icon(CupertinoIcons.house),
+                        activeIcon: Icon(CupertinoIcons.house_fill),
+                        label: 'Home',
+                      ),
+                      BottomNavigationBarItem(
+                        icon: Icon(CupertinoIcons.map),
+                        activeIcon: Icon(CupertinoIcons.map_fill),
+                        label: 'Map',
+                      ),
+                      BottomNavigationBarItem(
+                        icon: Icon(CupertinoIcons.qrcode),
+                        label: 'QR',
+                      ),
+                      BottomNavigationBarItem(
+                        icon: Icon(CupertinoIcons.person),
+                        activeIcon: Icon(CupertinoIcons.person_fill),
+                        label: 'Profile',
+                      ),
+                    ],
+                  ),
                 ),
-                items: const [
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.home_outlined),
-                    activeIcon: Icon(Icons.home_rounded),
-                    label: 'Home',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.map_outlined),
-                    activeIcon: Icon(Icons.map_rounded),
-                    label: 'Map',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.qr_code_2),
-                    label: 'QR',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.person_outline),
-                    activeIcon: Icon(Icons.person),
-                    label: 'Profile',
-                  ),
-                ],
               ),
             ),
     );

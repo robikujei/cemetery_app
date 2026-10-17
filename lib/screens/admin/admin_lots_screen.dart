@@ -227,7 +227,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
             backgroundColor: AppColors.background,
             surfaceTintColor: Colors.transparent,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(20),
             ),
             title: Row(
               children: [
@@ -236,7 +236,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
                   height: 42,
                   decoration: BoxDecoration(
                     color: AppColors.brandLight,
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
                     Icons.edit_rounded,
@@ -420,7 +420,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
                     vertical: 12,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 child: const Text('Update'),
@@ -473,7 +473,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: AppColors.background,
           surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Row(
             children: [
               Container(
@@ -481,7 +481,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
                 height: 42,
                 decoration: BoxDecoration(
                   color: AppColors.brandLight,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
                   Icons.add_location_alt_rounded,
@@ -682,7 +682,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
                 backgroundColor: AppColors.brandDark,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
               child: const Text('Add Grave'),
@@ -786,15 +786,15 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
       filled: true,
       fillColor: Colors.white,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         borderSide: const BorderSide(color: AppColors.border),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         borderSide: const BorderSide(color: AppColors.border),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         borderSide: const BorderSide(color: AppColors.brandDark, width: 1.4),
       ),
     );
@@ -922,7 +922,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
           children: [
             Icon(Icons.delete_outline_rounded, color: Color(0xFFBA1A1A)),
@@ -1070,7 +1070,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
             side: const BorderSide(color: AppColors.border),
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(12),
             ),
           ),
         );
@@ -1111,7 +1111,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.surfaceLow,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         children: [
@@ -1155,7 +1155,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surfaceLow,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -1239,7 +1239,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.surfaceHighest),
       ),
       child: const Text(
@@ -1263,7 +1263,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.surfaceHighest),
         boxShadow: const [
           BoxShadow(

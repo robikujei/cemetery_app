@@ -278,23 +278,23 @@ class _AdminBurialRecordsScreenState
       filled: true,
       fillColor: Colors.white,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         borderSide: const BorderSide(color: AppColors.border),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         borderSide: const BorderSide(color: AppColors.border),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         borderSide: const BorderSide(color: AppColors.brandDark, width: 1.4),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         borderSide: const BorderSide(color: Color(0xFFBA1A1A)),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         borderSide: const BorderSide(color: Color(0xFFBA1A1A), width: 1.4),
       ),
     );
@@ -306,7 +306,7 @@ class _AdminBurialRecordsScreenState
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
             Container(
@@ -314,7 +314,7 @@ class _AdminBurialRecordsScreenState
               height: 42,
               decoration: BoxDecoration(
                 color: const Color(0xFFFFDAD6),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(Icons.error_outline, color: Color(0xFFBA1A1A)),
             ),
@@ -665,7 +665,7 @@ class _AdminBurialRecordsScreenState
             backgroundColor: AppColors.background,
             surfaceTintColor: Colors.transparent,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(20),
             ),
             title: Row(
               children: [
@@ -674,7 +674,7 @@ class _AdminBurialRecordsScreenState
                   height: 42,
                   decoration: BoxDecoration(
                     color: AppColors.brandLight,
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     _isEditing
@@ -941,7 +941,7 @@ class _AdminBurialRecordsScreenState
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: AppColors.secondaryLight,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Row(
                         children: [
@@ -969,7 +969,7 @@ class _AdminBurialRecordsScreenState
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: const Color(0xFFEAF3EB),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1058,7 +1058,7 @@ class _AdminBurialRecordsScreenState
                     vertical: 12,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 child: Text(_isEditing ? 'Update' : 'Add'),
@@ -1241,7 +1241,7 @@ class _AdminBurialRecordsScreenState
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
             Container(
@@ -1249,7 +1249,7 @@ class _AdminBurialRecordsScreenState
               height: 42,
               decoration: BoxDecoration(
                 color: const Color(0xFFFFDAD6),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(
                 Icons.delete_outline_rounded,
@@ -1442,7 +1442,7 @@ class _AdminBurialRecordsScreenState
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(12),
             ),
           ),
           icon: const Icon(Icons.add),
@@ -1457,7 +1457,7 @@ class _AdminBurialRecordsScreenState
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surfaceLow,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         children: [
@@ -1511,7 +1511,7 @@ class _AdminBurialRecordsScreenState
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.surfaceHighest),
       ),
       child: const Text(
@@ -1542,7 +1542,7 @@ class _AdminBurialRecordsScreenState
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.surfaceHighest),
         boxShadow: const [
           BoxShadow(

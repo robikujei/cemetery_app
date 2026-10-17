@@ -235,7 +235,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
           filled: true,
           fillColor: Colors.white,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(20),
             borderSide: BorderSide.none,
           ),
         ),
@@ -268,7 +268,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               decoration: BoxDecoration(
                 color: selected ? AppColors.brand : AppColors.surfaceHigh,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
                 children: [
@@ -341,7 +341,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.78),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: Colors.white.withOpacity(0.35)),
                   ),
                   child: Row(
@@ -351,7 +351,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                         height: 54,
                         decoration: BoxDecoration(
                           color: AppColors.secondaryLight,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Icon(Icons.church_rounded),
                       ),

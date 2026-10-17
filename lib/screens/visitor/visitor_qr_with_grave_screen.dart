@@ -164,7 +164,7 @@ class _VisitorQrWithGraveScreenState
             backgroundColor: _C.primary,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(20),
             ),
           ),
         );
@@ -257,7 +257,7 @@ class _VisitorQrWithGraveScreenState
                 backgroundColor: _C.primary,
                 foregroundColor: _C.onPrimary,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(20),
                 ),
               ),
               child: const Text('Go Back'),
@@ -336,7 +336,7 @@ class _VisitorQrWithGraveScreenState
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: _C.surfaceContainerLowest,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: _C.outlineVariant),
                 boxShadow: const [
                   BoxShadow(
@@ -427,7 +427,7 @@ class _VisitorQrWithGraveScreenState
                               padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
                                 color: _C.white,
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
                                   color: _C.primaryFixed,
                                   width: 4,
@@ -492,7 +492,7 @@ class _VisitorQrWithGraveScreenState
                         padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
                           color: _C.surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                         child: Column(
                           children: const [
@@ -536,10 +536,10 @@ class _VisitorQrWithGraveScreenState
                   foregroundColor: _C.onPrimary,
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(20),
                   ),
                   textStyle: const TextStyle(
-                    fontFamily: 'Segoe UI',
+                    fontFamily: '.SF Pro Text',
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -561,10 +561,10 @@ class _VisitorQrWithGraveScreenState
                   side: const BorderSide(color: _C.outlineVariant),
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(20),
                   ),
                   textStyle: const TextStyle(
-                    fontFamily: 'Segoe UI',
+                    fontFamily: '.SF Pro Text',
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),

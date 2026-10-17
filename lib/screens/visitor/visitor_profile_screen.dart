@@ -377,15 +377,15 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       filled: true,
       fillColor: Colors.white,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         borderSide: const BorderSide(color: AppColors.border),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         borderSide: const BorderSide(color: AppColors.border),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         borderSide: const BorderSide(color: AppColors.brandDark, width: 1.4),
       ),
     );
@@ -399,7 +399,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
             Container(
@@ -407,7 +407,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
               height: 42,
               decoration: BoxDecoration(
                 color: AppColors.brandLight,
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(
                 Icons.badge_outlined,
@@ -450,7 +450,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
             child: const Text('Save'),
@@ -470,7 +470,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
             Container(
@@ -478,7 +478,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
               height: 42,
               decoration: BoxDecoration(
                 color: AppColors.brandLight,
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(
                 Icons.lock_outline_rounded,
@@ -542,7 +542,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
             child: const Text('Change Password'),
@@ -680,7 +680,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(20),
                   boxShadow: const [
                     BoxShadow(
                       color: Color(0x0F47626F),
@@ -720,7 +720,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                             onTap: _isUploadingPhoto
                                 ? null
                                 : _showEditPhotoDialog,
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(20),
                             child: Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
@@ -812,7 +812,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: AppColors.brand,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -865,7 +865,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: const [
           BoxShadow(
             color: Color(0x0F47626F),
@@ -875,7 +875,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -919,7 +919,9 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
           foregroundColor: const Color(0xFF93000A),
           elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
         ),
         icon: const Icon(Icons.logout_rounded),
         label: const Text('Logout from Account'),
@@ -969,7 +971,7 @@ class _ProfileSettingTile extends StatelessWidget {
                 height: 40,
                 decoration: BoxDecoration(
                   color: AppColors.secondaryLight.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: AppColors.brandDark, size: 22),
               ),

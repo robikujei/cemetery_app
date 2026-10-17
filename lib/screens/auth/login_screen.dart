@@ -148,7 +148,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         content: Text(message),
         backgroundColor: _C.error,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -211,26 +211,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               vertical: 18,
             ),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: AppColors.border),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: AppColors.border),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(
                 color: _C.primaryContainer,
                 width: 2,
               ),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: _C.error, width: 1.5),
             ),
             focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: _C.error, width: 2),
             ),
           ),
@@ -293,7 +293,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     padding: const EdgeInsets.all(32),
                     decoration: SurfaceStyle.panel(
                       color: Colors.white,
-                      radius: 8,
+                      radius: 20,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -371,10 +371,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               disabledBackgroundColor: _C.primaryContainer
                                   .withValues(alpha: 0.5),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                               textStyle: const TextStyle(
-                                fontFamily: 'Segoe UI',
+                                fontFamily: '.SF Pro Text',
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
                                 letterSpacing: 0.1,
@@ -423,10 +423,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 width: 2,
                               ),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                               textStyle: const TextStyle(
-                                fontFamily: 'Segoe UI',
+                                fontFamily: '.SF Pro Text',
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
                                 letterSpacing: 0.1,
@@ -449,7 +449,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         style: TextButton.styleFrom(
                           foregroundColor: _C.outline,
                           textStyle: const TextStyle(
-                            fontFamily: 'Segoe UI',
+                            fontFamily: '.SF Pro Text',
                             fontSize: 11,
                             letterSpacing: 0.5,
                           ),
@@ -461,7 +461,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         style: TextButton.styleFrom(
                           foregroundColor: _C.outline,
                           textStyle: const TextStyle(
-                            fontFamily: 'Segoe UI',
+                            fontFamily: '.SF Pro Text',
                             fontSize: 11,
                             letterSpacing: 0.5,
                           ),

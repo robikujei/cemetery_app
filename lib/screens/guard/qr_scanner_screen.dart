@@ -392,7 +392,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                 margin: const EdgeInsets.all(60),
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.white, width: 2),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Center(
                   child: Text(
@@ -431,7 +431,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: _messageColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(color: _messageColor),
             ),
             child: Row(
@@ -457,7 +457,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: _surface,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: _surfaceVariant),
                 boxShadow: const [
                   BoxShadow(
@@ -529,7 +529,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: AppColors.surfaceLow,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
                       children: [
@@ -659,7 +659,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
             color: _surface,
             margin: const EdgeInsets.only(bottom: 12),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(12),
               side: const BorderSide(color: _surfaceVariant),
             ),
             child: ListTile(

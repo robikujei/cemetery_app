@@ -434,7 +434,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
           content: Text('No lot found for "$query"'),
           behavior: SnackBarBehavior.floating,
           backgroundColor: _C.error,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
       return;
@@ -524,7 +524,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                   height: 48,
                   decoration: BoxDecoration(
                     color: _C.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(20),
                   ),
                   child: Icon(Icons.location_on_rounded, color: statusColor),
                 ),
@@ -679,7 +679,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
       builder: (dialogContext) => AlertDialog(
         backgroundColor: _C.white,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Generate visit QR?'),
         content: Text(
           'Create a QR code to check in for visiting $deceasedName at Lot $lotNumber.',
@@ -1246,7 +1246,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: _C.white,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
           boxShadow: const [
             BoxShadow(
@@ -1348,7 +1348,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
         decoration: BoxDecoration(
           color: _C.white,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.white.withValues(alpha: 0.55)),
           boxShadow: const [
             BoxShadow(
@@ -1433,7 +1433,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
 
     return InkWell(
       onTap: () => _startRouteToMarker(marker, grave: grave),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(20),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 11),
         child: Row(
@@ -1443,7 +1443,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
               height: 42,
               decoration: BoxDecoration(
                 color: statusColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(_statusIcon(status), color: statusColor, size: 21),
             ),
@@ -1505,7 +1505,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                   minimumSize: const Size(0, 36),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   textStyle: const TextStyle(
-                    fontFamily: 'Segoe UI',
+                    fontFamily: '.SF Pro Text',
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1521,7 +1521,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                 minimumSize: const Size(0, 36),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 textStyle: const TextStyle(
-                  fontFamily: 'Segoe UI',
+                  fontFamily: '.SF Pro Text',
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1994,7 +1994,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
       height: 52,
       decoration: BoxDecoration(
         color: _C.primaryFixedDim.withValues(alpha: 0.28),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Icon(icon, color: color, size: 24),
     );

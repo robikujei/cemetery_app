@@ -118,7 +118,9 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
           backgroundColor: _C.primaryContainer,
           duration: const Duration(seconds: 1),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     }
@@ -204,7 +206,7 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
         content: Text(message),
         backgroundColor: isError ? _C.error : _C.primaryContainer,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -359,7 +361,7 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
                     width: double.infinity,
                     decoration: BoxDecoration(
                       color: _C.white,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: _C.outlineVariant),
                       boxShadow: const [
                         BoxShadow(
@@ -454,7 +456,7 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
                                       color: _C.primaryFixed,
                                       width: 4,
                                     ),
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: QrImageView(
                                     data: _qrData!,
@@ -481,7 +483,7 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
                                   ),
                                   decoration: BoxDecoration(
                                     color: _C.primaryFixed.withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
@@ -514,7 +516,7 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
                                   color: _C.surfaceContainerLow,
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Column(
                                   children: const [
@@ -564,10 +566,10 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
                         0.5,
                       ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(20),
                       ),
                       textStyle: const TextStyle(
-                        fontFamily: 'Segoe UI',
+                        fontFamily: '.SF Pro Text',
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),

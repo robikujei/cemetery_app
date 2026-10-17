@@ -156,7 +156,7 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: AppColors.surfaceLow,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(color: AppColors.border),
           ),
           child: Row(
@@ -169,7 +169,7 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
                 ),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppColors.border),
                 ),
                 child: Row(
@@ -195,7 +195,7 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
               Container(
                 decoration: BoxDecoration(
                   color: AppColors.secondaryLight.withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   children: [
@@ -309,7 +309,7 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
         color: color == const Color(0xFFBA1A1A)
             ? const Color(0xFFFFDAD6)
             : Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: const [
           BoxShadow(
             color: Color(0x0A000000),
@@ -330,7 +330,7 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: bg,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: color, size: 20),
               ),
@@ -367,7 +367,7 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: const [
           BoxShadow(
             color: Color(0x0A000000),
@@ -383,7 +383,7 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
             padding: const EdgeInsets.all(16),
             decoration: const BoxDecoration(
               color: AppColors.background,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             ),
             child: Row(
               children: [
