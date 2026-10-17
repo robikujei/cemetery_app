@@ -1,3 +1,4 @@
+import '../../widgets/cached_map_features.dart';
 import '../../core/app_colors.dart';
 import 'dart:async';
 import 'dart:math';
@@ -66,6 +67,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
   List<Map<String, dynamic>> _pathNodes = [];
   List<Map<String, dynamic>> _pathEdges = [];
   List<Map<String, dynamic>> _mapFeatures = [];
+  final _featureLayers = CachedMapFeatures();
   Map<String, List<Map<String, dynamic>>> _gravesByLotId = {};
 
   double? _entranceXPercent;
@@ -434,7 +436,9 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
           content: Text('No lot found for "$query"'),
           behavior: SnackBarBehavior.floating,
           backgroundColor: _C.error,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
       return;
@@ -1538,22 +1542,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
     final routePoints = !_showNavigationRoute || _selectedMarker == null
         ? <LatLng>[]
         : _routeFromEntranceToLot(_selectedMarker!);
-    final visibleMapFeatures = _visitorVisibleMapFeatures;
-    final baseMapFeatures = visibleMapFeatures
-        .where(isMapLayerFeature)
-        .toList();
-    final overlayMapFeatures = visibleMapFeatures
-        .where((feature) => !isMapLayerFeature(feature))
-        .toList();
-    final basePolygons = mapFeaturePolygons(baseMapFeatures);
-    final basePolylines = mapFeaturePolylines(baseMapFeatures);
-    final overlayPolygons = mapFeaturePolygons(overlayMapFeatures);
-    final overlayPolylines = mapFeaturePolylines(overlayMapFeatures);
-    final overlayPointMarkers = mapFeaturePointMarkers(
-      overlayMapFeatures
-          .where((feature) => mapFeatureType(feature) != 'entrance')
-          .toList(),
-    );
+    final features = _featureLayers.resolve(_mapFeatures, publicPreview: true);
     final visibleLotMarkers = _visibleLotBounds == null
         ? const <Map<String, dynamic>>[]
         : lotMarkersWithinBounds(_lotMarkers, _visibleLotBounds!);
@@ -1644,9 +1633,9 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
           maxNativeZoom: 19,
           keepBuffer: 1,
         ),
-        if (basePolygons.isNotEmpty) PolygonLayer(polygons: basePolygons),
-        if (basePolylines.isNotEmpty) PolylineLayer(polylines: basePolylines),
-        if (overlayPolygons.isNotEmpty) PolygonLayer(polygons: overlayPolygons),
+        features.basePolygons,
+        features.basePolylines,
+        features.overlayPolygons,
         if (lotPolygons.isNotEmpty)
           GestureDetector(
             onTap: () {
@@ -1659,16 +1648,14 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
               hitNotifier: _lotPolygonHitNotifier,
             ),
           ),
-        if (overlayPolylines.isNotEmpty)
-          PolylineLayer(polylines: overlayPolylines),
+        features.overlayPolylines,
         if (routePoints.length > 1)
           PolylineLayer(
             polylines: [
               Polyline(points: routePoints, color: _C.primary, strokeWidth: 5),
             ],
           ),
-        if (overlayPointMarkers.isNotEmpty)
-          MarkerLayer(markers: overlayPointMarkers),
+        features.points,
         MarkerLayer(markers: markers),
         if (_gps.position case final fix?) ...[
           if (fix.accuracy <= 5000)
@@ -1716,10 +1703,6 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
         ),
       ],
     );
-  }
-
-  List<Map<String, dynamic>> get _visitorVisibleMapFeatures {
-    return _mapFeatures.where(isPublicPreviewMapFeature).toList();
   }
 
   bool get _hasMappedEntrance =>

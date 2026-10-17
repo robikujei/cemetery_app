@@ -1,3 +1,4 @@
+import '../../widgets/cached_map_features.dart';
 import '../../core/app_colors.dart';
 import 'dart:async';
 import 'dart:math';
@@ -89,6 +90,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
   List<Map<String, dynamic>> _pathNodes = [];
   List<Map<String, dynamic>> _pathEdges = [];
   List<Map<String, dynamic>> _mapFeatures = [];
+  final _featureLayers = CachedMapFeatures();
   Map<String, Map<String, dynamic>> _ownershipByLotId = {};
 
   double? _entranceXPercent;
@@ -879,7 +881,9 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: _C.background,
           surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: _mapDialogTitle('Add Lot', Icons.add_location_alt_outlined),
           content: SizedBox(
             width: 340,
@@ -1159,7 +1163,9 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: _C.background,
           surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: _mapDialogTitle(
             'Edit Lot ${lotReference(lot, fallback: '')}'.trim(),
             Icons.edit_location_alt_outlined,
@@ -1659,7 +1665,9 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: _C.background,
           surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: _mapDialogTitle(
             'Assign Deceased to Lot ${lotReference(lot)}',
             Icons.person_pin_circle_rounded,
@@ -2038,7 +2046,9 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: _C.background,
           surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: _mapDialogTitle(
             'Add Grave to Lot ${lotReference(lot)}',
             Icons.add_location_alt_rounded,
@@ -2441,19 +2451,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
             lowDetail: _currentZoom < 20,
           )
         : <Polygon<String>>[];
-    final baseMapFeatures = _mapFeatures.where(isMapLayerFeature).toList();
-    final overlayMapFeatures = _mapFeatures
-        .where((feature) => !isMapLayerFeature(feature))
-        .toList();
-    final basePolygons = mapFeaturePolygons(baseMapFeatures);
-    final basePolylines = mapFeaturePolylines(baseMapFeatures);
-    final overlayPolygons = mapFeaturePolygons(overlayMapFeatures);
-    final overlayPolylines = mapFeaturePolylines(overlayMapFeatures);
-    final overlayPointMarkers = mapFeaturePointMarkers(
-      overlayMapFeatures
-          .where((feature) => mapFeatureType(feature) != 'entrance')
-          .toList(),
-    );
+    final features = _featureLayers.resolve(_mapFeatures, publicPreview: false);
 
     return Container(
       key: _mapKey,
@@ -2501,10 +2499,9 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
             maxNativeZoom: 19,
             keepBuffer: 1,
           ),
-          if (basePolygons.isNotEmpty) PolygonLayer(polygons: basePolygons),
-          if (basePolylines.isNotEmpty) PolylineLayer(polylines: basePolylines),
-          if (overlayPolygons.isNotEmpty)
-            PolygonLayer(polygons: overlayPolygons),
+          features.basePolygons,
+          features.basePolylines,
+          features.overlayPolygons,
           if (lotPolygons.isNotEmpty)
             _mode == _MapMode.select
                 ? GestureDetector(
@@ -2523,8 +2520,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                 : IgnorePointer(
                     child: PolygonLayer<String>(polygons: lotPolygons),
                   ),
-          if (overlayPolylines.isNotEmpty)
-            PolylineLayer(polylines: overlayPolylines),
+          features.overlayPolylines,
           PolylineLayer(
             polylines: [
               ..._edgePolylines(),
@@ -2536,8 +2532,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                 ),
             ],
           ),
-          if (overlayPointMarkers.isNotEmpty)
-            MarkerLayer(markers: overlayPointMarkers),
+          features.points,
           MarkerLayer(markers: _mapMarkers()),
           RichAttributionWidget(
             attributions: [
@@ -4728,7 +4723,9 @@ class _ActionButton extends StatelessWidget {
               ? _C.error.withValues(alpha: 0.08)
               : Colors.transparent,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           textStyle: const TextStyle(
             fontFamily: '.SF Pro Text',
             fontWeight: FontWeight.w600,
@@ -4759,7 +4756,9 @@ class _SmallActionButton extends StatelessWidget {
         style: IconButton.styleFrom(
           backgroundColor: _C.surfaceContainerLow,
           foregroundColor: _C.onSurface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
         icon: Icon(icon, size: 20),
       ),

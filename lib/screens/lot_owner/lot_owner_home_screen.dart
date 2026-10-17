@@ -1,3 +1,4 @@
+import '../../widgets/cached_map_features.dart';
 import '../../core/app_colors.dart';
 import '../../widgets/logout_dialog.dart';
 import 'dart:async';
@@ -1200,6 +1201,7 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
   double _activeMapLngSpan = _mapLngSpan;
   List<Map<String, dynamic>> _lotMarkers = [];
   List<Map<String, dynamic>> _mapFeatures = [];
+  final _featureLayers = CachedMapFeatures();
   Map<String, dynamic>? _selectedAvailableLot;
   LatLngBounds? _visibleLotBounds;
   Timer? _viewportUpdateTimer;
@@ -1437,24 +1439,7 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
             lowDetail: _currentZoom < 20,
           )
         : <Polygon<String>>[];
-    final previewMapFeatures = _mapFeatures
-        .where(isPublicPreviewMapFeature)
-        .toList();
-    final baseMapFeatures = previewMapFeatures
-        .where(isMapLayerFeature)
-        .toList();
-    final overlayMapFeatures = previewMapFeatures
-        .where((feature) => !isMapLayerFeature(feature))
-        .toList();
-    final basePolygons = mapFeaturePolygons(baseMapFeatures);
-    final basePolylines = mapFeaturePolylines(baseMapFeatures);
-    final overlayPolygons = mapFeaturePolygons(overlayMapFeatures);
-    final overlayPolylines = mapFeaturePolylines(overlayMapFeatures);
-    final overlayPointMarkers = mapFeaturePointMarkers(
-      overlayMapFeatures
-          .where((feature) => mapFeatureType(feature) != 'entrance')
-          .toList(),
-    );
+    final features = _featureLayers.resolve(_mapFeatures, publicPreview: true);
 
     return Stack(
       children: [
@@ -1500,11 +1485,9 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
               maxNativeZoom: 19,
               keepBuffer: 1,
             ),
-            if (basePolygons.isNotEmpty) PolygonLayer(polygons: basePolygons),
-            if (basePolylines.isNotEmpty)
-              PolylineLayer(polylines: basePolylines),
-            if (overlayPolygons.isNotEmpty)
-              PolygonLayer(polygons: overlayPolygons),
+            features.basePolygons,
+            features.basePolylines,
+            features.overlayPolygons,
             if (lotPolygons.isNotEmpty)
               GestureDetector(
                 onTap: () {
@@ -1517,10 +1500,8 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
                   hitNotifier: _lotPolygonHitNotifier,
                 ),
               ),
-            if (overlayPolylines.isNotEmpty)
-              PolylineLayer(polylines: overlayPolylines),
-            if (overlayPointMarkers.isNotEmpty)
-              MarkerLayer(markers: overlayPointMarkers),
+            features.overlayPolylines,
+            features.points,
             MarkerLayer(markers: markers),
             RichAttributionWidget(
               attributions: [

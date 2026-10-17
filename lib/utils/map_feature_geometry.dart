@@ -10,6 +10,7 @@ final HashMap<Object, List<List<LatLng>>> _lotGeometryCache =
     HashMap<Object, List<List<LatLng>>>.identity();
 final HashMap<List<LatLng>, List<LatLng>> _lowResolutionRingCache =
     HashMap<List<LatLng>, List<LatLng>>.identity();
+final Expando<LatLngBounds> _ringBoundsCache = Expando<LatLngBounds>();
 const int _lotGeometryCacheLimit = 10000;
 const double _lowResolutionToleranceMeters = 0.20;
 
@@ -296,20 +297,11 @@ List<Map<String, dynamic>> lotMarkersWithinBounds(
     final rings = geoJsonPolygonRings(lot['polygon_geo']);
     for (final ring in rings) {
       if (ring.isEmpty) continue;
-      var ringNorth = ring.first.latitude;
-      var ringSouth = ring.first.latitude;
-      var ringEast = ring.first.longitude;
-      var ringWest = ring.first.longitude;
-      for (final point in ring.skip(1)) {
-        ringNorth = max(ringNorth, point.latitude);
-        ringSouth = min(ringSouth, point.latitude);
-        ringEast = max(ringEast, point.longitude);
-        ringWest = min(ringWest, point.longitude);
-      }
-      if (ringSouth <= north &&
-          ringNorth >= south &&
-          ringWest <= east &&
-          ringEast >= west) {
+      final extent = _ringBoundsCache[ring] ??= LatLngBounds.fromPoints(ring);
+      if (extent.south <= north &&
+          extent.north >= south &&
+          extent.west <= east &&
+          extent.east >= west) {
         return true;
       }
     }
