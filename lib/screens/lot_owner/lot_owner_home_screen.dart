@@ -1,3 +1,5 @@
+import '../../widgets/viewport_marker_layer.dart';
+import '../../widgets/viewport_lot_layer.dart';
 import '../../widgets/cached_map_features.dart';
 import '../../core/app_colors.dart';
 import '../../widgets/logout_dialog.dart';
@@ -1185,7 +1187,6 @@ class _LotMapPreview extends StatefulWidget {
 class _LotMapPreviewState extends State<_LotMapPreview> {
   static final LatLng _tagumMapCenter = LatLng(7.318551542, 125.662934679);
   static const double _initialZoom = 19;
-  static const double _lotDetailZoom = 18.75;
   static const double _mapLatSpan = 0.0036;
   static const double _mapLngSpan = 0.0046;
 
@@ -1196,15 +1197,12 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
   double? _entranceXPercent;
   double? _entranceYPercent;
   LatLng _mapCenter = _tagumMapCenter;
-  double _currentZoom = _initialZoom;
   double _activeMapLatSpan = _mapLatSpan;
   double _activeMapLngSpan = _mapLngSpan;
   List<Map<String, dynamic>> _lotMarkers = [];
   List<Map<String, dynamic>> _mapFeatures = [];
   final _featureLayers = CachedMapFeatures();
   Map<String, dynamic>? _selectedAvailableLot;
-  LatLngBounds? _visibleLotBounds;
-  Timer? _viewportUpdateTimer;
 
   @override
   void initState() {
@@ -1215,7 +1213,6 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
   @override
   void dispose() {
     _lotPolygonHitNotifier.dispose();
-    _viewportUpdateTimer?.cancel();
     super.dispose();
   }
 
@@ -1428,17 +1425,6 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
       }),
     ];
     final selectedLotId = _selectedAvailableLot?['lot_id'];
-    final visibleLotMarkers = _visibleLotBounds == null
-        ? const <Map<String, dynamic>>[]
-        : lotMarkersWithinBounds(_lotMarkers, _visibleLotBounds!);
-    final lotPolygons = _currentZoom >= _lotDetailZoom
-        ? lotPolygonsFromMarkers(
-            visibleLotMarkers,
-            selectedLotId: selectedLotId,
-            includeHitValues: true,
-            lowDetail: _currentZoom < 20,
-          )
-        : <Polygon<String>>[];
     final features = _featureLayers.resolve(_mapFeatures, publicPreview: true);
 
     return Stack(
@@ -1453,29 +1439,9 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
             cameraConstraint: CameraConstraint.containCenter(
               bounds: _cemeteryCameraBounds,
             ),
-            onMapReady: () {
-              if (!mounted) return;
-              setState(() {
-                _visibleLotBounds = _mapController.camera.visibleBounds;
-              });
-            },
             interactionOptions: const InteractionOptions(
               flags: InteractiveFlag.all,
             ),
-            onPositionChanged: (position, _) {
-              final wasShowingLots = _currentZoom >= _lotDetailZoom;
-              _currentZoom = position.zoom;
-              final isShowingLots = _currentZoom >= _lotDetailZoom;
-              if (wasShowingLots != isShowingLots && mounted) setState(() {});
-              _viewportUpdateTimer?.cancel();
-              _viewportUpdateTimer = Timer(
-                const Duration(milliseconds: 140),
-                () {
-                  if (!mounted) return;
-                  setState(() => _visibleLotBounds = position.visibleBounds);
-                },
-              );
-            },
           ),
           children: [
             TileLayer(
@@ -1488,21 +1454,24 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
             features.basePolygons,
             features.basePolylines,
             features.overlayPolygons,
-            if (lotPolygons.isNotEmpty)
-              GestureDetector(
+            IgnorePointer(
+              ignoring: false,
+              child: GestureDetector(
                 onTap: () {
                   final hitValues = _lotPolygonHitNotifier.value?.hitValues;
                   if (hitValues == null || hitValues.isEmpty) return;
                   _selectAvailableLotById(hitValues.last);
                 },
-                child: PolygonLayer<String>(
-                  polygons: lotPolygons,
+                child: ViewportLotLayer(
+                  markers: _lotMarkers,
+                  selectedLotId: selectedLotId,
                   hitNotifier: _lotPolygonHitNotifier,
                 ),
               ),
+            ),
             features.overlayPolylines,
             features.points,
-            MarkerLayer(markers: markers),
+            ViewportMarkerLayer(markers: markers),
             RichAttributionWidget(
               attributions: [
                 TextSourceAttribution(

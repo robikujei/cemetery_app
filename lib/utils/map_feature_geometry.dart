@@ -6,10 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
-final HashMap<Object, List<List<LatLng>>> _lotGeometryCache =
-    HashMap<Object, List<List<LatLng>>>.identity();
-final HashMap<List<LatLng>, List<LatLng>> _lowResolutionRingCache =
-    HashMap<List<LatLng>, List<LatLng>>.identity();
+final Expando<List<List<LatLng>>> _lotGeometryCache = Expando();
+final LinkedHashMap<String, List<List<LatLng>>> _stringGeometryCache =
+    LinkedHashMap();
+final Expando<List<LatLng>> _lowResolutionRingCache = Expando();
 final Expando<LatLngBounds> _ringBoundsCache = Expando<LatLngBounds>();
 const int _lotGeometryCacheLimit = 10000;
 const double _lowResolutionToleranceMeters = 0.20;
@@ -250,31 +250,52 @@ List<Polygon<String>> lotPolygonsFromMarkers(
     final rings = geoJsonPolygonRings(lot['polygon_geo']);
     if (rings.isEmpty) continue;
 
-    final lotId = lot['lot_id'];
-    final selected =
-        selectedLotId != null && lotId?.toString() == selectedLotId.toString();
-    final status = lot['status']?.toString() ?? 'Available';
-    final stroke = lotStatusStrokeColor(status);
-    final fill = lotStatusFillColor(status).withValues(
-      alpha: _isAvailableStatus(status)
-          ? (selected ? 0.90 : 0.72)
-          : (selected ? 0.54 : 0.36),
+    polygons.addAll(
+      lotPolygonsFromRings(
+        rings,
+        lotId: lot['lot_id'],
+        status: lot['status']?.toString() ?? 'Available',
+        selectedLotId: selectedLotId,
+        includeHitValues: includeHitValues,
+        lowDetail: lowDetail,
+      ),
     );
-    final hitValue = includeHitValues ? lotId?.toString() : null;
+  }
+  return polygons;
+}
 
-    for (final ring in rings) {
-      if (ring.length < 3) continue;
-      final renderRing = lowDetail ? _lowResolutionRing(ring) : ring;
-      polygons.add(
-        Polygon<String>(
-          points: renderRing,
-          color: fill,
-          borderColor: stroke.withValues(alpha: selected ? 0.96 : 0.78),
-          borderStrokeWidth: selected ? 2.5 : (lowDetail ? 0.35 : 1.1),
-          hitValue: hitValue,
-        ),
-      );
-    }
+/// Builds styles from already parsed rings held by a viewport index.
+List<Polygon<String>> lotPolygonsFromRings(
+  List<List<LatLng>> rings, {
+  required Object? lotId,
+  required String status,
+  Object? selectedLotId,
+  bool includeHitValues = false,
+  bool lowDetail = false,
+}) {
+  final polygons = <Polygon<String>>[];
+  final selected =
+      selectedLotId != null && lotId?.toString() == selectedLotId.toString();
+  final stroke = lotStatusStrokeColor(status);
+  final fill = lotStatusFillColor(status).withValues(
+    alpha: _isAvailableStatus(status)
+        ? (selected ? 0.90 : 0.72)
+        : (selected ? 0.54 : 0.36),
+  );
+  final hitValue = includeHitValues ? lotId?.toString() : null;
+
+  for (final ring in rings) {
+    if (ring.length < 3) continue;
+    final renderRing = lowDetail ? _lowResolutionRing(ring) : ring;
+    polygons.add(
+      Polygon<String>(
+        points: renderRing,
+        color: fill,
+        borderColor: stroke.withValues(alpha: selected ? 0.96 : 0.78),
+        borderStrokeWidth: selected ? 2.5 : (lowDetail ? 0.35 : 1.1),
+        hitValue: hitValue,
+      ),
+    );
   }
   return polygons;
 }
@@ -315,8 +336,14 @@ bool markerHasLotPolygon(Map<String, dynamic> marker) {
 }
 
 List<List<LatLng>> geoJsonPolygonRings(Object? geometry) {
-  if (geometry == null) return [];
-  final cached = _lotGeometryCache[geometry];
+  if (geometry == null) return const [];
+  if (geometry is! Map && geometry is! String) return const [];
+  final cached = geometry is String
+      ? _stringGeometryCache.remove(geometry)
+      : _lotGeometryCache[geometry];
+  if (cached != null && geometry is String) {
+    _stringGeometryCache[geometry] = cached;
+  }
   if (cached != null) return cached;
 
   final value = _decodeGeometry(geometry);
@@ -348,11 +375,15 @@ List<List<LatLng>> _cacheLotGeometry(
   Object geometry,
   List<List<LatLng>> rings,
 ) {
-  if (_lotGeometryCache.length >= _lotGeometryCacheLimit) {
-    _lotGeometryCache.clear();
-    _lowResolutionRingCache.clear();
+  if (geometry is String) {
+    if (_stringGeometryCache.length >= _lotGeometryCacheLimit) {
+      _stringGeometryCache.remove(_stringGeometryCache.keys.first);
+    }
+    _stringGeometryCache[geometry] = rings;
+  } else {
+    // Weak keys retain live geometry without a clear-all performance cliff.
+    _lotGeometryCache[geometry] = rings;
   }
-  _lotGeometryCache[geometry] = rings;
   return rings;
 }
 

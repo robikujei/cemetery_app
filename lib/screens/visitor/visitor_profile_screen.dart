@@ -634,12 +634,16 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
             tooltip: 'Menu',
           ),
           const SizedBox(width: 8),
-          const Text(
-            'Eternal Rest',
-            style: TextStyle(
-              color: AppColors.brand,
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
+          const Flexible(
+            child: Text(
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              'Eternal Rest',
+              style: TextStyle(
+                color: AppColors.brand,
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

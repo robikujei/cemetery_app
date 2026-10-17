@@ -1,8 +1,9 @@
+import '../../widgets/viewport_marker_layer.dart';
+import '../../widgets/viewport_lot_layer.dart';
 import '../../widgets/cached_map_features.dart';
 import '../../core/app_colors.dart';
 import 'dart:async';
 import 'dart:math';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -66,7 +67,6 @@ class AdminMapManagerScreen extends ConsumerStatefulWidget {
 class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
   static final LatLng _tagumMapCenter = LatLng(7.318551542, 125.662934679);
   static const double _initialZoom = 19;
-  static const double _lotDetailZoom = 18.75;
   static const double _mapLatSpan = 0.0036;
   static const double _mapLngSpan = 0.0046;
 
@@ -104,8 +104,6 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
   double _activeMapLngSpan = _mapLngSpan;
   LatLng _currentCenter = _tagumMapCenter;
   int? _draggingNodeId;
-  LatLngBounds? _visibleLotBounds;
-  Timer? _viewportUpdateTimer;
 
   @override
   void initState() {
@@ -134,7 +132,6 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
     _lotClassTypeController.dispose();
     _priceController.dispose();
     _lotPolygonHitNotifier.dispose();
-    _viewportUpdateTimer?.cancel();
     super.dispose();
   }
 
@@ -2438,19 +2435,6 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
     final routePoints = _selectedMarker == null
         ? <LatLng>[]
         : _routeFromEntranceToLot(_selectedMarker!);
-    final visibleLotMarkers = _visibleLotBounds == null
-        ? const <Map<String, dynamic>>[]
-        : lotMarkersWithinBounds(_lotMarkers, _visibleLotBounds!);
-    final lotPolygons = _currentZoom >= _lotDetailZoom
-        ? lotPolygonsFromMarkers(
-            visibleLotMarkers,
-            selectedLotId: _selectedMarker == null
-                ? null
-                : _markerLotId(_selectedMarker!),
-            includeHitValues: true,
-            lowDetail: _currentZoom < 20,
-          )
-        : <Polygon<String>>[];
     final features = _featureLayers.resolve(_mapFeatures, publicPreview: false);
 
     return Container(
@@ -2470,7 +2454,6 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
             if (mounted) {
               setState(() {
                 _mapReady = true;
-                _visibleLotBounds = _mapController.camera.visibleBounds;
               });
             } else {
               _mapReady = true;
@@ -2478,17 +2461,9 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
           },
           onTap: _handleMapTap,
           onPositionChanged: (position, hasGesture) {
-            final wasShowingLots = _currentZoom >= _lotDetailZoom;
             _currentZoom = position.zoom;
             _currentCenter = position.center;
             _lastPointer = position.center;
-            final isShowingLots = _currentZoom >= _lotDetailZoom;
-            if (wasShowingLots != isShowingLots && mounted) setState(() {});
-            _viewportUpdateTimer?.cancel();
-            _viewportUpdateTimer = Timer(const Duration(milliseconds: 140), () {
-              if (!mounted) return;
-              setState(() => _visibleLotBounds = position.visibleBounds);
-            });
           },
         ),
         children: [
@@ -2502,24 +2477,23 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
           features.basePolygons,
           features.basePolylines,
           features.overlayPolygons,
-          if (lotPolygons.isNotEmpty)
-            _mode == _MapMode.select
-                ? GestureDetector(
-                    onTap: () {
-                      final hitValues = _lotPolygonHitNotifier.value?.hitValues;
-                      final lotId = hitValues == null || hitValues.isEmpty
-                          ? null
-                          : hitValues.last;
-                      if (lotId != null) _selectMarkerByLotId(lotId);
-                    },
-                    child: PolygonLayer<String>(
-                      polygons: lotPolygons,
-                      hitNotifier: _lotPolygonHitNotifier,
-                    ),
-                  )
-                : IgnorePointer(
-                    child: PolygonLayer<String>(polygons: lotPolygons),
-                  ),
+          IgnorePointer(
+            ignoring: _mode != _MapMode.select,
+            child: GestureDetector(
+              onTap: () {
+                final hitValues = _lotPolygonHitNotifier.value?.hitValues;
+                if (hitValues == null || hitValues.isEmpty) return;
+                _selectMarkerByLotId(hitValues.last);
+              },
+              child: ViewportLotLayer(
+                markers: _lotMarkers,
+                selectedLotId: _selectedMarker == null
+                    ? null
+                    : _markerLotId(_selectedMarker!),
+                hitNotifier: _lotPolygonHitNotifier,
+              ),
+            ),
+          ),
           features.overlayPolylines,
           PolylineLayer(
             polylines: [
@@ -2533,7 +2507,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
             ],
           ),
           features.points,
-          MarkerLayer(markers: _mapMarkers()),
+          ViewportMarkerLayer(markers: _mapMarkers()),
           RichAttributionWidget(
             attributions: [
               TextSourceAttribution('OpenStreetMap contributors', onTap: () {}),
@@ -2789,7 +2763,6 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
       top: 24,
       right: 24,
       child: _panel(
-        alpha: 0.82,
         radius: 999,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
@@ -3468,26 +3441,23 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
     );
   }
 
-  Widget _panel({required Widget child, double radius = 18, double alpha = 1}) {
+  Widget _panel({required Widget child, double radius = 18}) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          decoration: BoxDecoration(
-            color: _C.surfaceContainerLowest.withValues(alpha: alpha),
-            borderRadius: BorderRadius.circular(radius),
-            border: Border.all(color: _C.outlineVariant),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x14000000),
-                blurRadius: 12,
-                offset: Offset(0, 4),
-              ),
-            ],
-          ),
-          child: child,
+      child: Container(
+        decoration: BoxDecoration(
+          color: _C.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(radius),
+          border: Border.all(color: _C.outlineVariant),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x14000000),
+              blurRadius: 12,
+              offset: Offset(0, 4),
+            ),
+          ],
         ),
+        child: child,
       ),
     );
   }

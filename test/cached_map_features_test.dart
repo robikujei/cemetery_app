@@ -1,4 +1,5 @@
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:cemetery_app/widgets/cached_map_features.dart';
@@ -14,9 +15,17 @@ void main() {
       ];
       final admin = cache.resolve(source, publicPreview: false);
       expect(cache.resolve(source, publicPreview: false), same(admin));
-      expect((admin.overlayPolylines as PolylineLayer).polylines, hasLength(1));
+      expect(
+        ((admin.overlayPolylines as IgnorePointer).child as PolylineLayer)
+            .polylines,
+        hasLength(1),
+      );
       final visitor = cache.resolve(source, publicPreview: true);
-      expect((visitor.overlayPolylines as PolylineLayer).polylines, isEmpty);
+      expect(
+        ((visitor.overlayPolylines as IgnorePointer).child as PolylineLayer)
+            .polylines,
+        isEmpty,
+      );
       final reloaded = cache.resolve(List.of(source), publicPreview: true);
       expect(reloaded, isNot(same(visitor)));
     },

@@ -25,13 +25,23 @@ class CachedMapFeatures {
     final base = visible.where(isMapLayerFeature).toList();
     final overlay = visible.where((f) => !isMapLayerFeature(f)).toList();
     return _layers = MapFeatureLayers(
-      basePolygons: PolygonLayer(polygons: mapFeaturePolygons(base)),
-      basePolylines: PolylineLayer(polylines: mapFeaturePolylines(base)),
-      overlayPolygons: PolygonLayer(polygons: mapFeaturePolygons(overlay)),
-      overlayPolylines: PolylineLayer(polylines: mapFeaturePolylines(overlay)),
-      points: MarkerLayer(
-        markers: mapFeaturePointMarkers(
-          overlay.where((f) => mapFeatureType(f) != 'entrance').toList(),
+      basePolygons: IgnorePointer(
+        child: PolygonLayer(polygons: mapFeaturePolygons(base)),
+      ),
+      basePolylines: IgnorePointer(
+        child: PolylineLayer(polylines: mapFeaturePolylines(base)),
+      ),
+      overlayPolygons: IgnorePointer(
+        child: PolygonLayer(polygons: mapFeaturePolygons(overlay)),
+      ),
+      overlayPolylines: IgnorePointer(
+        child: PolylineLayer(polylines: mapFeaturePolylines(overlay)),
+      ),
+      points: IgnorePointer(
+        child: MarkerLayer(
+          markers: mapFeaturePointMarkers(
+            overlay.where((f) => mapFeatureType(f) != 'entrance').toList(),
+          ),
         ),
       ),
     );

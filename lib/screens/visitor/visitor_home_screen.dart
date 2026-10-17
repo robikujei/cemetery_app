@@ -197,13 +197,17 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
           children: [
             const Icon(Icons.church, color: _C.primaryContainer, size: 22),
             const SizedBox(width: 10),
-            Text(
-              'Eternal Rest',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: _C.primaryContainer,
-                letterSpacing: -0.3,
+            Flexible(
+              child: Text(
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                'Eternal Rest',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: _C.primaryContainer,
+                  letterSpacing: -0.3,
+                ),
               ),
             ),
           ],

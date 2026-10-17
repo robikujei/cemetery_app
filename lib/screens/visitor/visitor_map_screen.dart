@@ -1,8 +1,9 @@
+import '../../widgets/viewport_marker_layer.dart';
+import '../../widgets/viewport_lot_layer.dart';
 import '../../widgets/cached_map_features.dart';
 import '../../core/app_colors.dart';
 import 'dart:async';
 import 'dart:math';
-import 'dart:ui';
 
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter/material.dart';
@@ -51,7 +52,6 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
     with WidgetsBindingObserver {
   static final LatLng _tagumMapCenter = LatLng(7.318551542, 125.662934679);
   static const double _initialZoom = 19;
-  static const double _lotDetailZoom = 18.75;
   static const double _markerLatSpan = 0.0036;
   static const double _markerLngSpan = 0.0046;
 
@@ -87,8 +87,6 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
   Map<String, dynamic>? _selectedGrave;
   bool _showNavigationRoute = false;
   double _currentZoom = _initialZoom;
-  LatLngBounds? _visibleLotBounds;
-  Timer? _viewportUpdateTimer;
   final GpsTracker _gps = GpsTracker();
   bool _mapReady = false;
   bool _centerOnNextFix = false;
@@ -114,7 +112,6 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
     }
     _searchController.dispose();
     _lotPolygonHitNotifier.dispose();
-    _viewportUpdateTimer?.cancel();
     _mapController.dispose();
     super.dispose();
   }
@@ -989,54 +986,51 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
 
   Widget _buildTopBar() {
     return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          height: 68,
-          padding: const EdgeInsets.symmetric(horizontal: 18),
-          decoration: BoxDecoration(
-            color: _C.white.withValues(alpha: 0.9),
-            border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x0F000000),
-                blurRadius: 10,
-                offset: Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              IconButton(
-                onPressed: _handleBackPressed,
-                tooltip: 'Back',
-                icon: const Icon(Icons.arrow_back_rounded, color: _C.onSurface),
-              ),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  'Eternal Rest',
-                  style: TextStyle(
-                    color: _C.primaryContainer,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.3,
-                  ),
+      child: Container(
+        height: 68,
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        decoration: BoxDecoration(
+          color: _C.white,
+          border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0F000000),
+              blurRadius: 10,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: _handleBackPressed,
+              tooltip: 'Back',
+              icon: const Icon(Icons.arrow_back_rounded, color: _C.onSurface),
+            ),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'Eternal Rest',
+                style: TextStyle(
+                  color: _C.primaryContainer,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.3,
                 ),
               ),
-              if (_selectedLotId != null)
-                IconButton(
-                  onPressed: _clearSelection,
-                  tooltip: 'Clear selection',
-                  icon: const Icon(Icons.close_rounded, color: _C.onSurface),
-                ),
+            ),
+            if (_selectedLotId != null)
               IconButton(
-                onPressed: _loadInProgress ? null : _loadMapData,
-                tooltip: 'Refresh map',
-                icon: const Icon(Icons.refresh_rounded, color: _C.onSurface),
+                onPressed: _clearSelection,
+                tooltip: 'Clear selection',
+                icon: const Icon(Icons.close_rounded, color: _C.onSurface),
               ),
-            ],
-          ),
+            IconButton(
+              onPressed: _loadInProgress ? null : _loadMapData,
+              tooltip: 'Refresh map',
+              icon: const Icon(Icons.refresh_rounded, color: _C.onSurface),
+            ),
+          ],
         ),
       ),
     );
@@ -1543,17 +1537,6 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
         ? <LatLng>[]
         : _routeFromEntranceToLot(_selectedMarker!);
     final features = _featureLayers.resolve(_mapFeatures, publicPreview: true);
-    final visibleLotMarkers = _visibleLotBounds == null
-        ? const <Map<String, dynamic>>[]
-        : lotMarkersWithinBounds(_lotMarkers, _visibleLotBounds!);
-    final lotPolygons = _currentZoom >= _lotDetailZoom
-        ? lotPolygonsFromMarkers(
-            visibleLotMarkers,
-            selectedLotId: _selectedLotId,
-            includeHitValues: true,
-            lowDetail: _currentZoom < 20,
-          )
-        : <Polygon<String>>[];
     final markers = <Marker>[
       if (_hasRouteStart)
         Marker(
@@ -1606,7 +1589,6 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
           if (!mounted) return;
           setState(() {
             _mapReady = true;
-            _visibleLotBounds = _mapController.camera.visibleBounds;
           });
           if (_centerOnNextFix && _gps.position != null) {
             _centerOnNextFix = false;
@@ -1614,15 +1596,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
           }
         },
         onPositionChanged: (position, hasGesture) {
-          final wasShowingLots = _currentZoom >= _lotDetailZoom;
           _currentZoom = position.zoom;
-          final isShowingLots = _currentZoom >= _lotDetailZoom;
-          if (wasShowingLots != isShowingLots && mounted) setState(() {});
-          _viewportUpdateTimer?.cancel();
-          _viewportUpdateTimer = Timer(const Duration(milliseconds: 140), () {
-            if (!mounted) return;
-            setState(() => _visibleLotBounds = position.visibleBounds);
-          });
         },
       ),
       children: [
@@ -1636,18 +1610,21 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
         features.basePolygons,
         features.basePolylines,
         features.overlayPolygons,
-        if (lotPolygons.isNotEmpty)
-          GestureDetector(
+        IgnorePointer(
+          ignoring: false,
+          child: GestureDetector(
             onTap: () {
               final hitValues = _lotPolygonHitNotifier.value?.hitValues;
               if (hitValues == null || hitValues.isEmpty) return;
               _selectMarkerByLotId(hitValues.last);
             },
-            child: PolygonLayer<String>(
-              polygons: lotPolygons,
+            child: ViewportLotLayer(
+              markers: _lotMarkers,
+              selectedLotId: _selectedLotId,
               hitNotifier: _lotPolygonHitNotifier,
             ),
           ),
+        ),
         features.overlayPolylines,
         if (routePoints.length > 1)
           PolylineLayer(
@@ -1656,7 +1633,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
             ],
           ),
         features.points,
-        MarkerLayer(markers: markers),
+        ViewportMarkerLayer(markers: markers),
         if (_gps.position case final fix?) ...[
           if (fix.accuracy <= 5000)
             CircleLayer(
@@ -1950,23 +1927,20 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
   Widget _glass({required Widget child, required double borderRadius}) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          decoration: BoxDecoration(
-            color: _C.white.withValues(alpha: 0.9),
-            borderRadius: BorderRadius.circular(borderRadius),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.65)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x12000000),
-                blurRadius: 12,
-                offset: Offset(0, 4),
-              ),
-            ],
-          ),
-          child: child,
+      child: Container(
+        decoration: BoxDecoration(
+          color: _C.white,
+          borderRadius: BorderRadius.circular(borderRadius),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.65)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x12000000),
+              blurRadius: 12,
+              offset: Offset(0, 4),
+            ),
+          ],
         ),
+        child: child,
       ),
     );
   }
