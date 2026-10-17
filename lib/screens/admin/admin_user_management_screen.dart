@@ -1,3 +1,4 @@
+import '../../core/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -339,7 +340,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(isEditing ? 'User updated!' : 'User created!'),
-          backgroundColor: const Color(0xFF335538),
+          backgroundColor: AppColors.brandDark,
         ),
       );
       await _loadUsers();
@@ -541,9 +542,9 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFFFBF9F6),
+        backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         title: const Text('Delete user?'),
         content: Text(
           'Remove ${user['name'] ?? 'this user'} from the directory?',
@@ -588,7 +589,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('User deleted!'),
-          backgroundColor: Color(0xFF335538),
+          backgroundColor: AppColors.brandDark,
         ),
       );
       await _loadUsers();
@@ -638,7 +639,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: const Color(0xFFFFDAD6),
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 _errorMessage!,
@@ -655,7 +656,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
                     const Text(
                       'User Management',
                       style: TextStyle(
-                        color: Color(0xFF1B1C1A),
+                        color: AppColors.text,
                         fontSize: 28,
                         fontWeight: FontWeight.w400,
                       ),
@@ -663,7 +664,10 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
                     const SizedBox(height: 8),
                     const Text(
                       'Manage administrative staff, field officers, and visitor access permissions.',
-                      style: TextStyle(color: Color(0xFF424841), fontSize: 14),
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                      ),
                     ),
                   ],
                 ),
@@ -674,14 +678,14 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
                 icon: const Icon(Icons.person_add_alt_rounded),
                 label: const Text('Add User'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF335538),
+                  backgroundColor: AppColors.brandDark,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 20,
                     vertical: 16,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
               ),
@@ -716,8 +720,8 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
                                 title: 'Total Users',
                                 value: counts['all'].toString(),
                                 icon: Icons.group_rounded,
-                                color: const Color(0xFFC5EDC6),
-                                textColor: const Color(0xFF335538),
+                                color: AppColors.brandLight,
+                                textColor: AppColors.brandDark,
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -726,7 +730,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
                                 title: 'Admins',
                                 value: counts['admins'].toString(),
                                 icon: Icons.verified_user_rounded,
-                                color: const Color(0xFFC7E4F3),
+                                color: AppColors.secondaryLight,
                                 textColor: const Color(0xFF2F4A57),
                               ),
                             ),
@@ -737,7 +741,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
                                 value: counts['officers'].toString(),
                                 icon: Icons.badge_rounded,
                                 color: const Color(0xFFF5DECE),
-                                textColor: const Color(0xFF5A4B3F),
+                                textColor: AppColors.secondary,
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -746,8 +750,8 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
                                 title: 'Visitors',
                                 value: counts['visitors'].toString(),
                                 icon: Icons.person_rounded,
-                                color: const Color(0xFFEAE8E5),
-                                textColor: const Color(0xFF424841),
+                                color: AppColors.surfaceHigh,
+                                textColor: AppColors.textSecondary,
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -757,7 +761,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
                                 value: counts['owners'].toString(),
                                 icon: Icons.assignment_ind_rounded,
                                 color: const Color(0xFFF5DECE),
-                                textColor: const Color(0xFF5A4B3F),
+                                textColor: AppColors.secondary,
                               ),
                             ),
                           ],
@@ -849,16 +853,16 @@ class _SearchField extends StatelessWidget {
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(24),
-          borderSide: const BorderSide(color: Color(0xFFE4E2DF)),
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.surfaceHighest),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(24),
-          borderSide: const BorderSide(color: Color(0xFFE4E2DF)),
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.surfaceHighest),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(24),
-          borderSide: const BorderSide(color: Color(0xFF335538), width: 1.2),
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.brandDark, width: 1.2),
         ),
       ),
     );
@@ -896,16 +900,16 @@ class _RoleChips extends StatelessWidget {
             selected: selected.toLowerCase() == item.toLowerCase(),
             label: Text(_label(item)),
             onSelected: (_) => onChanged(item),
-            selectedColor: const Color(0xFFC5EDC6),
-            backgroundColor: const Color(0xFFEAE8E5),
+            selectedColor: AppColors.brandLight,
+            backgroundColor: AppColors.surfaceHigh,
             labelStyle: TextStyle(
               color: selected.toLowerCase() == item.toLowerCase()
-                  ? const Color(0xFF335538)
-                  : const Color(0xFF424841),
+                  ? AppColors.brandDark
+                  : AppColors.textSecondary,
               fontWeight: FontWeight.w600,
             ),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(8),
               side: BorderSide.none,
             ),
           ),
@@ -938,7 +942,7 @@ class _SummaryStrip extends StatelessWidget {
           child: _CompactSummary(
             title: 'Total',
             value: counts['all'].toString(),
-            color: const Color(0xFF335538),
+            color: AppColors.brandDark,
           ),
         ),
         const SizedBox(width: 8),
@@ -954,7 +958,7 @@ class _SummaryStrip extends StatelessWidget {
           child: _CompactSummary(
             title: 'Officers',
             value: counts['officers'].toString(),
-            color: const Color(0xFF5A4B3F),
+            color: AppColors.secondary,
           ),
         ),
         const SizedBox(width: 8),
@@ -962,7 +966,7 @@ class _SummaryStrip extends StatelessWidget {
           child: _CompactSummary(
             title: 'Visitors',
             value: counts['visitors'].toString(),
-            color: const Color(0xFF424841),
+            color: AppColors.textSecondary,
           ),
         ),
       ],
@@ -987,8 +991,8 @@ class _CompactSummary extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE4E2DF)),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.surfaceHighest),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -996,7 +1000,7 @@ class _CompactSummary extends StatelessWidget {
           Text(
             title,
             style: const TextStyle(
-              color: Color(0xFF424841),
+              color: AppColors.textSecondary,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -1007,7 +1011,7 @@ class _CompactSummary extends StatelessWidget {
             style: TextStyle(
               color: color,
               fontSize: 24,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -1038,7 +1042,7 @@ class _SummaryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE4E2DF)),
+        border: Border.all(color: AppColors.surfaceHighest),
       ),
       child: Row(
         children: [
@@ -1047,7 +1051,7 @@ class _SummaryCard extends StatelessWidget {
             height: 44,
             decoration: BoxDecoration(
               color: color,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(4),
             ),
             child: Icon(icon, color: textColor),
           ),
@@ -1059,7 +1063,7 @@ class _SummaryCard extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(
-                    color: Color(0xFF424841),
+                    color: AppColors.textSecondary,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1070,7 +1074,7 @@ class _SummaryCard extends StatelessWidget {
                   style: TextStyle(
                     color: textColor,
                     fontSize: 24,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
@@ -1108,8 +1112,8 @@ class _UserCard extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFE4E2DF)),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.surfaceHighest),
         boxShadow: const [
           BoxShadow(
             color: Color(0x08000000),
@@ -1125,7 +1129,7 @@ class _UserCard extends StatelessWidget {
             height: 52,
             decoration: BoxDecoration(
               color: roleStyle.background,
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Center(
               child: Text(
@@ -1133,7 +1137,7 @@ class _UserCard extends StatelessWidget {
                 style: TextStyle(
                   color: roleStyle.foreground,
                   fontSize: 16,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
@@ -1149,9 +1153,9 @@ class _UserCard extends StatelessWidget {
                       child: Text(
                         name,
                         style: const TextStyle(
-                          color: Color(0xFF1B1C1A),
+                          color: AppColors.text,
                           fontSize: 16,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -1169,7 +1173,7 @@ class _UserCard extends StatelessWidget {
                         style: TextStyle(
                           color: roleStyle.foreground,
                           fontSize: 11,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -1179,7 +1183,7 @@ class _UserCard extends StatelessWidget {
                 Text(
                   email,
                   style: const TextStyle(
-                    color: Color(0xFF424841),
+                    color: AppColors.textSecondary,
                     fontSize: 13,
                   ),
                 ),
@@ -1188,7 +1192,7 @@ class _UserCard extends StatelessWidget {
                   Text(
                     phone,
                     style: const TextStyle(
-                      color: Color(0xFF424841),
+                      color: AppColors.textSecondary,
                       fontSize: 13,
                     ),
                   ),
@@ -1198,9 +1202,9 @@ class _UserCard extends StatelessWidget {
                   Text(
                     'Control No. $controlNumber',
                     style: const TextStyle(
-                      color: Color(0xFF5A4B3F),
+                      color: AppColors.secondary,
                       fontSize: 12,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
@@ -1211,7 +1215,7 @@ class _UserCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: Color(0xFF424841),
+                      color: AppColors.textSecondary,
                       fontSize: 12,
                     ),
                   ),
@@ -1223,7 +1227,7 @@ class _UserCard extends StatelessWidget {
           IconButton(
             onPressed: onEdit,
             icon: const Icon(Icons.edit_rounded),
-            color: const Color(0xFF335538),
+            color: AppColors.brandDark,
             tooltip: 'Edit user',
           ),
           IconButton(
@@ -1272,24 +1276,24 @@ class _UserCard extends StatelessWidget {
     switch (role.toLowerCase()) {
       case 'admin':
         return const _RoleStyle(
-          background: Color(0xFFC5EDC6),
-          foreground: Color(0xFF335538),
+          background: AppColors.brandLight,
+          foreground: AppColors.brandDark,
         );
       case 'gate_officer':
         return const _RoleStyle(
-          background: Color(0xFFC7E4F3),
+          background: AppColors.secondaryLight,
           foreground: Color(0xFF2F4A57),
         );
       case 'lot_owner':
         return const _RoleStyle(
           background: Color(0xFFF5DECE),
-          foreground: Color(0xFF5A4B3F),
+          foreground: AppColors.secondary,
         );
       case 'visitor':
       default:
         return const _RoleStyle(
-          background: Color(0xFFEAE8E5),
-          foreground: Color(0xFF424841),
+          background: AppColors.surfaceHigh,
+          foreground: AppColors.textSecondary,
         );
     }
   }
@@ -1469,9 +1473,9 @@ class _UserFormDialogState extends State<_UserFormDialog> {
         constraints: const BoxConstraints(maxWidth: 820),
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: const Color(0xFFFBF9F6),
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: const Color(0xFFE4E2DF)),
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.surfaceHighest),
         ),
         child: Form(
           key: _formKey,
@@ -1486,9 +1490,9 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                       child: Text(
                         isEditing ? 'Edit User' : 'Add User',
                         style: const TextStyle(
-                          color: Color(0xFF1B1C1A),
+                          color: AppColors.text,
                           fontSize: 22,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -1501,7 +1505,10 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                 const SizedBox(height: 6),
                 const Text(
                   'Create a Supabase Auth account and cemetery directory profile.',
-                  style: TextStyle(color: Color(0xFF424841), fontSize: 13),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
                 ),
                 const SizedBox(height: 20),
                 _Field(
@@ -1563,11 +1570,11 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                           Navigator.pop(context, _formResult());
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF335538),
+                          backgroundColor: AppColors.brandDark,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
                         child: Text(isEditing ? 'Save Changes' : 'Create User'),
@@ -2068,20 +2075,20 @@ class _UserFormDialogState extends State<_UserFormDialog> {
   InputDecoration _fieldDecoration(String label, IconData icon) {
     return InputDecoration(
       labelText: label,
-      prefixIcon: Icon(icon, color: const Color(0xFF335538)),
+      prefixIcon: Icon(icon, color: AppColors.brandDark),
       filled: true,
       fillColor: Colors.white,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
-        borderSide: const BorderSide(color: Color(0xFFE4E2DF)),
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppColors.surfaceHighest),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
-        borderSide: const BorderSide(color: Color(0xFFE4E2DF)),
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppColors.surfaceHighest),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
-        borderSide: const BorderSide(color: Color(0xFF335538), width: 1.2),
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppColors.brandDark, width: 1.2),
       ),
     );
   }
@@ -2097,14 +2104,14 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: const Color(0xFF335538)),
+        Icon(icon, size: 18, color: AppColors.brandDark),
         const SizedBox(width: 8),
         Text(
           title,
           style: const TextStyle(
-            color: Color(0xFF1B1C1A),
+            color: AppColors.text,
             fontSize: 14,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
@@ -2141,20 +2148,20 @@ class _DateField extends StatelessWidget {
       onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: const Color(0xFF335538)),
+        prefixIcon: Icon(icon, color: AppColors.brandDark),
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: Color(0xFFE4E2DF)),
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.surfaceHighest),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: Color(0xFFE4E2DF)),
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.surfaceHighest),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: Color(0xFF335538), width: 1.2),
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.brandDark, width: 1.2),
         ),
       ),
     );
@@ -2198,21 +2205,21 @@ class _Field extends StatelessWidget {
       onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: const Color(0xFF335538)),
+        prefixIcon: Icon(icon, color: AppColors.brandDark),
         prefixText: prefixText,
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: Color(0xFFE4E2DF)),
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.surfaceHighest),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: Color(0xFFE4E2DF)),
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.surfaceHighest),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: Color(0xFF335538), width: 1.2),
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.brandDark, width: 1.2),
         ),
       ),
     );

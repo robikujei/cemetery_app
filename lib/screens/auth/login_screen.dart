@@ -1,3 +1,4 @@
+import '../../core/app_colors.dart';
 import '../../core/surface_style.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,17 +11,16 @@ import '../../utils/sign_in_error_message.dart';
 
 // ── Design tokens (mirrors the HTML template's Tailwind config) ──────────────
 class _C {
-  static const background = Color(0xFFFBF9F6);
-  static const primary = Color(0xFF335538);
-  static const primaryContainer = Color(0xFF4B6E4F);
-  static const onPrimaryContainer = Color(0xFFC7EFC8);
-  static const primaryFixed = Color(0xFFC5EDC6);
-  static const surfaceContainerLow = Color(0xFFF5F3F0);
-  static const surfaceContainerHighest = Color(0xFFE4E2DF);
-  static const onSurface = Color(0xFF1B1C1A);
-  static const onSurfaceVariant = Color(0xFF424841);
-  static const outline = Color(0xFF727971);
-  static const outlineVariant = Color(0xFFC2C8BF);
+  static const background = AppColors.background;
+  static const primary = AppColors.brandDark;
+  static const primaryContainer = AppColors.brand;
+  static const onPrimaryContainer = AppColors.onBrand;
+  static const primaryFixed = AppColors.brandLight;
+  static const surfaceContainerHighest = AppColors.surfaceHighest;
+  static const onSurface = AppColors.text;
+  static const onSurfaceVariant = AppColors.textSecondary;
+  static const outline = AppColors.textMuted;
+  static const outlineVariant = AppColors.border;
   static const error = Color(0xFFBA1A1A);
 }
 
@@ -148,7 +148,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         content: Text(message),
         backgroundColor: _C.error,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       ),
     );
   }
@@ -196,38 +196,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           style: const TextStyle(fontSize: 14, color: _C.onSurface),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: _C.outlineVariant, fontSize: 14),
+            hintStyle: const TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 14,
+            ),
             errorText: errorText,
             errorStyle: const TextStyle(color: _C.error, fontSize: 12),
             prefixIcon: Icon(prefixIcon, size: 20, color: _C.outline),
             suffixIcon: suffix,
             filled: true,
-            fillColor: _C.surfaceContainerLow,
+            fillColor: AppColors.surface,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 18,
             ),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide.none,
+              borderRadius: BorderRadius.circular(4),
+              borderSide: const BorderSide(color: AppColors.border),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide.none,
+              borderRadius: BorderRadius.circular(4),
+              borderSide: const BorderSide(color: AppColors.border),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(4),
               borderSide: const BorderSide(
                 color: _C.primaryContainer,
                 width: 2,
               ),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(4),
               borderSide: const BorderSide(color: _C.error, width: 1.5),
             ),
             focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(4),
               borderSide: const BorderSide(color: _C.error, width: 2),
             ),
           ),
@@ -267,7 +270,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     'Eternal Rest',
                     style: TextStyle(
                       fontSize: 32,
-                      fontWeight: FontWeight.w400,
+                      fontWeight: FontWeight.w600,
                       color: _C.primary,
                       letterSpacing: -0.5,
                     ),
@@ -290,11 +293,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     padding: const EdgeInsets.all(32),
                     decoration: SurfaceStyle.panel(
                       color: Colors.white,
-                      radius: 24,
+                      radius: 8,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        Text(
+                          'Sign in',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Access your visits, maps, and cemetery services.',
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
+                        const SizedBox(height: 24),
                         // Email
                         _buildField(
                           controller: _emailCtrl,
@@ -358,9 +371,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               disabledBackgroundColor: _C.primaryContainer
                                   .withValues(alpha: 0.5),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(4),
                               ),
                               textStyle: const TextStyle(
+                                fontFamily: 'Segoe UI',
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
                                 letterSpacing: 0.1,
@@ -409,9 +423,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 width: 2,
                               ),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(4),
                               ),
                               textStyle: const TextStyle(
+                                fontFamily: 'Segoe UI',
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
                                 letterSpacing: 0.1,
@@ -434,6 +449,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         style: TextButton.styleFrom(
                           foregroundColor: _C.outline,
                           textStyle: const TextStyle(
+                            fontFamily: 'Segoe UI',
                             fontSize: 11,
                             letterSpacing: 0.5,
                           ),
@@ -445,6 +461,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         style: TextButton.styleFrom(
                           foregroundColor: _C.outline,
                           textStyle: const TextStyle(
+                            fontFamily: 'Segoe UI',
                             fontSize: 11,
                             letterSpacing: 0.5,
                           ),

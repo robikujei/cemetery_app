@@ -1,3 +1,4 @@
+import '../../core/app_colors.dart';
 import '../../core/surface_style.dart';
 import 'dart:async';
 import 'dart:math';
@@ -17,17 +18,17 @@ import '../../services/supabase_pagination_service.dart';
 import '../../services/cemetery_analytics.dart';
 import '../../utils/map_feature_geometry.dart';
 
-const _background = Color(0xFFFBF9F6);
+const _background = AppColors.background;
 const _surface = Color(0xFFFFFFFF);
-const _surfaceContainerLow = Color(0xFFF5F3F0);
-const _surfaceContainerHighest = Color(0xFFE4E2DF);
-const _primary = Color(0xFF335538);
-const _primaryContainer = Color(0xFF4B6E4F);
-const _primaryFixed = Color(0xFFC5EDC6);
-const _secondary = Color(0xFF47626F);
-const _tertiary = Color(0xFF5A4B3F);
-const _onSurface = Color(0xFF1B1C1A);
-const _onSurfaceVariant = Color(0xFF424841);
+const _surfaceContainerLow = AppColors.surfaceLow;
+const _surfaceContainerHighest = AppColors.surfaceHighest;
+const _primary = AppColors.brandDark;
+const _primaryContainer = AppColors.brand;
+const _primaryFixed = AppColors.brandLight;
+const _secondary = AppColors.secondary;
+const _tertiary = AppColors.secondary;
+const _onSurface = AppColors.text;
+const _onSurfaceVariant = AppColors.textSecondary;
 
 class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({
@@ -312,7 +313,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             barRods: [
               BarChartRodData(
                 toY: count.toDouble(),
-                color: const Color(0xFF4B6E4F),
+                color: AppColors.brand,
                 width: 40,
                 borderRadius: BorderRadius.circular(4),
               ),
@@ -504,7 +505,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
               const SizedBox(height: 24),
               Text(
                 'Welcome back, Administrator. Here is the daily summary for your operations.',
-                style: t.bodyMedium?.copyWith(color: const Color(0xFF424841)),
+                style: t.bodyMedium?.copyWith(color: AppColors.textSecondary),
               ),
               const SizedBox(height: 28),
               GridView.count(
@@ -519,7 +520,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                     label: 'Total Burials',
                     value: _metrics['total_burials'].toString(),
                     icon: Icons.people_outline,
-                    color: const Color(0xFF335538),
+                    color: AppColors.brandDark,
                     badge: 'All records',
                   ),
                   _MetricCard(
@@ -566,7 +567,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                         'Lot demand by block',
                         style: TextStyle(
                           fontSize: 18,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       const Text(
@@ -633,8 +634,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         Text(
           'Quick Actions',
           style: t.titleLarge?.copyWith(
-            color: const Color(0xFF1B1C1A),
-            fontWeight: FontWeight.w700,
+            color: AppColors.text,
+            fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 14),
@@ -664,11 +665,11 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     return _MapPreviewCard(
       titleStyle: t.titleLarge?.copyWith(
         color: _onSurface,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w600,
       ),
       pillStyle: t.labelMedium?.copyWith(
         color: _onSurface,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w600,
       ),
     );
   }
@@ -676,7 +677,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   Widget _buildChartsSection(TextTheme t, ColorScheme cs) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -725,7 +726,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                             icon: const Icon(Icons.refresh, size: 16),
                             label: const Text('Reload Data'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF4B6E4F),
+                              backgroundColor: AppColors.brand,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
@@ -1061,7 +1062,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
               'Recent Records',
               style: t.titleLarge?.copyWith(
                 color: _onSurface,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
               ),
             ),
             TextButton.icon(
@@ -1118,7 +1119,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                 child: Row(
                   children: [
                     const CircleAvatar(
-                      radius: 24,
+                      radius: 8,
                       backgroundColor: _primaryFixed,
                       child: Icon(
                         Icons.account_circle_outlined,
@@ -1178,7 +1179,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             ElevatedButton(
               onPressed: _refreshData,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4B6E4F),
+                backgroundColor: AppColors.brand,
                 foregroundColor: Colors.white,
               ),
               child: const Text('Try Again'),
@@ -1210,7 +1211,7 @@ class _MetricCard extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     return Container(
       padding: const EdgeInsets.all(22),
-      decoration: SurfaceStyle.panel(color: _surfaceContainerLow, radius: 24),
+      decoration: SurfaceStyle.panel(color: _surfaceContainerLow, radius: 8),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1223,7 +1224,7 @@ class _MetricCard extends StatelessWidget {
                 height: 48,
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(icon, color: color),
               ),
@@ -1234,7 +1235,7 @@ class _MetricCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: t.labelMedium?.copyWith(
                     color: color,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -1255,7 +1256,7 @@ class _MetricCard extends StatelessWidget {
                 value,
                 style: t.headlineSmall?.copyWith(
                   color: _onSurface,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
@@ -1284,11 +1285,11 @@ class _QuickActionButton extends StatelessWidget {
     final foreground = filled ? Colors.white : _onSurfaceVariant;
     return Material(
       color: filled ? _primary : _surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(8),
       elevation: filled ? 3 : 0,
       shadowColor: _primary.withValues(alpha: 0.25),
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(8),
         onTap: onPressed,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
@@ -1301,7 +1302,7 @@ class _QuickActionButton extends StatelessWidget {
                   label,
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
                     color: foreground,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -1327,7 +1328,7 @@ class AppCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: padding,
-      decoration: SurfaceStyle.panel(color: _surface, radius: 20),
+      decoration: SurfaceStyle.panel(color: _surface, radius: 8),
       child: child,
     );
   }
@@ -1687,7 +1688,7 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
             style: const TextStyle(
               color: _primary,
               fontSize: 14,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -1775,7 +1776,7 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
                 color: Colors.white.withValues(alpha: 0.92),
                 borderRadius: BorderRadius.circular(999),
                 border: Border.all(
-                  color: const Color(0xFFC2C8BF).withValues(alpha: 0.7),
+                  color: AppColors.border.withValues(alpha: 0.7),
                 ),
               ),
               child: Row(
@@ -1805,9 +1806,9 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.92),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(4),
                 border: Border.all(
-                  color: const Color(0xFFC2C8BF).withValues(alpha: 0.7),
+                  color: AppColors.border.withValues(alpha: 0.7),
                 ),
               ),
               child: Text(
@@ -1867,9 +1868,9 @@ class _MapToolButton extends StatelessWidget {
       color: Colors.white,
       elevation: 5,
       shadowColor: Colors.black.withValues(alpha: 0.16),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(4),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(4),
         onTap: onPressed,
         child: SizedBox(
           width: 42,

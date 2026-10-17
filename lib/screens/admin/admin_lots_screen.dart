@@ -1,3 +1,4 @@
+import '../../core/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -223,10 +224,10 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-            backgroundColor: const Color(0xFFFBF9F6),
+            backgroundColor: AppColors.background,
             surfaceTintColor: Colors.transparent,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(8),
             ),
             title: Row(
               children: [
@@ -234,12 +235,12 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFC5EDC6),
-                    borderRadius: BorderRadius.circular(14),
+                    color: AppColors.brandLight,
+                    borderRadius: BorderRadius.circular(4),
                   ),
                   child: const Icon(
                     Icons.edit_rounded,
-                    color: Color(0xFF335538),
+                    color: AppColors.brandDark,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -247,8 +248,8 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
                   child: Text(
                     'Edit Lot',
                     style: TextStyle(
-                      color: Color(0xFF1B1C1A),
-                      fontWeight: FontWeight.w700,
+                      color: AppColors.text,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -395,7 +396,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFF424841),
+                  foregroundColor: AppColors.textSecondary,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 18,
                     vertical: 12,
@@ -411,7 +412,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF335538),
+                  backgroundColor: AppColors.brandDark,
                   foregroundColor: Colors.white,
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(
@@ -419,7 +420,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
                     vertical: 12,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                 ),
                 child: const Text('Update'),
@@ -470,30 +471,28 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFFFBF9F6),
+          backgroundColor: AppColors.background,
           surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           title: Row(
             children: [
               Container(
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFC5EDC6),
-                  borderRadius: BorderRadius.circular(14),
+                  color: AppColors.brandLight,
+                  borderRadius: BorderRadius.circular(4),
                 ),
                 child: const Icon(
                   Icons.add_location_alt_rounded,
-                  color: Color(0xFF335538),
+                  color: AppColors.brandDark,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'Add Grave to Lot ${lotReference(lot)}',
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
             ],
@@ -673,17 +672,17 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
             TextButton(
               onPressed: () => Navigator.pop(context, false),
               style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF424841),
+                foregroundColor: AppColors.textSecondary,
               ),
               child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF335538),
+                backgroundColor: AppColors.brandDark,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(4),
                 ),
               ),
               child: const Text('Add Grave'),
@@ -783,20 +782,20 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
   }) {
     return InputDecoration(
       labelText: labelText,
-      prefixIcon: Icon(icon, color: const Color(0xFF335538)),
+      prefixIcon: Icon(icon, color: AppColors.brandDark),
       filled: true,
       fillColor: Colors.white,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFFC2C8BF)),
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppColors.border),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFFC2C8BF)),
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppColors.border),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFF335538), width: 1.4),
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppColors.brandDark, width: 1.4),
       ),
     );
   }
@@ -921,9 +920,9 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFFFBF9F6),
+        backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         title: const Row(
           children: [
             Icon(Icons.delete_outline_rounded, color: Color(0xFFBA1A1A)),
@@ -938,7 +937,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF424841),
+              foregroundColor: AppColors.textSecondary,
             ),
             child: const Text('Cancel'),
           ),
@@ -998,7 +997,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFBF9F6),
+      backgroundColor: AppColors.background,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
@@ -1045,7 +1044,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
             const Text(
               'Lots Management',
               style: TextStyle(
-                color: Color(0xFF335538),
+                color: AppColors.brandDark,
                 fontSize: 28,
                 fontWeight: FontWeight.w400,
                 height: 1.2,
@@ -1067,11 +1066,11 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
           icon: const Icon(Icons.refresh_rounded),
           label: const Text('Refresh'),
           style: OutlinedButton.styleFrom(
-            foregroundColor: const Color(0xFF335538),
-            side: const BorderSide(color: Color(0xFFC2C8BF)),
+            foregroundColor: AppColors.brandDark,
+            side: const BorderSide(color: AppColors.border),
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(4),
             ),
           ),
         );
@@ -1111,8 +1110,8 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F3F0),
-        borderRadius: BorderRadius.circular(18),
+        color: AppColors.surfaceLow,
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
@@ -1120,7 +1119,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
             child: Text(
               'Showing $firstRecord–$lastRecord of ${_filteredLots.length} lots',
               style: const TextStyle(
-                color: Color(0xFF424841),
+                color: AppColors.textSecondary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -1136,7 +1135,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Text(
               'Page ${_currentPage + 1} of $_pageCount',
-              style: const TextStyle(fontWeight: FontWeight.w700),
+              style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
           IconButton(
@@ -1155,8 +1154,8 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F3F0),
-        borderRadius: BorderRadius.circular(24),
+        color: AppColors.surfaceLow,
+        borderRadius: BorderRadius.circular(8),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -1169,16 +1168,16 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
               fillColor: Colors.white,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(999),
-                borderSide: const BorderSide(color: Color(0xFFC2C8BF)),
+                borderSide: const BorderSide(color: AppColors.border),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(999),
-                borderSide: const BorderSide(color: Color(0xFFC2C8BF)),
+                borderSide: const BorderSide(color: AppColors.border),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(999),
                 borderSide: const BorderSide(
-                  color: Color(0xFF335538),
+                  color: AppColors.brandDark,
                   width: 1.4,
                 ),
               ),
@@ -1192,7 +1191,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
             initialValue: _filterStatus,
             decoration: InputDecoration(
               filled: true,
-              fillColor: const Color(0xFFC7E4F3),
+              fillColor: AppColors.secondaryLight,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(999),
                 borderSide: BorderSide.none,
@@ -1240,13 +1239,13 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFE4E2DF)),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.surfaceHighest),
       ),
       child: const Text(
         'No lots found',
         textAlign: TextAlign.center,
-        style: TextStyle(color: Color(0xFF424841), fontSize: 16),
+        style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
       ),
     );
   }
@@ -1264,8 +1263,8 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFE4E2DF)),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.surfaceHighest),
         boxShadow: const [
           BoxShadow(
             color: Color(0x0A000000),
@@ -1297,9 +1296,9 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
                     Text(
                       'Lot ${lotReference(lot)}',
                       style: const TextStyle(
-                        color: Color(0xFF1B1C1A),
+                        color: AppColors.text,
                         fontSize: 18,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -1316,12 +1315,12 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
                           _LotInfoChip(
                             icon: Icons.grid_view_rounded,
                             label: lotMeta(lot),
-                            color: const Color(0xFF47626F),
+                            color: AppColors.secondary,
                           ),
                         _LotInfoChip(
                           icon: Icons.payments_outlined,
                           label: _formatCurrency(lot['price']),
-                          color: const Color(0xFF335538),
+                          color: AppColors.brandDark,
                         ),
                         if (burial != null)
                           _LotInfoChip(
@@ -1358,8 +1357,8 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
                   icon: const Icon(Icons.add_location_alt_rounded),
                   tooltip: 'Add grave',
                   style: IconButton.styleFrom(
-                    backgroundColor: const Color(0xFFC5EDC6),
-                    foregroundColor: const Color(0xFF335538),
+                    backgroundColor: AppColors.brandLight,
+                    foregroundColor: AppColors.brandDark,
                   ),
                 ),
                 IconButton(
@@ -1367,8 +1366,8 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
                   icon: const Icon(Icons.edit_rounded),
                   tooltip: 'Edit',
                   style: IconButton.styleFrom(
-                    backgroundColor: const Color(0xFFF5F3F0),
-                    foregroundColor: const Color(0xFF47626F),
+                    backgroundColor: AppColors.surfaceLow,
+                    foregroundColor: AppColors.secondary,
                   ),
                 ),
                 if (status == 'Available')
@@ -1397,9 +1396,9 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
         Text(
           'Graves (${graves.length})',
           style: const TextStyle(
-            color: Color(0xFF424841),
+            color: AppColors.textSecondary,
             fontSize: 12,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 8),
@@ -1449,7 +1448,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
               _applyFilters();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4B6E4F),
+              backgroundColor: AppColors.brand,
               foregroundColor: Colors.white,
             ),
             child: const Text('Try Again'),

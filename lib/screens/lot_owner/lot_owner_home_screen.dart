@@ -1,3 +1,4 @@
+import '../../core/app_colors.dart';
 import '../../widgets/logout_dialog.dart';
 import 'dart:async';
 
@@ -15,14 +16,14 @@ import '../../utils/lot_formatters.dart';
 import '../../utils/lot_pricing.dart';
 import '../../utils/map_feature_geometry.dart';
 
-const _background = Color(0xFFFBF9F6);
+const _background = AppColors.background;
 const _surface = Color(0xFFFFFFFF);
-const _surfaceLow = Color(0xFFF5F3F0);
-const _primary = Color(0xFF335538);
-const _primaryContainer = Color(0xFFC5EDC6);
-const _onSurface = Color(0xFF1B1C1A);
-const _onSurfaceVariant = Color(0xFF424841);
-const _outlineVariant = Color(0xFFC2C8BF);
+const _surfaceLow = AppColors.surfaceLow;
+const _primary = AppColors.brandDark;
+const _primaryContainer = AppColors.brandLight;
+const _onSurface = AppColors.text;
+const _onSurfaceVariant = AppColors.textSecondary;
+const _outlineVariant = AppColors.border;
 
 const _lotOwnerProfileSelect = '''
   control_number,
@@ -277,7 +278,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: _background,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         title: Text('Inquire about Lot $lotNumber'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -287,7 +288,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: _surfaceLow,
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: _outlineVariant.withValues(alpha: 0.45),
                 ),
@@ -306,7 +307,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: _primaryContainer.withValues(alpha: 0.45),
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: _outlineVariant.withValues(alpha: 0.35),
                 ),
@@ -317,7 +318,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                   const Text(
                     'Contact the admin',
                     style: TextStyle(
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                       color: _onSurface,
                     ),
                   ),
@@ -361,7 +362,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
             backgroundColor: _background,
             surfaceTintColor: Colors.transparent,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(8),
             ),
             title: const Text('Edit Profile'),
             content: SingleChildScrollView(
@@ -436,7 +437,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                   backgroundColor: _primary,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                 ),
                 child: const Text('Save Changes'),
@@ -458,15 +459,15 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
       filled: true,
       fillColor: _surface,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: _outlineVariant),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: _outlineVariant),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: _primary, width: 1.4),
       ),
     );
@@ -600,7 +601,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
           titleTextStyle: const TextStyle(
             color: _primary,
             fontSize: 20,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
           ),
           actions: [
             IconButton(
@@ -647,7 +648,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
                 color: _surfaceLow,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: _outlineVariant.withValues(alpha: 0.45),
                 ),
@@ -657,12 +658,12 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                 indicatorSize: TabBarIndicatorSize.tab,
                 indicator: BoxDecoration(
                   color: _primaryContainer,
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 labelColor: _primary,
                 unselectedLabelColor: _onSurfaceVariant,
                 labelStyle: const TextStyle(
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w600,
                   fontSize: 12,
                 ),
                 tabs: const [
@@ -713,7 +714,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                     style: const TextStyle(
                       color: _onSurface,
                       fontSize: 20,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -760,7 +761,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
                     color: _surface,
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: _outlineVariant.withValues(alpha: 0.45),
                     ),
@@ -911,7 +912,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
       width: double.infinity,
       decoration: BoxDecoration(
         color: _surface,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: _outlineVariant.withValues(alpha: 0.45)),
         boxShadow: [
           BoxShadow(
@@ -945,7 +946,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: _surfaceLow,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: _outlineVariant.withValues(alpha: 0.45)),
       ),
       child: Column(
@@ -982,7 +983,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
             style: TextStyle(
               color: _onSurface,
               fontSize: compact ? 13 : 16,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -1014,7 +1015,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                     ? _onSurfaceVariant
                     : _onSurface,
                 fontSize: 12,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -1040,7 +1041,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                   SizedBox(height: 16),
                   Text(
                     'No available lots at the moment',
-                    style: TextStyle(fontWeight: FontWeight.w800),
+                    style: TextStyle(fontWeight: FontWeight.w600),
                   ),
                   SizedBox(height: 8),
                   Text(
@@ -1073,7 +1074,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
                     color: _surface,
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: _outlineVariant.withValues(alpha: 0.45),
                     ),
@@ -1116,7 +1117,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                         backgroundColor: _primary,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
                     ),
@@ -1139,7 +1140,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
             child: Container(
               decoration: BoxDecoration(
                 color: _surface,
-                borderRadius: BorderRadius.circular(28),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: _outlineVariant.withValues(alpha: 0.4),
                 ),
@@ -1413,7 +1414,7 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
                       style: TextStyle(
                         color: color,
                         fontSize: 8,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -1549,7 +1550,7 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
                 Text(
                   'Cemetery Map',
                   style: TextStyle(
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                     color: _onSurface,
                   ),
                 ),
@@ -1564,7 +1565,7 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.94),
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(color: _outlineVariant.withValues(alpha: 0.5)),
             ),
             child: Wrap(
@@ -1628,7 +1629,7 @@ class _AvailableLotMapCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.96),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: _outlineVariant.withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
@@ -1645,7 +1646,7 @@ class _AvailableLotMapCard extends StatelessWidget {
             height: 46,
             decoration: BoxDecoration(
               color: _primaryContainer,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: const Icon(Icons.location_on_rounded, color: _primary),
           ),
@@ -1660,7 +1661,7 @@ class _AvailableLotMapCard extends StatelessWidget {
                   style: const TextStyle(
                     color: _onSurface,
                     fontSize: 16,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1679,7 +1680,7 @@ class _AvailableLotMapCard extends StatelessWidget {
                   style: const TextStyle(
                     color: _primary,
                     fontSize: 13,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
@@ -1693,7 +1694,7 @@ class _AvailableLotMapCard extends StatelessWidget {
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(8),
               ),
             ),
             child: const Text('Inquire'),

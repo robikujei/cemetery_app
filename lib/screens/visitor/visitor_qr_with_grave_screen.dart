@@ -1,3 +1,4 @@
+import '../../core/app_colors.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -11,27 +12,27 @@ import 'package:path_provider/path_provider.dart';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
 
 class _C {
-  static const background = Color(0xFFFBF9F6);
-  static const primary = Color(0xFF335538);
-  static const primaryContainer = Color(0xFF4B6E4F);
+  static const background = AppColors.background;
+  static const primary = AppColors.brandDark;
+  static const primaryContainer = AppColors.brand;
   static const onPrimary = Color(0xFFFFFFFF);
-  static const onPrimaryContainer = Color(0xFFC7EFC8);
-  static const primaryFixed = Color(0xFFC5EDC6);
+  static const onPrimaryContainer = AppColors.onBrand;
+  static const primaryFixed = AppColors.brandLight;
   static const secondaryFixed = Color(0xFFCAE7F6);
-  static const secondary = Color(0xFF47626F);
+  static const secondary = AppColors.secondary;
   static const tertiaryFixed = Color(0xFFF5DECE);
-  static const tertiary = Color(0xFF5A4B3F);
-  static const secondaryContainer = Color(0xFFC7E4F3);
-  static const onSecondaryContainer = Color(0xFF4B6673);
-  static const surfaceContainerLow = Color(0xFFF5F3F0);
-  static const surfaceContainerHigh = Color(0xFFEAE8E5);
-  static const surfaceContainer = Color(0xFFEFEEEB);
+  static const tertiary = AppColors.secondary;
+  static const secondaryContainer = AppColors.secondaryLight;
+  static const onSecondaryContainer = AppColors.secondary;
+  static const surfaceContainerLow = AppColors.surfaceLow;
+  static const surfaceContainerHigh = AppColors.surfaceHigh;
+  static const surfaceContainer = AppColors.surfaceHigh;
   static const surfaceContainerLowest = Color(0xFFFFFFFF);
-  static const surfaceVariant = Color(0xFFE4E2DF);
-  static const onSurface = Color(0xFF1B1C1A);
-  static const onSurfaceVariant = Color(0xFF424841);
-  static const outline = Color(0xFF727971);
-  static const outlineVariant = Color(0xFFC2C8BF);
+  static const surfaceVariant = AppColors.surfaceHighest;
+  static const onSurface = AppColors.text;
+  static const onSurfaceVariant = AppColors.textSecondary;
+  static const outline = AppColors.textMuted;
+  static const outlineVariant = AppColors.border;
   static const white = Color(0xFFFFFFFF);
   static const error = Color(0xFFBA1A1A);
 }
@@ -163,7 +164,7 @@ class _VisitorQrWithGraveScreenState
             backgroundColor: _C.primary,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(8),
             ),
           ),
         );
@@ -203,7 +204,7 @@ class _VisitorQrWithGraveScreenState
               'Eternal Rest',
               style: TextStyle(
                 fontSize: 20,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 color: _C.primaryContainer,
                 letterSpacing: -0.3,
               ),
@@ -256,7 +257,7 @@ class _VisitorQrWithGraveScreenState
                 backgroundColor: _C.primary,
                 foregroundColor: _C.onPrimary,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
               child: const Text('Go Back'),
@@ -335,7 +336,7 @@ class _VisitorQrWithGraveScreenState
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: _C.surfaceContainerLowest,
-                borderRadius: BorderRadius.circular(32),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: _C.outlineVariant),
                 boxShadow: const [
                   BoxShadow(
@@ -426,7 +427,7 @@ class _VisitorQrWithGraveScreenState
                               padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
                                 color: _C.white,
-                                borderRadius: BorderRadius.circular(24),
+                                borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
                                   color: _C.primaryFixed,
                                   width: 4,
@@ -491,7 +492,7 @@ class _VisitorQrWithGraveScreenState
                         padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
                           color: _C.surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Column(
                           children: const [
@@ -535,9 +536,10 @@ class _VisitorQrWithGraveScreenState
                   foregroundColor: _C.onPrimary,
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   textStyle: const TextStyle(
+                    fontFamily: 'Segoe UI',
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -559,9 +561,10 @@ class _VisitorQrWithGraveScreenState
                   side: const BorderSide(color: _C.outlineVariant),
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   textStyle: const TextStyle(
+                    fontFamily: 'Segoe UI',
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),

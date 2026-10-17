@@ -1,3 +1,4 @@
+import 'package:cemetery_app/core/theme.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -52,12 +53,14 @@ void main() {
   });
   tearDownAll(() => Supabase.instance.dispose());
 
-  for (final height in [640.0, 480.0]) {
-    testWidgets('visitor logout is reachable at height $height', (
-      tester,
-    ) async {
-      stallLogoutRequests = height == 480;
-      tester.view.physicalSize = Size(390, height);
+  for (final size in [
+    const Size(390, 640),
+    const Size(390, 480),
+    const Size(1280, 900),
+  ]) {
+    testWidgets('visitor logout is reachable at $size', (tester) async {
+      stallLogoutRequests = size.height == 480;
+      tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
@@ -94,17 +97,27 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [visitorNavIndexProvider.overrideWith((ref) => 3)],
-          child: MaterialApp.router(routerConfig: router),
+          child: MaterialApp.router(
+            theme: AppTheme.light(),
+            routerConfig: router,
+          ),
         ),
       );
       await tester.pumpAndSettle();
       final logout = find.widgetWithText(ElevatedButton, 'Logout from Account');
       await tester.scrollUntilVisible(logout, 150);
       await tester.pumpAndSettle();
-      expect(
-        tester.getRect(logout).bottom,
-        lessThanOrEqualTo(tester.getRect(find.byType(BottomNavigationBar)).top),
-      );
+      if (size.width < 840) {
+        expect(
+          tester.getRect(logout).bottom,
+          lessThanOrEqualTo(
+            tester.getRect(find.byType(BottomNavigationBar)).top,
+          ),
+        );
+      } else {
+        expect(find.byType(NavigationRail), findsOneWidget);
+        expect(find.byType(BottomNavigationBar), findsNothing);
+      }
       await tester.tap(logout);
       await tester.pumpAndSettle();
       expect(find.text('Are you sure you want to logout?'), findsOneWidget);

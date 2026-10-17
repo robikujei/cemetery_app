@@ -1,3 +1,4 @@
+import '../../core/app_colors.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -29,7 +30,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
   SpatialResult _spatial = const SpatialResult([], [], 0, 0);
   RealtimeChannel? _channel;
   Timer? _refreshTimer;
-  static const _green = Color(0xFF335538);
+  static const _green = AppColors.brandDark;
   static const _types = [
     'Burial records',
     'Visitor logs',
@@ -192,7 +193,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
             title,
             style: const TextStyle(
               fontSize: 20,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
               color: _green,
             ),
           ),
@@ -332,10 +333,18 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Wrap(spacing: 8, children: TrendInterval.values.map((v) => ChoiceChip(
-                    label: Text(v.name), selected: _interval == v,
-                    onSelected: (_) => setState(() => _interval = v),
-                  )).toList()),
+                  Wrap(
+                    spacing: 8,
+                    children: TrendInterval.values
+                        .map(
+                          (v) => ChoiceChip(
+                            label: Text(v.name),
+                            selected: _interval == v,
+                            onSelected: (_) => setState(() => _interval = v),
+                          ),
+                        )
+                        .toList(),
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     '${trend.values.fold<int>(0, (s, v) => s + v)} entries. Weeks start Monday; empty periods count as zero.',
@@ -365,7 +374,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
                                   value: e.value / maxCount,
                                   minHeight: 12,
                                   color: _green,
-                                  backgroundColor: const Color(0xFFE4E2DF),
+                                  backgroundColor: AppColors.surfaceHighest,
                                 ),
                               ),
                               SizedBox(

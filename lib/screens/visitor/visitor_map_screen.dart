@@ -1,3 +1,4 @@
+import '../../core/app_colors.dart';
 import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
@@ -19,18 +20,18 @@ import '../../utils/map_feature_geometry.dart';
 import 'visitor_qr_with_grave_screen.dart';
 
 class _C {
-  static const background = Color(0xFFFBF9F6);
-  static const primary = Color(0xFF335538);
-  static const primaryContainer = Color(0xFF4B6E4F);
+  static const background = AppColors.background;
+  static const primary = AppColors.brandDark;
+  static const primaryContainer = AppColors.brand;
   static const primaryFixedDim = Color(0xFFAAD0AB);
-  static const surfaceContainerHigh = Color(0xFFEAE8E5);
-  static const surfaceContainerHighest = Color(0xFFE4E2DF);
-  static const onSurface = Color(0xFF1B1C1A);
-  static const onSurfaceVariant = Color(0xFF424841);
-  static const outline = Color(0xFF727971);
-  static const outlineVariant = Color(0xFFC2C8BF);
-  static const secondary = Color(0xFF47626F);
-  static const tertiary = Color(0xFF5A4B3F);
+  static const surfaceContainerHigh = AppColors.surfaceHigh;
+  static const surfaceContainerHighest = AppColors.surfaceHighest;
+  static const onSurface = AppColors.text;
+  static const onSurfaceVariant = AppColors.textSecondary;
+  static const outline = AppColors.textMuted;
+  static const outlineVariant = AppColors.border;
+  static const secondary = AppColors.secondary;
+  static const tertiary = AppColors.secondary;
   static const error = Color(0xFFBA1A1A);
   static const white = Color(0xFFFFFFFF);
 }
@@ -433,9 +434,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
           content: Text('No lot found for "$query"'),
           behavior: SnackBarBehavior.floating,
           backgroundColor: _C.error,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         ),
       );
       return;
@@ -498,7 +497,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
       backgroundColor: _C.white,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
       ),
       builder: (context) => Padding(
         padding: const EdgeInsets.fromLTRB(18, 10, 18, 24),
@@ -525,7 +524,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                   height: 48,
                   decoration: BoxDecoration(
                     color: _C.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(Icons.location_on_rounded, color: statusColor),
                 ),
@@ -541,7 +540,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                         style: const TextStyle(
                           color: _C.onSurface,
                           fontSize: 22,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w600,
                           height: 1.1,
                         ),
                       ),
@@ -560,7 +559,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                         style: TextStyle(
                           color: statusColor,
                           fontSize: 12,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -680,7 +679,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
       builder: (dialogContext) => AlertDialog(
         backgroundColor: _C.white,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         title: const Text('Generate visit QR?'),
         content: Text(
           'Create a QR code to check in for visiting $deceasedName at Lot $lotNumber.',
@@ -896,7 +895,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
             child: Text(
               value,
               style: TextStyle(
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 color: valueColor ?? _C.onSurface,
               ),
             ),
@@ -1016,7 +1015,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                   style: TextStyle(
                     color: _C.primaryContainer,
                     fontSize: 20,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                     letterSpacing: -0.3,
                   ),
                 ),
@@ -1247,7 +1246,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: _C.white,
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
           boxShadow: const [
             BoxShadow(
@@ -1273,7 +1272,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                     style: const TextStyle(
                       color: _C.onSurface,
                       fontSize: 16,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -1285,7 +1284,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                       style: const TextStyle(
                         color: _C.onSurfaceVariant,
                         fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 3),
@@ -1349,7 +1348,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
         decoration: BoxDecoration(
           color: _C.white,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: Colors.white.withValues(alpha: 0.55)),
           boxShadow: const [
             BoxShadow(
@@ -1377,7 +1376,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                         style: const TextStyle(
                           color: _C.onSurface,
                           fontSize: 16,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -1434,7 +1433,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
 
     return InkWell(
       onTap: () => _startRouteToMarker(marker, grave: grave),
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 11),
         child: Row(
@@ -1444,7 +1443,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
               height: 42,
               decoration: BoxDecoration(
                 color: statusColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(4),
               ),
               child: Icon(_statusIcon(status), color: statusColor, size: 21),
             ),
@@ -1460,7 +1459,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: _C.onSurface,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -1489,7 +1488,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                 style: TextStyle(
                   color: statusColor,
                   fontSize: 11,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
@@ -1506,8 +1505,9 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                   minimumSize: const Size(0, 36),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   textStyle: const TextStyle(
+                    fontFamily: 'Segoe UI',
                     fontSize: 12,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -1521,8 +1521,9 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                 minimumSize: const Size(0, 36),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 textStyle: const TextStyle(
+                  fontFamily: 'Segoe UI',
                   fontSize: 12,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               child: const Text('Route'),
@@ -1993,7 +1994,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
       height: 52,
       decoration: BoxDecoration(
         color: _C.primaryFixedDim.withValues(alpha: 0.28),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Icon(icon, color: color, size: 24),
     );
@@ -2042,7 +2043,7 @@ class _LegendItem extends StatelessWidget {
           style: const TextStyle(
             color: _C.onSurfaceVariant,
             fontSize: 12,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
@@ -2129,9 +2130,9 @@ class _SelectedLeafletPin extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: _C.primaryContainer,
                   borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(24),
-                    topRight: Radius.circular(24),
-                    bottomRight: Radius.circular(24),
+                    topLeft: Radius.circular(8),
+                    topRight: Radius.circular(8),
+                    bottomRight: Radius.circular(8),
                     bottomLeft: Radius.circular(4),
                   ),
                   border: Border.all(color: _C.white, width: 2),

@@ -1,3 +1,4 @@
+import '../../core/app_colors.dart';
 import '../../core/surface_style.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,13 +8,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../providers/auth_provider.dart';
 
 class _C {
-  static const background = Color(0xFFFBF9F6);
-  static const primary = Color(0xFF335538);
-  static const primaryContainer = Color(0xFF4B6E4F);
-  static const primaryFixed = Color(0xFFC5EDC6);
-  static const surfaceContainerLow = Color(0xFFF5F3F0);
-  static const onSurface = Color(0xFF1B1C1A);
-  static const onSurfaceVariant = Color(0xFF424841);
+  static const background = AppColors.background;
+  static const primary = AppColors.brandDark;
+  static const primaryContainer = AppColors.brand;
+  static const primaryFixed = AppColors.brandLight;
+  static const onSurface = AppColors.text;
+  static const onSurfaceVariant = AppColors.textSecondary;
   static const error = Color(0xFFBA1A1A);
 }
 
@@ -202,7 +202,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 30,
-                      fontWeight: FontWeight.w400,
+                      fontWeight: FontWeight.w600,
                       color: _C.primary,
                     ),
                   ),
@@ -222,7 +222,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     padding: const EdgeInsets.all(24),
                     decoration: SurfaceStyle.panel(
                       color: Colors.white,
-                      radius: 24,
+                      radius: 8,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -252,7 +252,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           ),
                           decoration: BoxDecoration(
                             color: _C.primaryFixed.withValues(alpha: 0.45),
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(4),
                             border: Border.all(color: _C.primaryFixed),
                           ),
                           child: const Row(
@@ -269,7 +269,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                   style: TextStyle(
                                     color: _C.primary,
                                     fontSize: 13,
-                                    fontWeight: FontWeight.w700,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ),
@@ -336,7 +336,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               disabledBackgroundColor: _C.primaryContainer
                                   .withValues(alpha: 0.55),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(4),
                               ),
                             ),
                             child: _isLoading
@@ -370,7 +370,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 'Sign In',
                                 style: TextStyle(
                                   color: _C.primary,
-                                  fontWeight: FontWeight.w700,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
@@ -412,29 +412,29 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         prefixIcon: Icon(prefixIcon, color: _C.primary),
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor: _C.surfaceContainerLow,
+        fillColor: AppColors.surface,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 18,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(4),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(4),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(4),
           borderSide: const BorderSide(color: _C.primaryContainer, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(4),
           borderSide: const BorderSide(color: _C.error, width: 1.5),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(4),
           borderSide: const BorderSide(color: _C.error, width: 2),
         ),
       ),

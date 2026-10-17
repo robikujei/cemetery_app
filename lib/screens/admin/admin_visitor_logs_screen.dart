@@ -1,3 +1,4 @@
+import '../../core/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -294,7 +295,7 @@ class _AdminVisitorLogsScreenState
                             ),
                             decoration: BoxDecoration(
                               color: Colors.blue.shade50,
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               '${_startDate != null ? DateFormat('MMM d, y').format(_startDate!) : 'Any'} - ${_endDate != null ? DateFormat('MMM d, y').format(_endDate!) : 'Any'}',
@@ -343,7 +344,7 @@ class _AdminVisitorLogsScreenState
                             return Card(
                               margin: const EdgeInsets.only(bottom: 12),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                               child: ListTile(
                                 leading: CircleAvatar(
@@ -425,7 +426,7 @@ class _AdminVisitorLogsScreenState
           ElevatedButton(
             onPressed: _loadLogs,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4B6E4F),
+              backgroundColor: AppColors.brand,
               foregroundColor: Colors.white,
             ),
             child: const Text('Try Again'),

@@ -1,3 +1,4 @@
+import '../../core/app_colors.dart';
 import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
@@ -26,19 +27,19 @@ const _lotMarkerSelect =
     'marker_id, lot_id, x_percent, y_percent, cemetery_lot($_lotColumnsSelect)';
 
 class _C {
-  static const background = Color(0xFFFBF9F6);
-  static const primary = Color(0xFF335538);
-  static const primaryContainer = Color(0xFF4B6E4F);
-  static const primaryFixed = Color(0xFFC5EDC6);
+  static const background = AppColors.background;
+  static const primary = AppColors.brandDark;
+  static const primaryContainer = AppColors.brand;
+  static const primaryFixed = AppColors.brandLight;
   static const surfaceContainerLowest = Color(0xFFFFFFFF);
-  static const surfaceContainerLow = Color(0xFFF5F3F0);
-  static const onSurface = Color(0xFF1B1C1A);
-  static const onSurfaceVariant = Color(0xFF424841);
-  static const outline = Color(0xFF727971);
-  static const outlineVariant = Color(0xFFC2C8BF);
-  static const secondary = Color(0xFF47626F);
-  static const secondaryContainer = Color(0xFFC7E4F3);
-  static const onSecondaryContainer = Color(0xFF4B6673);
+  static const surfaceContainerLow = AppColors.surfaceLow;
+  static const onSurface = AppColors.text;
+  static const onSurfaceVariant = AppColors.textSecondary;
+  static const outline = AppColors.textMuted;
+  static const outlineVariant = AppColors.border;
+  static const secondary = AppColors.secondary;
+  static const secondaryContainer = AppColors.secondaryLight;
+  static const onSecondaryContainer = AppColors.secondary;
   static const entrance = Color(0xFFA64DB3);
   static const error = Color(0xFFBA1A1A);
   static const white = Color(0xFFFFFFFF);
@@ -147,15 +148,15 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
       filled: true,
       fillColor: _C.white,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: _C.outlineVariant),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: _C.outlineVariant),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: _C.primary, width: 1.4),
       ),
     );
@@ -169,7 +170,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
           height: 42,
           decoration: BoxDecoration(
             color: _C.primaryFixed,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(4),
           ),
           child: Icon(icon, color: _C.primary),
         ),
@@ -177,7 +178,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(fontWeight: FontWeight.w700),
+            style: const TextStyle(fontWeight: FontWeight.w600),
           ),
         ),
       ],
@@ -627,7 +628,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: _C.background,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         title: _mapDialogTitle('Edit Node #$nodeId', Icons.alt_route_rounded),
         content: SizedBox(
           width: 320,
@@ -683,7 +684,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
               backgroundColor: _C.primary,
               padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(4),
               ),
             ),
             child: const Text('Save Node'),
@@ -878,9 +879,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: _C.background,
           surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           title: _mapDialogTitle('Add Lot', Icons.add_location_alt_outlined),
           content: SizedBox(
             width: 340,
@@ -1031,7 +1030,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                   vertical: 12,
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(4),
                 ),
               ),
               child: const Text('Create Lot'),
@@ -1160,9 +1159,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: _C.background,
           surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           title: _mapDialogTitle(
             'Edit Lot ${lotReference(lot, fallback: '')}'.trim(),
             Icons.edit_location_alt_outlined,
@@ -1343,7 +1340,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                   vertical: 12,
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(4),
                 ),
               ),
               child: const Text('Save Lot'),
@@ -1662,9 +1659,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: _C.background,
           surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           title: _mapDialogTitle(
             'Assign Deceased to Lot ${lotReference(lot)}',
             Icons.person_pin_circle_rounded,
@@ -1680,7 +1675,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                     'Currently Assigned',
                     style: TextStyle(
                       color: _C.secondary,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -1770,7 +1765,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: _C.primaryFixed.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Text(
                         'The complete Interment Application form will open '
@@ -1816,7 +1811,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                   vertical: 12,
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(4),
                 ),
               ),
               child: Text(assignmentMode == 'new' ? 'Continue' : 'Assign'),
@@ -2043,9 +2038,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: _C.background,
           surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           title: _mapDialogTitle(
             'Add Grave to Lot ${lotReference(lot)}',
             Icons.add_location_alt_rounded,
@@ -2243,7 +2236,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                   vertical: 12,
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(4),
                 ),
               ),
               child: const Text('Add Grave'),
@@ -2700,7 +2693,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                       style: TextStyle(
                         color: _C.secondary,
                         fontSize: 13,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -2842,7 +2835,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
           style: TextStyle(
             color: active ? _C.primary : _C.secondary,
             fontSize: 12,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
@@ -2901,7 +2894,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                           style: const TextStyle(
                             color: _C.onSurface,
                             fontSize: 16,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                         const SizedBox(height: 3),
@@ -2965,7 +2958,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                         style: TextStyle(
                           color: Color(0xCCFFFFFF),
                           fontSize: 11,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w600,
                           letterSpacing: 0.6,
                         ),
                       ),
@@ -2982,7 +2975,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                     style: const TextStyle(
                       color: _C.white,
                       fontSize: 22,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   Text(
@@ -3044,7 +3037,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                         backgroundColor: _C.primaryContainer,
                         foregroundColor: _C.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(4),
                         ),
                       ),
                     ),
@@ -3062,7 +3055,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                         backgroundColor: _C.primary,
                         foregroundColor: _C.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(4),
                         ),
                       ),
                     ),
@@ -3083,7 +3076,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                         backgroundColor: _C.primary,
                         foregroundColor: _C.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(4),
                         ),
                       ),
                     ),
@@ -3104,7 +3097,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                         backgroundColor: _C.secondary,
                         foregroundColor: _C.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(4),
                         ),
                       ),
                     ),
@@ -3126,7 +3119,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                         foregroundColor: _C.onSurface,
                         side: const BorderSide(color: _C.outline),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(4),
                         ),
                       ),
                     ),
@@ -3144,7 +3137,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                         foregroundColor: _C.error,
                         side: const BorderSide(color: _C.error),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(4),
                         ),
                       ),
                     ),
@@ -3199,7 +3192,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                         style: TextStyle(
                           color: Color(0xCCFFFFFF),
                           fontSize: 11,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w600,
                           letterSpacing: 0.6,
                         ),
                       ),
@@ -3212,7 +3205,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                     style: const TextStyle(
                       color: _C.white,
                       fontSize: 22,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   Text(
@@ -3245,7 +3238,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                         backgroundColor: _C.primaryContainer,
                         foregroundColor: _C.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(4),
                         ),
                       ),
                     ),
@@ -3261,7 +3254,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                         foregroundColor: _C.error,
                         side: const BorderSide(color: _C.error),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(4),
                         ),
                       ),
                     ),
@@ -3292,7 +3285,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                   style: const TextStyle(
                     color: Color(0xFF00210A),
                     fontSize: 11,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               )
@@ -3300,7 +3293,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                 value,
                 style: const TextStyle(
                   color: _C.onSurface,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
       ],
@@ -3314,7 +3307,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
       context: context,
       backgroundColor: _C.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
       ),
       builder: (context) => Padding(
         padding: const EdgeInsets.all(20),
@@ -3324,7 +3317,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
           children: [
             Text(
               'Lot ${lotReference(lot)}',
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             if (lotMeta(lot).isNotEmpty) Text(lotMeta(lot)),
@@ -3429,7 +3422,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
       context: context,
       backgroundColor: _C.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
       ),
       builder: (context) => Padding(
         padding: const EdgeInsets.all(20),
@@ -3439,7 +3432,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
           children: [
             Text(
               'Node #$nodeId',
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             Text('Type: ${node['node_type'] ?? 'normal'}'),
@@ -3943,7 +3936,7 @@ class _LotOwnerAssignmentDialogState extends State<_LotOwnerAssignmentDialog> {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: _C.background,
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: _C.outlineVariant),
         ),
         child: Form(
@@ -3961,7 +3954,7 @@ class _LotOwnerAssignmentDialogState extends State<_LotOwnerAssignmentDialog> {
                         style: const TextStyle(
                           color: _C.onSurface,
                           fontSize: 22,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -4033,7 +4026,7 @@ class _LotOwnerAssignmentDialogState extends State<_LotOwnerAssignmentDialog> {
                             vertical: 14,
                           ),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
                       ),
@@ -4053,7 +4046,7 @@ class _LotOwnerAssignmentDialogState extends State<_LotOwnerAssignmentDialog> {
                           vertical: 15,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
                     ),
@@ -4077,7 +4070,7 @@ class _LotOwnerAssignmentDialogState extends State<_LotOwnerAssignmentDialog> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: _C.primaryFixed,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
@@ -4091,7 +4084,7 @@ class _LotOwnerAssignmentDialogState extends State<_LotOwnerAssignmentDialog> {
               ].join(' - '),
               style: const TextStyle(
                 color: Color(0xFF00210A),
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -4536,15 +4529,15 @@ class _LotOwnerAssignmentDialogState extends State<_LotOwnerAssignmentDialog> {
       filled: true,
       fillColor: _C.white,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: _C.outlineVariant),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: _C.outlineVariant),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: _C.primary, width: 1.2),
       ),
     );
@@ -4688,7 +4681,7 @@ class _DialogSectionTitle extends StatelessWidget {
           title,
           style: const TextStyle(
             color: _C.onSurface,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
@@ -4735,10 +4728,11 @@ class _ActionButton extends StatelessWidget {
               ? _C.error.withValues(alpha: 0.08)
               : Colors.transparent,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          textStyle: const TextStyle(
+            fontFamily: 'Segoe UI',
+            fontWeight: FontWeight.w600,
           ),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -4765,9 +4759,7 @@ class _SmallActionButton extends StatelessWidget {
         style: IconButton.styleFrom(
           backgroundColor: _C.surfaceContainerLow,
           foregroundColor: _C.onSurface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         ),
         icon: Icon(icon, size: 20),
       ),

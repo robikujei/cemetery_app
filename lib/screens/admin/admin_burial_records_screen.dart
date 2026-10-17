@@ -1,3 +1,4 @@
+import '../../core/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -273,27 +274,27 @@ class _AdminBurialRecordsScreenState
       hintText: hintText,
       helperText: helperText,
       errorText: errorText,
-      prefixIcon: Icon(icon, color: const Color(0xFF335538)),
+      prefixIcon: Icon(icon, color: AppColors.brandDark),
       filled: true,
       fillColor: Colors.white,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFFC2C8BF)),
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppColors.border),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFFC2C8BF)),
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppColors.border),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFF335538), width: 1.4),
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppColors.brandDark, width: 1.4),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: Color(0xFFBA1A1A)),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: Color(0xFFBA1A1A), width: 1.4),
       ),
     );
@@ -303,9 +304,9 @@ class _AdminBurialRecordsScreenState
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFFFBF9F6),
+        backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         title: Row(
           children: [
             Container(
@@ -313,7 +314,7 @@ class _AdminBurialRecordsScreenState
               height: 42,
               decoration: BoxDecoration(
                 color: const Color(0xFFFFDAD6),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(4),
               ),
               child: const Icon(Icons.error_outline, color: Color(0xFFBA1A1A)),
             ),
@@ -321,7 +322,7 @@ class _AdminBurialRecordsScreenState
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(fontWeight: FontWeight.w700),
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -331,7 +332,7 @@ class _AdminBurialRecordsScreenState
           TextButton(
             onPressed: () => Navigator.pop(context),
             style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF335538),
+              foregroundColor: AppColors.brandDark,
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
             ),
             child: const Text('OK'),
@@ -499,9 +500,9 @@ class _AdminBurialRecordsScreenState
         child: Text(
           title,
           style: const TextStyle(
-            color: Color(0xFF335538),
+            color: AppColors.brandDark,
             fontSize: 13,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
@@ -661,10 +662,10 @@ class _AdminBurialRecordsScreenState
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-            backgroundColor: const Color(0xFFFBF9F6),
+            backgroundColor: AppColors.background,
             surfaceTintColor: Colors.transparent,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(8),
             ),
             title: Row(
               children: [
@@ -672,14 +673,14 @@ class _AdminBurialRecordsScreenState
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFC5EDC6),
-                    borderRadius: BorderRadius.circular(14),
+                    color: AppColors.brandLight,
+                    borderRadius: BorderRadius.circular(4),
                   ),
                   child: Icon(
                     _isEditing
                         ? Icons.edit_rounded
                         : Icons.person_add_alt_1_rounded,
-                    color: const Color(0xFF335538),
+                    color: AppColors.brandDark,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -688,7 +689,7 @@ class _AdminBurialRecordsScreenState
                     _isEditing
                         ? 'Edit Interment Application'
                         : 'Add Interment Application',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
@@ -939,8 +940,8 @@ class _AdminBurialRecordsScreenState
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFC7E4F3),
-                        borderRadius: BorderRadius.circular(16),
+                        color: AppColors.secondaryLight,
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Row(
                         children: [
@@ -968,14 +969,14 @@ class _AdminBurialRecordsScreenState
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: const Color(0xFFEAF3EB),
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(
                             Icons.verified_outlined,
-                            color: Color(0xFF335538),
+                            color: AppColors.brandDark,
                           ),
                           SizedBox(width: 10),
                           Expanded(
@@ -984,7 +985,7 @@ class _AdminBurialRecordsScreenState
                               'lot payment recorded when the lot owner is '
                               'assigned.',
                               style: TextStyle(
-                                color: Color(0xFF335538),
+                                color: AppColors.brandDark,
                                 height: 1.35,
                               ),
                             ),
@@ -1033,7 +1034,7 @@ class _AdminBurialRecordsScreenState
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
                 style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFF424841),
+                  foregroundColor: AppColors.textSecondary,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 18,
                     vertical: 12,
@@ -1049,7 +1050,7 @@ class _AdminBurialRecordsScreenState
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF335538),
+                  backgroundColor: AppColors.brandDark,
                   foregroundColor: Colors.white,
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(
@@ -1057,7 +1058,7 @@ class _AdminBurialRecordsScreenState
                     vertical: 12,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                 ),
                 child: Text(_isEditing ? 'Update' : 'Add'),
@@ -1238,9 +1239,9 @@ class _AdminBurialRecordsScreenState
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFFFBF9F6),
+        backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         title: Row(
           children: [
             Container(
@@ -1248,7 +1249,7 @@ class _AdminBurialRecordsScreenState
               height: 42,
               decoration: BoxDecoration(
                 color: const Color(0xFFFFDAD6),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(4),
               ),
               child: const Icon(
                 Icons.delete_outline_rounded,
@@ -1259,7 +1260,7 @@ class _AdminBurialRecordsScreenState
             const Expanded(
               child: Text(
                 'Delete Record',
-                style: TextStyle(fontWeight: FontWeight.w700),
+                style: TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -1271,7 +1272,7 @@ class _AdminBurialRecordsScreenState
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF424841),
+              foregroundColor: AppColors.textSecondary,
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
             ),
             child: const Text('Cancel'),
@@ -1332,10 +1333,10 @@ class _AdminBurialRecordsScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFBF9F6),
+      backgroundColor: AppColors.background,
       appBar: widget.closeAfterCreate
           ? AppBar(
-              backgroundColor: const Color(0xFFFBF9F6),
+              backgroundColor: AppColors.background,
               surfaceTintColor: Colors.transparent,
               leading: IconButton(
                 tooltip: 'Back to map',
@@ -1382,9 +1383,9 @@ class _AdminBurialRecordsScreenState
                                 child: OutlinedButton(
                                   onPressed: _loadData,
                                   style: OutlinedButton.styleFrom(
-                                    foregroundColor: const Color(0xFF1B1C1A),
+                                    foregroundColor: AppColors.text,
                                     side: const BorderSide(
-                                      color: Color(0xFFC2C8BF),
+                                      color: AppColors.border,
                                     ),
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 32,
@@ -1415,7 +1416,7 @@ class _AdminBurialRecordsScreenState
               const Text(
                 'Burial Records',
                 style: TextStyle(
-                  color: Color(0xFF335538),
+                  color: AppColors.brandDark,
                   fontSize: 28,
                   fontWeight: FontWeight.w400,
                   height: 1.2,
@@ -1437,11 +1438,11 @@ class _AdminBurialRecordsScreenState
         FilledButton.icon(
           onPressed: () => _showAddEditDialog(),
           style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFF335538),
+            backgroundColor: AppColors.brandDark,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(4),
             ),
           ),
           icon: const Icon(Icons.add),
@@ -1455,8 +1456,8 @@ class _AdminBurialRecordsScreenState
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F3F0),
-        borderRadius: BorderRadius.circular(24),
+        color: AppColors.surfaceLow,
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
@@ -1469,16 +1470,16 @@ class _AdminBurialRecordsScreenState
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(999),
-                  borderSide: const BorderSide(color: Color(0xFFC2C8BF)),
+                  borderSide: const BorderSide(color: AppColors.border),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(999),
-                  borderSide: const BorderSide(color: Color(0xFFC2C8BF)),
+                  borderSide: const BorderSide(color: AppColors.border),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(999),
                   borderSide: const BorderSide(
-                    color: Color(0xFF335538),
+                    color: AppColors.brandDark,
                     width: 1.4,
                   ),
                 ),
@@ -1490,7 +1491,7 @@ class _AdminBurialRecordsScreenState
           OutlinedButton.icon(
             onPressed: () {},
             style: OutlinedButton.styleFrom(
-              backgroundColor: const Color(0xFFC7E4F3),
+              backgroundColor: AppColors.secondaryLight,
               foregroundColor: const Color(0xFF2F4A57),
               side: BorderSide.none,
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
@@ -1510,13 +1511,13 @@ class _AdminBurialRecordsScreenState
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFE4E2DF)),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.surfaceHighest),
       ),
       child: const Text(
         'No records found',
         textAlign: TextAlign.center,
-        style: TextStyle(color: Color(0xFF424841), fontSize: 16),
+        style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
       ),
     );
   }
@@ -1541,8 +1542,8 @@ class _AdminBurialRecordsScreenState
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFE4E2DF)),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.surfaceHighest),
         boxShadow: const [
           BoxShadow(
             color: Color(0x0A000000),
@@ -1561,15 +1562,15 @@ class _AdminBurialRecordsScreenState
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFC5EDC6),
+                  color: AppColors.brandLight,
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Center(
                   child: Text(
                     initials,
                     style: const TextStyle(
-                      color: Color(0xFF2C4E32),
-                      fontWeight: FontWeight.w700,
+                      color: AppColors.brandDark,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -1582,7 +1583,7 @@ class _AdminBurialRecordsScreenState
                     Text(
                       record['name_of_deceased'] ?? 'Unknown',
                       style: const TextStyle(
-                        color: Color(0xFF1B1C1A),
+                        color: AppColors.text,
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                       ),
@@ -1595,31 +1596,31 @@ class _AdminBurialRecordsScreenState
                         _InfoChip(
                           icon: Icons.calendar_today_rounded,
                           label: 'Born: $birthDate',
-                          color: const Color(0xFF47626F),
+                          color: AppColors.secondary,
                         ),
                         _InfoChip(
                           icon: Icons.event_busy_rounded,
                           label: 'Died: $deathDate',
-                          color: const Color(0xFF5A4B3F),
+                          color: AppColors.secondary,
                         ),
                         _InfoChip(
                           icon: Icons.location_on_rounded,
                           label: hasLinkedLot
                               ? 'Lot ${lotReference(lot)} - ${lotBlockLabel(lot)}'
                               : 'Unassigned lot',
-                          color: const Color(0xFF335538),
+                          color: AppColors.brandDark,
                         ),
                         if (!hasLinkedLot)
                           _InfoChip(
                             icon: Icons.map_rounded,
                             label: 'Assign on map',
-                            color: const Color(0xFF335538),
+                            color: AppColors.brandDark,
                           ),
                         if (intermentDate != 'N/A')
                           _InfoChip(
                             icon: Icons.event_available_rounded,
                             label: 'Interment: $intermentDate',
-                            color: const Color(0xFF47626F),
+                            color: AppColors.secondary,
                           ),
                         if (category != null && category.isNotEmpty)
                           _InfoChip(
@@ -1657,8 +1658,8 @@ class _AdminBurialRecordsScreenState
                   icon: const Icon(Icons.edit_rounded),
                   tooltip: 'Edit',
                   style: IconButton.styleFrom(
-                    backgroundColor: const Color(0xFFF5F3F0),
-                    foregroundColor: const Color(0xFF47626F),
+                    backgroundColor: AppColors.surfaceLow,
+                    foregroundColor: AppColors.secondary,
                   ),
                 ),
                 IconButton(
@@ -1678,8 +1679,8 @@ class _AdminBurialRecordsScreenState
                   icon: const Icon(Icons.more_vert_rounded),
                   tooltip: 'More',
                   style: IconButton.styleFrom(
-                    backgroundColor: const Color(0xFFF5F3F0),
-                    foregroundColor: const Color(0xFF727971),
+                    backgroundColor: AppColors.surfaceLow,
+                    foregroundColor: AppColors.textMuted,
                   ),
                 ),
               ],
@@ -1714,7 +1715,7 @@ class _AdminBurialRecordsScreenState
           ElevatedButton(
             onPressed: _loadData,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4B6E4F),
+              backgroundColor: AppColors.brand,
               foregroundColor: Colors.white,
             ),
             child: const Text('Try Again'),

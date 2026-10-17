@@ -1,3 +1,4 @@
+import '../../core/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -9,27 +10,27 @@ import 'visitor_map_screen.dart';
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 class _C {
-  static const background = Color(0xFFFBF9F6);
-  static const primary = Color(0xFF335538);
-  static const primaryContainer = Color(0xFF4B6E4F);
+  static const background = AppColors.background;
+  static const primary = AppColors.brandDark;
+  static const primaryContainer = AppColors.brand;
   static const onPrimary = Color(0xFFFFFFFF);
-  static const onPrimaryContainer = Color(0xFFC7EFC8);
-  static const primaryFixed = Color(0xFFC5EDC6);
+  static const onPrimaryContainer = AppColors.onBrand;
+  static const primaryFixed = AppColors.brandLight;
   static const secondaryFixed = Color(0xFFCAE7F6);
-  static const secondary = Color(0xFF47626F);
+  static const secondary = AppColors.secondary;
   static const tertiaryFixed = Color(0xFFF5DECE);
-  static const tertiary = Color(0xFF5A4B3F);
-  static const secondaryContainer = Color(0xFFC7E4F3);
-  static const onSecondaryContainer = Color(0xFF4B6673);
-  static const surfaceContainerLow = Color(0xFFF5F3F0);
-  static const surfaceContainerHigh = Color(0xFFEAE8E5);
-  static const surfaceContainer = Color(0xFFEFEEEB);
+  static const tertiary = AppColors.secondary;
+  static const secondaryContainer = AppColors.secondaryLight;
+  static const onSecondaryContainer = AppColors.secondary;
+  static const surfaceContainerLow = AppColors.surfaceLow;
+  static const surfaceContainerHigh = AppColors.surfaceHigh;
+  static const surfaceContainer = AppColors.surfaceHigh;
   static const surfaceContainerLowest = Color(0xFFFFFFFF);
-  static const surfaceVariant = Color(0xFFE4E2DF);
-  static const onSurface = Color(0xFF1B1C1A);
-  static const onSurfaceVariant = Color(0xFF424841);
-  static const outline = Color(0xFF727971);
-  static const outlineVariant = Color(0xFFC2C8BF);
+  static const surfaceVariant = AppColors.surfaceHighest;
+  static const onSurface = AppColors.text;
+  static const onSurfaceVariant = AppColors.textSecondary;
+  static const outline = AppColors.textMuted;
+  static const outlineVariant = AppColors.border;
   static const white = Color(0xFFFFFFFF);
   static const error = Color(0xFFBA1A1A);
 }
@@ -113,7 +114,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
             backgroundColor: _C.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(4),
             ),
           ),
         );
@@ -222,7 +223,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
               'Eternal Rest',
               style: TextStyle(
                 fontSize: 20,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 color: _C.primaryContainer,
                 letterSpacing: -0.3,
               ),
@@ -293,7 +294,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: _C.surfaceContainerHigh,
-                          borderRadius: BorderRadius.circular(40),
+                          borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: _C.outlineVariant.withOpacity(0.3),
                           ),
@@ -351,7 +352,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                                 ),
                                 decoration: BoxDecoration(
                                   color: _C.surfaceContainerLow,
-                                  borderRadius: BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: DropdownButton<String>(
                                   value: _searchType,
@@ -465,7 +466,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: _C.surfaceContainerLowest,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(8),
             border: Border.all(color: _C.surfaceContainerLow),
             boxShadow: const [
               BoxShadow(
@@ -571,9 +572,10 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                                   horizontal: 12,
                                 ),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
                                 textStyle: const TextStyle(
+                                  fontFamily: 'Segoe UI',
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -601,9 +603,10 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                                   horizontal: 12,
                                 ),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
                                 textStyle: const TextStyle(
+                                  fontFamily: 'Segoe UI',
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -726,9 +729,10 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                                 vertical: 0,
                               ),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                               textStyle: const TextStyle(
+                                fontFamily: 'Segoe UI',
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -750,9 +754,10 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                                 vertical: 0,
                               ),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                               textStyle: const TextStyle(
+                                fontFamily: 'Segoe UI',
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -780,7 +785,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
       isScrollControlled: true,
       backgroundColor: _C.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
       ),
       builder: (context) => Padding(
         padding: const EdgeInsets.all(24),
@@ -839,7 +844,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                         foregroundColor: _C.primary,
                         side: const BorderSide(color: _C.primaryContainer),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
                     ),
@@ -860,7 +865,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                         backgroundColor: _C.primaryContainer,
                         foregroundColor: _C.onPrimaryContainer,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
                     ),

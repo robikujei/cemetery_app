@@ -1,3 +1,4 @@
+import '../../core/app_colors.dart';
 import 'dart:convert';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -10,21 +11,21 @@ import 'package:permission_handler/permission_handler.dart';
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 class _C {
-  static const background          = Color(0xFFFBF9F6);
-  static const primary             = Color(0xFF335538);
-  static const primaryContainer    = Color(0xFF4B6E4F);
-  static const onPrimaryContainer  = Color(0xFFC7EFC8);
-  static const primaryFixed        = Color(0xFFC5EDC6);
-  static const secondaryContainer  = Color(0xFFC7E4F3);
-  static const secondary           = Color(0xFF47626F);
-  static const surfaceContainerLow = Color(0xFFF5F3F0);
-  static const surfaceVariant      = Color(0xFFE4E2DF);
-  static const outlineVariant      = Color(0xFFC2C8BF);
-  static const onSurface           = Color(0xFF1B1C1A);
-  static const onSurfaceVariant    = Color(0xFF424841);
-  static const outline             = Color(0xFF727971);
-  static const white               = Color(0xFFFFFFFF);
-  static const error               = Color(0xFFBA1A1A);
+  static const background = AppColors.background;
+  static const primary = AppColors.brandDark;
+  static const primaryContainer = AppColors.brand;
+  static const onPrimaryContainer = AppColors.onBrand;
+  static const primaryFixed = AppColors.brandLight;
+  static const secondaryContainer = AppColors.secondaryLight;
+  static const secondary = AppColors.secondary;
+  static const surfaceContainerLow = AppColors.surfaceLow;
+  static const surfaceVariant = AppColors.surfaceHighest;
+  static const outlineVariant = AppColors.border;
+  static const onSurface = AppColors.text;
+  static const onSurfaceVariant = AppColors.textSecondary;
+  static const outline = AppColors.textMuted;
+  static const white = Color(0xFFFFFFFF);
+  static const error = Color(0xFFBA1A1A);
 }
 
 class VisitorQrScreen extends ConsumerStatefulWidget {
@@ -117,8 +118,7 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
           backgroundColor: _C.primaryContainer,
           duration: const Duration(seconds: 1),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         ),
       );
     }
@@ -136,13 +136,16 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
 
   Future<void> _saveQrToDevice() async {
     if (_isSaving) return;
-    
+
     // Check if running on web - show unsupported message
     if (!_isMobilePlatform) {
-      _showSnackBar('Save to device is not supported on web. Please use a mobile device.', isError: true);
+      _showSnackBar(
+        'Save to device is not supported on web. Please use a mobile device.',
+        isError: true,
+      );
       return;
     }
-    
+
     setState(() => _isSaving = true);
 
     try {
@@ -161,16 +164,15 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
       }
 
       // Capture RepaintBoundary as PNG
-      final boundary = _qrKey.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
+      final boundary =
+          _qrKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
       if (boundary == null) {
         _showSnackBar('Could not capture QR code.', isError: true);
         return;
       }
 
       final image = await boundary.toImage(pixelRatio: 3.0);
-      final byteData =
-          await image.toByteData(format: ui.ImageByteFormat.png);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       if (byteData == null) {
         _showSnackBar('Failed to encode image.', isError: true);
         return;
@@ -180,16 +182,14 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
       final result = await ImageGallerySaver.saveImage(
         byteData.buffer.asUint8List(),
         quality: 100,
-        name:
-            'eternal_rest_qr_${DateTime.now().millisecondsSinceEpoch}',
+        name: 'eternal_rest_qr_${DateTime.now().millisecondsSinceEpoch}',
       );
 
-      final success =
-          result['isSuccess'] == true || result['filePath'] != null;
-      _showSnackBar(success
-          ? 'QR code saved to your gallery!'
-          : 'Failed to save QR code.',
-          isError: !success);
+      final success = result['isSuccess'] == true || result['filePath'] != null;
+      _showSnackBar(
+        success ? 'QR code saved to your gallery!' : 'Failed to save QR code.',
+        isError: !success,
+      );
     } catch (e) {
       _showSnackBar('Error saving QR code: $e', isError: true);
     } finally {
@@ -204,8 +204,7 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
         content: Text(message),
         backgroundColor: isError ? _C.error : _C.primaryContainer,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       ),
     );
   }
@@ -213,11 +212,20 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
   String _formatCheckInTime(DateTime? dt) {
     if (dt == null) return '';
     const months = [
-      'Jan','Feb','Mar','Apr','May','Jun',
-      'Jul','Aug','Sep','Oct','Nov','Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
-    final hour =
-        dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
+    final hour = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
     final minute = dt.minute.toString().padLeft(2, '0');
     final period = dt.hour >= 12 ? 'PM' : 'AM';
     return 'Check-in: ${months[dt.month - 1]} ${dt.day}, ${dt.year} · $hour:$minute $period';
@@ -247,7 +255,7 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
               'Eternal Rest',
               style: TextStyle(
                 fontSize: 20,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 color: _C.primaryContainer,
                 letterSpacing: -0.3,
               ),
@@ -256,24 +264,25 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_outlined,
-                color: _C.primaryContainer, size: 22),
+            icon: const Icon(
+              Icons.notifications_outlined,
+              color: _C.primaryContainer,
+              size: 22,
+            ),
             onPressed: () {},
           ),
           const SizedBox(width: 8),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Divider(
-              height: 1, thickness: 1, color: Colors.grey.shade100),
+          child: Divider(height: 1, thickness: 1, color: Colors.grey.shade100),
         ),
       ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: _C.primary))
+          ? const Center(child: CircularProgressIndicator(color: _C.primary))
           : _errorMessage != null
-              ? _buildErrorWidget()
-              : _buildQrContent(),
+          ? _buildErrorWidget()
+          : _buildQrContent(),
     );
   }
 
@@ -298,7 +307,8 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
                 backgroundColor: _C.primaryContainer,
                 foregroundColor: _C.onPrimaryContainer,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30)),
+                  borderRadius: BorderRadius.circular(30),
+                ),
               ),
               child: const Text('Try Again'),
             ),
@@ -349,7 +359,7 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
                     width: double.infinity,
                     decoration: BoxDecoration(
                       color: _C.white,
-                      borderRadius: BorderRadius.circular(32),
+                      borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: _C.outlineVariant),
                       boxShadow: const [
                         BoxShadow(
@@ -391,9 +401,10 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
                                       shape: BoxShape.circle,
                                     ),
                                     child: const Icon(
-                                        Icons.person_rounded,
-                                        color: _C.secondary,
-                                        size: 32),
+                                      Icons.person_rounded,
+                                      color: _C.secondary,
+                                      size: 32,
+                                    ),
                                   ),
                                   const SizedBox(width: 16),
                                   Expanded(
@@ -411,8 +422,7 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          _formatCheckInTime(
-                                              _checkInTime),
+                                          _formatCheckInTime(_checkInTime),
                                           style: const TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.w500,
@@ -428,9 +438,10 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
 
                               const SizedBox(height: 20),
                               const Divider(
-                                  height: 1,
-                                  thickness: 1,
-                                  color: _C.surfaceVariant),
+                                height: 1,
+                                thickness: 1,
+                                color: _C.surfaceVariant,
+                              ),
                               const SizedBox(height: 24),
 
                               // ── QR code with primaryFixed border ─
@@ -440,10 +451,10 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
                                   decoration: BoxDecoration(
                                     color: _C.white,
                                     border: Border.all(
-                                        color: _C.primaryFixed,
-                                        width: 4),
-                                    borderRadius:
-                                        BorderRadius.circular(24),
+                                      color: _C.primaryFixed,
+                                      width: 4,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: QrImageView(
                                     data: _qrData!,
@@ -454,11 +465,9 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
                                       color: _C.primary,
                                       eyeShape: QrEyeShape.square,
                                     ),
-                                    dataModuleStyle:
-                                        const QrDataModuleStyle(
+                                    dataModuleStyle: const QrDataModuleStyle(
                                       color: _C.primary,
-                                      dataModuleShape:
-                                          QrDataModuleShape.square,
+                                      dataModuleShape: QrDataModuleShape.square,
                                     ),
                                   ),
                                 ),
@@ -467,18 +476,21 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
                                 // "Valid for Entry" pill
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 20, vertical: 10),
+                                    horizontal: 20,
+                                    vertical: 10,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: _C.primaryFixed
-                                        .withOpacity(0.2),
-                                    borderRadius:
-                                        BorderRadius.circular(40),
+                                    color: _C.primaryFixed.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: const [
-                                      Icon(Icons.verified_rounded,
-                                          color: _C.primary, size: 18),
+                                      Icon(
+                                        Icons.verified_rounded,
+                                        color: _C.primary,
+                                        size: 18,
+                                      ),
                                       SizedBox(width: 8),
                                       Text(
                                         'VALID FOR ENTRY',
@@ -502,8 +514,7 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
                                   color: _C.surfaceContainerLow,
-                                  borderRadius:
-                                      BorderRadius.circular(24),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Column(
                                   children: const [
@@ -549,24 +560,29 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
                     style: FilledButton.styleFrom(
                       backgroundColor: _C.primaryContainer,
                       foregroundColor: _C.onPrimaryContainer,
-                      disabledBackgroundColor:
-                          _C.primaryContainer.withOpacity(0.5),
+                      disabledBackgroundColor: _C.primaryContainer.withOpacity(
+                        0.5,
+                      ),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                       textStyle: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w500),
+                        fontFamily: 'Segoe UI',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     icon: _isSaving
                         ? const SizedBox(
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: _C.onPrimaryContainer),
+                              strokeWidth: 2,
+                              color: _C.onPrimaryContainer,
+                            ),
                           )
                         : const Icon(Icons.download_rounded, size: 20),
-                    label:
-                        Text(_isSaving ? 'Saving...' : 'Save to Device'),
+                    label: Text(_isSaving ? 'Saving...' : 'Save to Device'),
                   ),
                 ),
 

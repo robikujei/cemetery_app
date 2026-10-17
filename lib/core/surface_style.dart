@@ -1,33 +1,18 @@
 import 'package:flutter/material.dart';
+import 'app_colors.dart';
 
-/// A static sheen: adds depth without animation or expensive backdrop filters.
+/// Solid Fluent-style surfaces with a fine stroke and restrained elevation.
 class SurfaceStyle {
-  static LinearGradient sheen(Color base) => LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    stops: const [0, 0.46, 0.49, 1],
-    colors: [
-      Color.lerp(base, Colors.white, 0.22)!,
-      Color.lerp(base, Colors.white, 0.08)!,
-      base,
-      Color.lerp(base, const Color(0xFF294C3B), 0.08)!,
-    ],
-  );
-
   static BoxDecoration panel({
-    Color color = Colors.white,
-    double radius = 24,
+    Color color = AppColors.surface,
+    double radius = 8,
   }) => BoxDecoration(
-    gradient: sheen(color),
+    color: color,
     borderRadius: BorderRadius.circular(radius),
-    border: Border.all(color: Colors.white.withValues(alpha: 0.7)),
+    border: Border.all(color: AppColors.borderSubtle),
     boxShadow: const [
-      BoxShadow(
-        color: Color(0x18335538),
-        blurRadius: 24,
-        offset: Offset(0, 10),
-      ),
-      BoxShadow(color: Color(0x0C335538), blurRadius: 3, offset: Offset(0, 2)),
+      BoxShadow(color: Color(0x0A000000), blurRadius: 4, offset: Offset(0, 2)),
+      BoxShadow(color: Color(0x08000000), blurRadius: 1, offset: Offset(0, 1)),
     ],
   );
 }

@@ -1,3 +1,4 @@
+import '../../core/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -7,7 +8,8 @@ class AdminAuditTrailScreen extends ConsumerStatefulWidget {
   const AdminAuditTrailScreen({super.key});
 
   @override
-  ConsumerState<AdminAuditTrailScreen> createState() => _AdminAuditTrailScreenState();
+  ConsumerState<AdminAuditTrailScreen> createState() =>
+      _AdminAuditTrailScreenState();
 }
 
 class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
@@ -37,12 +39,12 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
 
     try {
       final supabase = Supabase.instance.client;
-      
+
       final logs = await supabase
           .from('audit_log')
           .select('*')
           .order('created_at', ascending: false);
-      
+
       setState(() {
         _auditLogs = List<Map<String, dynamic>>.from(logs);
         _isLoading = false;
@@ -65,56 +67,56 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
     }
   }
 
- IconData _getActionIcon(String action) {
-  if (action == 'CREATE') {
-    return Icons.add_circle;
-  } else if (action == 'UPDATE') {
-    return Icons.edit;
-  } else if (action == 'DELETE') {
-    return Icons.delete;
-  } else {
-    return Icons.info;
+  IconData _getActionIcon(String action) {
+    if (action == 'CREATE') {
+      return Icons.add_circle;
+    } else if (action == 'UPDATE') {
+      return Icons.edit;
+    } else if (action == 'DELETE') {
+      return Icons.delete;
+    } else {
+      return Icons.info;
+    }
   }
-}
 
   Color _getActionColor(String action) {
-  if (action == 'CREATE') {
-    return Colors.green;
-  } else if (action == 'UPDATE') {
-    return Colors.blue;
-  } else if (action == 'DELETE') {
-    return Colors.red;
-  } else {
-    return Colors.grey;
+    if (action == 'CREATE') {
+      return Colors.green;
+    } else if (action == 'UPDATE') {
+      return Colors.blue;
+    } else if (action == 'DELETE') {
+      return Colors.red;
+    } else {
+      return Colors.grey;
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {
     final filteredLogs = _filteredAuditLogs();
     return Scaffold(
-      backgroundColor: const Color(0xFFFBF9F6),
+      backgroundColor: AppColors.background,
       body: RefreshIndicator(
-        color: const Color(0xFF335538),
+        color: AppColors.brandDark,
         onRefresh: _loadAuditLogs,
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _errorMessage != null
-                ? _buildErrorWidget()
-                : SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 140),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildHeaderSection(),
-                        const SizedBox(height: 24),
-                        _buildStatsGrid(),
-                        const SizedBox(height: 24),
-                        _buildTableCard(filteredLogs),
-                      ],
-                    ),
-                  ),
+            ? _buildErrorWidget()
+            : SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 140),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeaderSection(),
+                    const SizedBox(height: 24),
+                    _buildStatsGrid(),
+                    const SizedBox(height: 24),
+                    _buildTableCard(filteredLogs),
+                  ],
+                ),
+              ),
       ),
     );
   }
@@ -131,7 +133,7 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
               Text(
                 'Audit Trail',
                 style: TextStyle(
-                  color: Color(0xFF335538),
+                  color: AppColors.brandDark,
                   fontSize: 28,
                   fontWeight: FontWeight.w400,
                   height: 1.2,
@@ -141,7 +143,7 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
               Text(
                 'Real-time monitoring of site attendance and security checks.',
                 style: TextStyle(
-                  color: Color(0xFF424841),
+                  color: AppColors.textSecondary,
                   fontSize: 14,
                   height: 1.4,
                 ),
@@ -153,28 +155,35 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: const Color(0xFFF5F3F0),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFC2C8BF)),
+            color: AppColors.surfaceLow,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.border),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFC2C8BF)),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.calendar_today_rounded, size: 18, color: Color(0xFF335538)),
+                    const Icon(
+                      Icons.calendar_today_rounded,
+                      size: 18,
+                      color: AppColors.brandDark,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       DateFormat('MMMM d, y').format(DateTime(2023, 10, 24)),
                       style: const TextStyle(
-                        color: Color(0xFF1B1C1A),
+                        color: AppColors.text,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -185,19 +194,25 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
               const SizedBox(width: 8),
               Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFFC7E4F3).withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(14),
+                  color: AppColors.secondaryLight.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(4),
                 ),
                 child: Row(
                   children: [
                     IconButton(
                       onPressed: _loadAuditLogs,
-                      icon: const Icon(Icons.chevron_left_rounded, color: Color(0xFF335538)),
+                      icon: const Icon(
+                        Icons.chevron_left_rounded,
+                        color: AppColors.brandDark,
+                      ),
                     ),
-                    Container(width: 1, height: 18, color: const Color(0xFFC2C8BF)),
+                    Container(width: 1, height: 18, color: AppColors.border),
                     IconButton(
                       onPressed: _loadAuditLogs,
-                      icon: const Icon(Icons.chevron_right_rounded, color: Color(0xFF335538)),
+                      icon: const Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppColors.brandDark,
+                      ),
                     ),
                   ],
                 ),
@@ -226,9 +241,15 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
 
   Widget _buildStatsGrid() {
     final total = _auditLogs.length;
-    final createCount = _auditLogs.where((log) => (log['action'] ?? '') == 'CREATE').length;
-    final updateCount = _auditLogs.where((log) => (log['action'] ?? '') == 'UPDATE').length;
-    final deleteCount = _auditLogs.where((log) => (log['action'] ?? '') == 'DELETE').length;
+    final createCount = _auditLogs
+        .where((log) => (log['action'] ?? '') == 'CREATE')
+        .length;
+    final updateCount = _auditLogs
+        .where((log) => (log['action'] ?? '') == 'UPDATE')
+        .length;
+    final deleteCount = _auditLogs
+        .where((log) => (log['action'] ?? '') == 'DELETE')
+        .length;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -241,22 +262,54 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
           crossAxisSpacing: 16,
           childAspectRatio: 1.55,
           children: [
-            _statCard('Total Logs', '$total', Icons.list_alt_rounded, const Color(0xFF4B6E4F), const Color(0xFFC5EDC6)),
-            _statCard('Creates', '$createCount', Icons.add_circle_outline_rounded, const Color(0xFF335538), const Color(0xFFC5EDC6)),
-            _statCard('Updates', '$updateCount', Icons.edit_outlined, const Color(0xFF47626F), const Color(0xFFC7E4F3)),
-            _statCard('Deletes', '$deleteCount', Icons.delete_outline_rounded, const Color(0xFFBA1A1A), const Color(0xFFFFDAD6)),
+            _statCard(
+              'Total Logs',
+              '$total',
+              Icons.list_alt_rounded,
+              AppColors.brand,
+              AppColors.brandLight,
+            ),
+            _statCard(
+              'Creates',
+              '$createCount',
+              Icons.add_circle_outline_rounded,
+              AppColors.brandDark,
+              AppColors.brandLight,
+            ),
+            _statCard(
+              'Updates',
+              '$updateCount',
+              Icons.edit_outlined,
+              AppColors.secondary,
+              AppColors.secondaryLight,
+            ),
+            _statCard(
+              'Deletes',
+              '$deleteCount',
+              Icons.delete_outline_rounded,
+              const Color(0xFFBA1A1A),
+              const Color(0xFFFFDAD6),
+            ),
           ],
         );
       },
     );
   }
 
-  Widget _statCard(String label, String value, IconData icon, Color color, Color bg) {
+  Widget _statCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+    Color bg,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color == const Color(0xFFBA1A1A) ? const Color(0xFFFFDAD6) : Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        color: color == const Color(0xFFBA1A1A)
+            ? const Color(0xFFFFDAD6)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(8),
         boxShadow: const [
           BoxShadow(
             color: Color(0x0A000000),
@@ -264,7 +317,7 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
             offset: Offset(0, 6),
           ),
         ],
-        border: Border.all(color: const Color(0xFFE4E2DF)),
+        border: Border.all(color: AppColors.surfaceHighest),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -277,7 +330,7 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: bg,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(4),
                 ),
                 child: Icon(icon, color: color, size: 20),
               ),
@@ -287,14 +340,20 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(color: Color(0xFF424841), fontSize: 13)),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                ),
+              ),
               const SizedBox(height: 4),
               Text(
                 value,
                 style: const TextStyle(
-                  color: Color(0xFF1B1C1A),
+                  color: AppColors.text,
                   fontSize: 28,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
@@ -308,7 +367,7 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: const [
           BoxShadow(
             color: Color(0x0A000000),
@@ -316,15 +375,15 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
             offset: Offset(0, 6),
           ),
         ],
-        border: Border.all(color: const Color(0xFFE4E2DF)),
+        border: Border.all(color: AppColors.surfaceHighest),
       ),
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.all(16),
             decoration: const BoxDecoration(
-              color: Color(0xFFFBF9F6),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              color: AppColors.background,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
             ),
             child: Row(
               children: [
@@ -333,7 +392,7 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: const Color(0xFFC2C8BF)),
+                      border: Border.all(color: AppColors.border),
                     ),
                     child: TextField(
                       controller: _searchController,
@@ -346,7 +405,10 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
                         hintText: 'Search action, user, or details...',
                         prefixIcon: Icon(Icons.search_rounded),
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
                       ),
                     ),
                   ),
@@ -355,10 +417,13 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
                 OutlinedButton.icon(
                   onPressed: () {},
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF1B1C1A),
-                    side: const BorderSide(color: Color(0xFF727971)),
+                    foregroundColor: AppColors.text,
+                    side: const BorderSide(color: AppColors.textMuted),
                     shape: const StadiumBorder(),
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 16,
+                    ),
                   ),
                   icon: const Icon(Icons.filter_list_rounded),
                   label: const Text('Filter'),
@@ -367,10 +432,13 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
                 FilledButton.icon(
                   onPressed: _loadAuditLogs,
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF335538),
+                    backgroundColor: AppColors.brandDark,
                     foregroundColor: Colors.white,
                     shape: const StadiumBorder(),
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 16,
+                    ),
                   ),
                   icon: const Icon(Icons.download_rounded),
                   label: const Text('Export'),
@@ -381,7 +449,7 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: DataTable(
-              headingRowColor: WidgetStateProperty.all(const Color(0xFFF5F3F0)),
+              headingRowColor: WidgetStateProperty.all(AppColors.surfaceLow),
               columns: const [
                 DataColumn(label: Text('Action')),
                 DataColumn(label: Text('User')),
@@ -407,13 +475,17 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
                               color: actionColor.withValues(alpha: 0.12),
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(_getActionIcon(action), color: actionColor, size: 18),
+                            child: Icon(
+                              _getActionIcon(action),
+                              color: actionColor,
+                              size: 18,
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Text(
                             action.replaceAll('_', ' '),
                             style: TextStyle(
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w600,
                               color: actionColor,
                             ),
                           ),
@@ -445,7 +517,7 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
           ElevatedButton(
             onPressed: _loadAuditLogs,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4B6E4F),
+              backgroundColor: AppColors.brand,
               foregroundColor: Colors.white,
             ),
             child: const Text('Try Again'),

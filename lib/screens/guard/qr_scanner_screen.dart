@@ -1,3 +1,4 @@
+import '../../core/app_colors.dart';
 import '../../widgets/logout_dialog.dart';
 import 'dart:convert';
 
@@ -16,14 +17,14 @@ class QrScannerScreen extends StatefulWidget {
 }
 
 class _QrScannerScreenState extends State<QrScannerScreen> {
-  static const _background = Color(0xFFFBF9F6);
-  static const _primary = Color(0xFF335538);
-  static const _primaryContainer = Color(0xFF4B6E4F);
-  static const _primaryFixed = Color(0xFFC5EDC6);
+  static const _background = AppColors.background;
+  static const _primary = AppColors.brandDark;
+  static const _primaryContainer = AppColors.brand;
+  static const _primaryFixed = AppColors.brandLight;
   static const _surface = Color(0xFFFFFFFF);
-  static const _surfaceVariant = Color(0xFFE4E2DF);
-  static const _onSurface = Color(0xFF1B1C1A);
-  static const _onSurfaceVariant = Color(0xFF424841);
+  static const _surfaceVariant = AppColors.surfaceHighest;
+  static const _onSurface = AppColors.text;
+  static const _onSurfaceVariant = AppColors.textSecondary;
   static const _error = Color(0xFFBA1A1A);
   static const _warning = Color(0xFFF57C00);
 
@@ -313,7 +314,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
             style: TextStyle(
               color: _primary,
               fontSize: 20,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
           actions: [
@@ -391,7 +392,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                 margin: const EdgeInsets.all(60),
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.white, width: 2),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Center(
                   child: Text(
@@ -430,7 +431,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: _messageColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(4),
               border: Border.all(color: _messageColor),
             ),
             child: Row(
@@ -456,7 +457,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: _surface,
-                borderRadius: BorderRadius.circular(28),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: _surfaceVariant),
                 boxShadow: const [
                   BoxShadow(
@@ -501,7 +502,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                               style: const TextStyle(
                                 color: _onSurface,
                                 fontSize: 18,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -527,8 +528,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF5F3F0),
-                      borderRadius: BorderRadius.circular(24),
+                      color: AppColors.surfaceLow,
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
                       children: [
@@ -545,7 +546,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                               style: const TextStyle(
                                 color: _primary,
                                 fontSize: 18,
-                                fontWeight: FontWeight.w800,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
@@ -560,7 +561,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                                 style: TextStyle(
                                   color: Color(0xFF5A6D7B),
                                   fontSize: 12,
-                                  fontWeight: FontWeight.w800,
+                                  fontWeight: FontWeight.w600,
                                   letterSpacing: 0.8,
                                 ),
                               ),
@@ -658,7 +659,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
             color: _surface,
             margin: const EdgeInsets.only(bottom: 12),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(4),
               side: const BorderSide(color: _surfaceVariant),
             ),
             child: ListTile(
@@ -670,7 +671,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                 user['name'] ?? 'Unknown Visitor',
                 style: const TextStyle(
                   color: _onSurface,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               subtitle: Column(
@@ -724,7 +725,7 @@ class _ScanStatTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F3F0),
+        color: AppColors.surfaceLow,
         borderRadius: BorderRadius.circular(22),
       ),
       child: Column(
@@ -741,15 +742,15 @@ class _ScanStatTile extends StatelessWidget {
           const SizedBox(height: 8),
           Row(
             children: [
-              Icon(icon, size: 18, color: const Color(0xFF335538)),
+              Icon(icon, size: 18, color: AppColors.brandDark),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   value,
                   style: const TextStyle(
-                    color: Color(0xFF1B1C1A),
+                    color: AppColors.text,
                     fontSize: 14,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),

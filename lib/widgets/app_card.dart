@@ -15,7 +15,7 @@ class AppCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Ink(
-        decoration: SurfaceStyle.panel(radius: 20),
+        decoration: SurfaceStyle.panel(radius: 8),
         padding: padding,
         child: child,
       ),

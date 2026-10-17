@@ -1,3 +1,4 @@
+import '../../core/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -171,7 +172,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFBF9F6),
+      backgroundColor: AppColors.background,
 
       appBar: AppBar(
         elevation: 0,
@@ -180,7 +181,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
         title: const Text(
           'Visit History',
           style: TextStyle(
-            color: Color(0xFF335538),
+            color: AppColors.brandDark,
             fontWeight: FontWeight.bold,
             fontSize: 22,
           ),
@@ -188,7 +189,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
         actions: [
           IconButton(
             onPressed: _loadVisitHistory,
-            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF335538)),
+            icon: const Icon(Icons.refresh_rounded, color: AppColors.brandDark),
           ),
         ],
       ),
@@ -217,7 +218,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
       padding: EdgeInsets.fromLTRB(24, 24, 24, 10),
       child: Text(
         "A quiet record of the paths you've walked and the memories you've honored.",
-        style: TextStyle(fontSize: 15, height: 1.5, color: Color(0xFF727971)),
+        style: TextStyle(fontSize: 15, height: 1.5, color: AppColors.textMuted),
       ),
     );
   }
@@ -234,7 +235,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
           filled: true,
           fillColor: Colors.white,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide.none,
           ),
         ),
@@ -266,10 +267,8 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
               margin: const EdgeInsets.only(right: 10),
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               decoration: BoxDecoration(
-                color: selected
-                    ? const Color(0xFF4B6E4F)
-                    : const Color(0xFFEAE8E5),
-                borderRadius: BorderRadius.circular(16),
+                color: selected ? AppColors.brand : AppColors.surfaceHigh,
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
@@ -280,14 +279,14 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                         ? Icons.calendar_month
                         : Icons.person,
                     size: 18,
-                    color: selected ? Colors.white : const Color(0xFF424841),
+                    color: selected ? Colors.white : AppColors.textSecondary,
                   ),
                   const SizedBox(width: 8),
                   Text(
                     filter,
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: selected ? Colors.white : const Color(0xFF424841),
+                      color: selected ? Colors.white : AppColors.textSecondary,
                     ),
                   ),
                 ],
@@ -318,7 +317,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                     fontSize: 12,
                     letterSpacing: 1.5,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF727971),
+                    color: AppColors.textMuted,
                   ),
                 ),
               ),
@@ -342,7 +341,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.78),
-                    borderRadius: BorderRadius.circular(28),
+                    borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.white.withOpacity(0.35)),
                   ),
                   child: Row(
@@ -351,8 +350,8 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                         width: 54,
                         height: 54,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFC7E4F3),
-                          borderRadius: BorderRadius.circular(18),
+                          color: AppColors.secondaryLight,
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Icon(Icons.church_rounded),
                       ),
@@ -394,7 +393,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                               formattedDate,
                               style: const TextStyle(
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF335538),
+                                color: AppColors.brandDark,
                               ),
                             ),
                           ],

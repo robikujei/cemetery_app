@@ -1,3 +1,4 @@
+import '../../core/app_colors.dart';
 import '../../widgets/logout_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -372,20 +373,20 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
   }) {
     return InputDecoration(
       labelText: labelText,
-      prefixIcon: Icon(icon, color: const Color(0xFF335538)),
+      prefixIcon: Icon(icon, color: AppColors.brandDark),
       filled: true,
       fillColor: Colors.white,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFFC2C8BF)),
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppColors.border),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFFC2C8BF)),
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppColors.border),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFF335538), width: 1.4),
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppColors.brandDark, width: 1.4),
       ),
     );
   }
@@ -396,25 +397,28 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFFFBF9F6),
+        backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         title: Row(
           children: [
             Container(
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: const Color(0xFFC5EDC6),
-                borderRadius: BorderRadius.circular(14),
+                color: AppColors.brandLight,
+                borderRadius: BorderRadius.circular(4),
               ),
-              child: const Icon(Icons.badge_outlined, color: Color(0xFF335538)),
+              child: const Icon(
+                Icons.badge_outlined,
+                color: AppColors.brandDark,
+              ),
             ),
             const SizedBox(width: 12),
             const Expanded(
               child: Text(
                 'Change Name',
-                style: TextStyle(fontWeight: FontWeight.w700),
+                style: TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -430,7 +434,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF424841),
+              foregroundColor: AppColors.textSecondary,
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
             ),
             child: const Text('Cancel'),
@@ -441,12 +445,12 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
               _updateDisplayName();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF335538),
+              backgroundColor: AppColors.brandDark,
               foregroundColor: Colors.white,
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(4),
               ),
             ),
             child: const Text('Save'),
@@ -464,28 +468,28 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFFFBF9F6),
+        backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         title: Row(
           children: [
             Container(
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: const Color(0xFFC5EDC6),
-                borderRadius: BorderRadius.circular(14),
+                color: AppColors.brandLight,
+                borderRadius: BorderRadius.circular(4),
               ),
               child: const Icon(
                 Icons.lock_outline_rounded,
-                color: Color(0xFF335538),
+                color: AppColors.brandDark,
               ),
             ),
             const SizedBox(width: 12),
             const Expanded(
               child: Text(
                 'Change Password',
-                style: TextStyle(fontWeight: FontWeight.w700),
+                style: TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -525,7 +529,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF424841),
+              foregroundColor: AppColors.textSecondary,
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
             ),
             child: const Text('Cancel'),
@@ -533,12 +537,12 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
           ElevatedButton(
             onPressed: _changePassword,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF335538),
+              backgroundColor: AppColors.brandDark,
               foregroundColor: Colors.white,
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(4),
               ),
             ),
             child: const Text('Change Password'),
@@ -587,7 +591,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFBF9F6),
+      backgroundColor: AppColors.background,
       appBar: _buildTopBar(),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
@@ -626,16 +630,16 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
         children: [
           IconButton(
             onPressed: () {},
-            icon: const Icon(Icons.menu_rounded, color: Color(0xFF335538)),
+            icon: const Icon(Icons.menu_rounded, color: AppColors.brandDark),
             tooltip: 'Menu',
           ),
           const SizedBox(width: 8),
           const Text(
             'Eternal Rest',
             style: TextStyle(
-              color: Color(0xFF4B6E4F),
+              color: AppColors.brand,
               fontSize: 20,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -645,7 +649,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
           onPressed: () {},
           icon: const Icon(
             Icons.notifications_outlined,
-            color: Color(0xFF335538),
+            color: AppColors.brandDark,
           ),
           tooltip: 'Notifications',
         ),
@@ -653,7 +657,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       ],
       bottom: const PreferredSize(
         preferredSize: Size.fromHeight(1),
-        child: Divider(height: 1, color: Color(0xFFE4E2DF)),
+        child: Divider(height: 1, color: AppColors.surfaceHighest),
       ),
     );
   }
@@ -676,7 +680,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(8),
                   boxShadow: const [
                     BoxShadow(
                       color: Color(0x0F47626F),
@@ -693,7 +697,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                       children: [
                         CircleAvatar(
                           radius: 48,
-                          backgroundColor: const Color(0xFFC5EDC6),
+                          backgroundColor: AppColors.brandLight,
                           backgroundImage:
                               _avatarUrl != null && _avatarUrl!.isNotEmpty
                               ? NetworkImage(_avatarUrl!)
@@ -702,9 +706,9 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                               ? Text(
                                   _initials(displayName),
                                   style: const TextStyle(
-                                    color: Color(0xFF2C4E32),
+                                    color: AppColors.brandDark,
                                     fontSize: 20,
-                                    fontWeight: FontWeight.w800,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 )
                               : null,
@@ -716,11 +720,11 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                             onTap: _isUploadingPhoto
                                 ? null
                                 : _showEditPhotoDialog,
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(8),
                             child: Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF335538),
+                                color: AppColors.brandDark,
                                 shape: BoxShape.circle,
                                 border: Border.all(
                                   color: Colors.white,
@@ -754,7 +758,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                           Text(
                             displayName,
                             style: textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w600,
                               color: colorScheme.onSurface,
                             ),
                           ),
@@ -772,7 +776,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                               vertical: 7,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFC7E4F3),
+                              color: AppColors.secondaryLight,
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Row(
@@ -807,8 +811,8 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                 height: 172,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4B6E4F),
-                  borderRadius: BorderRadius.circular(24),
+                  color: AppColors.brand,
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -832,7 +836,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                       _savedMemorials.toString(),
                       style: textTheme.displayMedium?.copyWith(
                         color: Colors.white,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -861,7 +865,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: const [
           BoxShadow(
             color: Color(0x0F47626F),
@@ -871,7 +875,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -880,19 +884,19 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
               child: Text(
                 'Account Settings',
                 style: textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                   color: colorScheme.onSurface,
                 ),
               ),
             ),
-            const Divider(height: 1, color: Color(0xFFF5F3F0)),
+            const Divider(height: 1, color: AppColors.surfaceLow),
             _ProfileSettingTile(
               icon: Icons.person_outline_rounded,
               title: 'Change Name',
               subtitle: 'Update your display name',
               onTap: _showEditNameDialog,
             ),
-            const Divider(height: 1, color: Color(0xFFF5F3F0)),
+            const Divider(height: 1, color: AppColors.surfaceLow),
             _ProfileSettingTile(
               icon: Icons.lock_outline_rounded,
               title: 'Change Password',
@@ -915,9 +919,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
           foregroundColor: const Color(0xFF93000A),
           elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         icon: const Icon(Icons.logout_rounded),
         label: const Text('Logout from Account'),
@@ -966,10 +968,10 @@ class _ProfileSettingTile extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFC7E4F3).withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.secondaryLight.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(4),
                 ),
-                child: Icon(icon, color: const Color(0xFF335538), size: 22),
+                child: Icon(icon, color: AppColors.brandDark, size: 22),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -980,14 +982,14 @@ class _ProfileSettingTile extends StatelessWidget {
                       title,
                       style: textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF1B1C1A),
+                        color: AppColors.text,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
                       style: textTheme.labelSmall?.copyWith(
-                        color: const Color(0xFF424841),
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -995,7 +997,7 @@ class _ProfileSettingTile extends StatelessWidget {
               ),
               const Icon(
                 Icons.chevron_right_rounded,
-                color: Color(0xFF727971),
+                color: AppColors.textMuted,
                 size: 20,
               ),
             ],

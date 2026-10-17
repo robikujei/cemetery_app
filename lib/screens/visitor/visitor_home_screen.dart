@@ -1,3 +1,4 @@
+import '../../core/app_colors.dart';
 import '../../core/surface_style.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -12,22 +13,14 @@ import '../../providers/visitor_nav_providers.dart';
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 class _C {
-  static const background = Color(0xFFFBF9F6);
-  static const primary = Color(0xFF335538);
-  static const primaryContainer = Color(0xFF4B6E4F);
-  static const onPrimaryContainer = Color(0xFFC7EFC8);
-  static const primaryFixed = Color(0xFFC5EDC6);
-  static const surfaceContainerLow = Color(0xFFF5F3F0);
-  static const surfaceContainerHigh = Color(0xFFEAE8E5);
-  static const surfaceContainerHighest = Color(0xFFE4E2DF);
-  static const surfaceContainer = Color(0xFFEFEEEB);
-  static const secondaryContainer = Color(0xFFC7E4F3);
-  static const onSecondaryContainer = Color(0xFF4B6673);
-  static const tertiaryContainer = Color(0xFF746356);
-  static const onTertiaryContainer = Color(0xFFF7E1D0);
-  static const onSurface = Color(0xFF1B1C1A);
-  static const onSurfaceVariant = Color(0xFF424841);
-  static const outline = Color(0xFF727971);
+  static const background = AppColors.background;
+  static const primary = AppColors.brandDark;
+  static const primaryContainer = AppColors.brand;
+  static const surfaceContainerLow = AppColors.surfaceLow;
+  static const surfaceContainer = AppColors.surfaceHigh;
+  static const onSecondaryContainer = AppColors.secondary;
+  static const onSurface = AppColors.text;
+  static const outline = AppColors.textMuted;
   static const white = Color(0xFFFFFFFF);
 }
 
@@ -147,7 +140,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
               behavior: SnackBarBehavior.floating,
               backgroundColor: _C.primaryContainer,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(4),
               ),
             ),
           );
@@ -208,7 +201,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
               'Eternal Rest',
               style: const TextStyle(
                 fontSize: 20,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 color: _C.primaryContainer,
                 letterSpacing: -0.3,
               ),
@@ -231,137 +224,144 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
           child: Divider(height: 1, thickness: 1, color: Colors.grey.shade100),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        physics: const BouncingScrollPhysics(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 24),
-
-            // ── Welcome Hero ──────────────────────────────────────────
-            Text(
-              'WELCOME BACK',
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1.2,
-                color: _C.primary,
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Find a peaceful\nplace of rest.',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w400,
-                height: 1.25,
-                color: _C.onSurface,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // ── Search Bar ────────────────────────────────────────────
-            GestureDetector(
-              onTap: _openSearch,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
-                ),
-                decoration: SurfaceStyle.panel(
-                  color: _C.surfaceContainerHigh,
-                  radius: 40,
-                ),
-                child: Row(
-                  children: const [
-                    Icon(Icons.search_rounded, color: _C.outline, size: 22),
-                    SizedBox(width: 14),
-                    Expanded(
-                      child: Text(
-                        'Search deceased name, lot number, or block',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: _C.outline,
-                          letterSpacing: 0.1,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // ── Quick Actions Bento Grid ───────────────────────────────
-            _buildBentoGrid(),
-            const SizedBox(height: 28),
-
-            // ── Recent Searches ───────────────────────────────────────
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1120),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Recent Searches',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
+                const SizedBox(height: 24),
+
+                // ── Welcome Hero ──────────────────────────────────────────
+                Text(
+                  'VISITOR SERVICES',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.2,
+                    color: _C.primary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Welcome back, $_userName',
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w600,
+                    height: 1.25,
                     color: _C.onSurface,
                   ),
                 ),
-                if (_recentSearches.isNotEmpty)
-                  TextButton(
-                    onPressed: _clearRecentSearches,
-                    style: TextButton.styleFrom(
-                      foregroundColor: _C.primary,
-                      padding: EdgeInsets.zero,
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      textStyle: const TextStyle(
-                        fontSize: 14,
+                const SizedBox(height: 20),
+
+                // ── Search Bar ────────────────────────────────────────────
+                GestureDetector(
+                  onTap: _openSearch,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
+                    decoration: SurfaceStyle.panel(
+                      color: Colors.white,
+                      radius: 4,
+                    ),
+                    child: Row(
+                      children: const [
+                        Icon(Icons.search_rounded, color: _C.outline, size: 22),
+                        SizedBox(width: 14),
+                        Expanded(
+                          child: Text(
+                            'Search deceased name, lot number, or block',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: _C.outline,
+                              letterSpacing: 0.1,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // ── Quick Actions Bento Grid ───────────────────────────────
+                _buildBentoGrid(),
+                const SizedBox(height: 28),
+
+                // ── Recent Searches ───────────────────────────────────────
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Recent Searches',
+                      style: TextStyle(
+                        fontSize: 18,
                         fontWeight: FontWeight.w500,
+                        color: _C.onSurface,
                       ),
                     ),
-                    child: const Text('Clear all'),
-                  ),
+                    if (_recentSearches.isNotEmpty)
+                      TextButton(
+                        onPressed: _clearRecentSearches,
+                        style: TextButton.styleFrom(
+                          foregroundColor: _C.primary,
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          textStyle: const TextStyle(
+                            fontFamily: 'Segoe UI',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        child: const Text('Clear all'),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                if (_recentSearches.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 32),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.history_rounded,
+                            size: 44,
+                            color: _C.outline.withOpacity(0.4),
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'No recent searches',
+                            style: TextStyle(fontSize: 14, color: _C.outline),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  ...(_recentSearches.map(
+                    (s) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _buildRecentItem(
+                        name: s['name'],
+                        details: s['details'],
+                        onTap: () => _navigateToGrave(s),
+                      ),
+                    ),
+                  )),
+
+                const SizedBox(height: 32),
               ],
             ),
-            const SizedBox(height: 12),
-
-            if (_recentSearches.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 32),
-                child: Center(
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.history_rounded,
-                        size: 44,
-                        color: _C.outline.withOpacity(0.4),
-                      ),
-                      const SizedBox(height: 10),
-                      const Text(
-                        'No recent searches',
-                        style: TextStyle(fontSize: 14, color: _C.outline),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            else
-              ...(_recentSearches.map(
-                (s) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _buildRecentItem(
-                    name: s['name'],
-                    details: s['details'],
-                    onTap: () => _navigateToGrave(s),
-                  ),
-                ),
-              )),
-
-            const SizedBox(height: 32),
-          ],
+          ),
         ),
       ),
     );
@@ -369,10 +369,10 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
 
   // ── Bento Grid (mirrors the 2×2 HTML template exactly) ──────────────────
   Widget _buildBentoGrid() {
-    return AspectRatio(
-      aspectRatio: 1,
-      child: GridView.count(
-        crossAxisCount: 2,
+    return LayoutBuilder(
+      builder: (context, constraints) => GridView.count(
+        crossAxisCount: constraints.maxWidth >= 720 ? 4 : 2,
+        mainAxisExtent: 100 + MediaQuery.textScalerOf(context).scale(48),
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
         shrinkWrap: true,
@@ -390,7 +390,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
           _buildBentoCard(
             label: 'View Map',
             icon: Icons.map_outlined,
-            bgColor: _C.secondaryContainer,
+            bgColor: Colors.white,
             iconBgColor: _C.primary.withOpacity(0.1),
             iconColor: _C.onSecondaryContainer,
             labelColor: _C.onSecondaryContainer,
@@ -399,16 +399,16 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
           _buildBentoCard(
             label: 'My Visits',
             icon: Icons.event_note_outlined,
-            bgColor: _C.tertiaryContainer,
-            iconBgColor: Colors.white.withOpacity(0.1),
-            iconColor: _C.onTertiaryContainer,
-            labelColor: _C.onTertiaryContainer,
+            bgColor: Colors.white,
+            iconBgColor: AppColors.brandLight,
+            iconColor: AppColors.brand,
+            labelColor: AppColors.text,
             onTap: _openHistoryScreen,
           ),
           _buildBentoCard(
             label: 'My QR',
             icon: Icons.qr_code_rounded,
-            bgColor: _C.surfaceContainerHighest,
+            bgColor: Colors.white,
             iconBgColor: _C.primary.withOpacity(0.1),
             iconColor: _C.primary,
             labelColor: _C.onSurface,
@@ -430,9 +430,9 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
   }) {
     return Material(
       color: bgColor,
-      elevation: 7,
-      shadowColor: const Color(0x30335538),
-      borderRadius: BorderRadius.circular(24),
+      elevation: 1,
+      shadowColor: const Color(0x14000000),
+      borderRadius: BorderRadius.circular(8),
       clipBehavior: Clip.antiAlias,
       child: Ink(
         decoration: SurfaceStyle.panel(color: bgColor),
@@ -449,7 +449,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: iconBgColor,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                   child: Icon(icon, color: iconColor, size: 28),
                 ),
@@ -479,7 +479,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
   }) {
     return Material(
       color: _C.white,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(8),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
@@ -487,7 +487,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             border: Border.all(color: _C.surfaceContainer),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
             children: [
@@ -497,7 +497,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                 height: 48,
                 decoration: BoxDecoration(
                   color: _C.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(4),
                 ),
                 child: const Icon(
                   Icons.person_outline_rounded,
