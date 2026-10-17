@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,12 +24,7 @@ class VisitorShellScreen extends ConsumerWidget {
       VisitorProfileScreen(),
     ];
     final wide = MediaQuery.sizeOf(context).width >= 840;
-    final body = AnimatedSwitcher(
-      duration: MediaQuery.disableAnimationsOf(context)
-          ? Duration.zero
-          : const Duration(milliseconds: 150),
-      child: screens[index],
-    );
+    final body = RepaintBoundary(child: screens[index]);
     return Scaffold(
       // Reserve the navigation area so it cannot cover profile actions.
       body: wide
@@ -109,46 +103,41 @@ class VisitorShellScreen extends ConsumerWidget {
               decoration: const BoxDecoration(
                 border: Border(top: BorderSide(color: AppColors.borderSubtle)),
               ),
-              child: ClipRect(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                  child: BottomNavigationBar(
-                    type: BottomNavigationBarType.fixed,
-                    currentIndex: index,
-                    onTap: select,
-                    backgroundColor: AppColors.surface.withValues(alpha: 0.88),
-                    selectedItemColor: AppColors.brand,
-                    unselectedItemColor: AppColors.textSecondary,
-                    showUnselectedLabels: true,
-                    selectedFontSize: 11,
-                    unselectedFontSize: 11,
-                    elevation: 0,
-                    selectedLabelStyle: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                    ),
-                    items: const [
-                      BottomNavigationBarItem(
-                        icon: Icon(CupertinoIcons.house),
-                        activeIcon: Icon(CupertinoIcons.house_fill),
-                        label: 'Home',
-                      ),
-                      BottomNavigationBarItem(
-                        icon: Icon(CupertinoIcons.map),
-                        activeIcon: Icon(CupertinoIcons.map_fill),
-                        label: 'Map',
-                      ),
-                      BottomNavigationBarItem(
-                        icon: Icon(CupertinoIcons.qrcode),
-                        label: 'QR',
-                      ),
-                      BottomNavigationBarItem(
-                        icon: Icon(CupertinoIcons.person),
-                        activeIcon: Icon(CupertinoIcons.person_fill),
-                        label: 'Profile',
-                      ),
-                    ],
-                  ),
+              child: BottomNavigationBar(
+                type: BottomNavigationBarType.fixed,
+                currentIndex: index,
+                onTap: select,
+                backgroundColor: AppColors.surface,
+                selectedItemColor: AppColors.brand,
+                unselectedItemColor: AppColors.textSecondary,
+                showUnselectedLabels: true,
+                selectedFontSize: 11,
+                unselectedFontSize: 11,
+                elevation: 0,
+                selectedLabelStyle: const TextStyle(
+                  fontWeight: FontWeight.w600,
                 ),
+                items: const [
+                  BottomNavigationBarItem(
+                    icon: Icon(CupertinoIcons.house),
+                    activeIcon: Icon(CupertinoIcons.house_fill),
+                    label: 'Home',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(CupertinoIcons.map),
+                    activeIcon: Icon(CupertinoIcons.map_fill),
+                    label: 'Map',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(CupertinoIcons.qrcode),
+                    label: 'QR',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(CupertinoIcons.person),
+                    activeIcon: Icon(CupertinoIcons.person_fill),
+                    label: 'Profile',
+                  ),
+                ],
               ),
             ),
     );

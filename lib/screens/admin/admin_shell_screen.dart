@@ -1,4 +1,5 @@
 import '../../core/app_colors.dart';
+import '../../widgets/lazy_screen_stack.dart';
 import '../../widgets/logout_dialog.dart';
 import '../../core/surface_style.dart';
 import 'package:flutter/material.dart';
@@ -215,7 +216,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
     ),
   );
 
-  Widget _buildContent() => IndexedStack(
+  Widget _buildContent() => LazyScreenStack(
     index: _selected,
     children: [
       AdminDashboardScreen(

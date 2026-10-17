@@ -9,8 +9,6 @@ class SurfaceStyle {
   }) => BoxDecoration(
     color: color,
     borderRadius: BorderRadius.circular(radius),
-    boxShadow: const [
-      BoxShadow(color: Color(0x0A000000), blurRadius: 16, offset: Offset(0, 4)),
-    ],
+    border: Border.all(color: AppColors.borderSubtle, width: 0.5),
   );
 }
