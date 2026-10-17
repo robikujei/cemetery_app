@@ -1,24 +1,29 @@
+import '../widgets/deferred_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
-import '../screens/visitor/visitor_shell_screen.dart';
-import '../screens/admin/admin_shell_screen.dart';
-import '../screens/guard/qr_scanner_screen.dart';
-import '../screens/lot_owner/lot_owner_home_screen.dart';
+import '../screens/visitor/visitor_shell_screen.dart' deferred as visitor;
+import '../screens/admin/admin_shell_screen.dart' deferred as admin;
+import '../screens/guard/qr_scanner_screen.dart' deferred as guard;
+import '../screens/lot_owner/lot_owner_home_screen.dart' deferred as owner;
 
 final router = GoRouter(
   initialLocation: '/login',
   redirect: (context, state) async {
-    if (state.matchedLocation == '/login' || state.matchedLocation == '/register') {
+    if (state.matchedLocation == '/login' ||
+        state.matchedLocation == '/register') {
       return null;
     }
     final client = Supabase.instance.client;
     final user = client.auth.currentUser;
     if (user == null) return '/login';
     try {
-      final profile = await client.from('users').select('role')
-          .eq('user_id', user.id).maybeSingle();
+      final profile = await client
+          .from('users')
+          .select('role')
+          .eq('user_id', user.id)
+          .maybeSingle();
       final home = switch (profile?['role']) {
         'admin' => '/admin',
         'gate_officer' => '/gate-officer',
@@ -39,19 +44,31 @@ final router = GoRouter(
     ),
     GoRoute(
       path: '/visitor',
-      builder: (context, state) => const VisitorShellScreen(),
+      builder: (context, state) => DeferredScreen(
+        load: visitor.loadLibrary,
+        builder: (_) => visitor.VisitorShellScreen(),
+      ),
     ),
     GoRoute(
       path: '/admin',
-      builder: (context, state) => const AdminShellScreen(),
+      builder: (context, state) => DeferredScreen(
+        load: admin.loadLibrary,
+        builder: (_) => admin.AdminShellScreen(),
+      ),
     ),
     GoRoute(
       path: '/gate-officer',
-      builder: (context, state) => const QrScannerScreen(),
+      builder: (context, state) => DeferredScreen(
+        load: guard.loadLibrary,
+        builder: (_) => guard.QrScannerScreen(),
+      ),
     ),
     GoRoute(
       path: '/lot-owner',
-      builder: (context, state) => const LotOwnerHomeScreen(),
+      builder: (context, state) => DeferredScreen(
+        load: owner.loadLibrary,
+        builder: (_) => owner.LotOwnerHomeScreen(),
+      ),
     ),
   ],
 );
