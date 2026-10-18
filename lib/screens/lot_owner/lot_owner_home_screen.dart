@@ -18,6 +18,7 @@ import '../../services/supabase_pagination_service.dart';
 import '../../utils/lot_formatters.dart';
 import '../../utils/lot_pricing.dart';
 import '../../utils/map_feature_geometry.dart';
+import '../../utils/map_bounds_index.dart';
 
 const _background = AppColors.background;
 const _surface = Color(0xFFFFFFFF);
@@ -1449,6 +1450,7 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
               userAgentPackageName: 'com.example.cemetery_app',
               maxZoom: 22,
               maxNativeZoom: 19,
+              tileBounds: paddedMapBounds(_cemeteryCameraBounds, 2.0),
               keepBuffer: 1,
             ),
             features.basePolygons,

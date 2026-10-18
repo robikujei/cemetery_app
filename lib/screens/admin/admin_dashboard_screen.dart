@@ -17,6 +17,7 @@ import 'admin_reports_screen.dart';
 import '../../services/supabase_pagination_service.dart';
 import '../../services/cemetery_analytics.dart';
 import '../../utils/map_feature_geometry.dart';
+import '../../utils/map_bounds_index.dart';
 
 const _background = AppColors.background;
 const _surface = Color(0xFFFFFFFF);
@@ -1755,6 +1756,7 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
                         userAgentPackageName: 'com.example.cemetery_app',
                         maxZoom: 22,
                         maxNativeZoom: 19,
+                        tileBounds: paddedMapBounds(_cemeteryCameraBounds, 2.0),
                         keepBuffer: 1,
                       ),
                       CircleLayer(circles: _heatCircles(heatmap)),

@@ -43,9 +43,10 @@ class _ViewportLotLayerState extends State<ViewportLotLayer> {
   @override
   void didUpdateWidget(covariant ViewportLotLayer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Realtime handlers may replace items in the same list or update status in
-    // the same lot map. Compare captured values, not just collection identity.
-    if (_snapshot.length != widget.markers.length || !_matchesSnapshot()) {
+    // Realtime handlers replace the marker list when geometry/status changes.
+    // Keep camera and GPS rebuilds O(1) when the source list is unchanged.
+    if (!identical(widget.markers, oldWidget.markers) &&
+        (_snapshot.length != widget.markers.length || !_matchesSnapshot())) {
       _readSnapshot();
     }
     if (widget.selectedLotId?.toString() !=

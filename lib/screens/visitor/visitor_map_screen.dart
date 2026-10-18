@@ -18,6 +18,7 @@ import '../../services/gps_tracker.dart';
 import '../../providers/visitor_nav_providers.dart';
 import '../../utils/lot_formatters.dart';
 import '../../utils/lot_pricing.dart';
+import '../../utils/map_bounds_index.dart';
 import '../../utils/map_feature_geometry.dart';
 import 'visitor_qr_with_grave_screen.dart';
 
@@ -200,13 +201,22 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
       });
       final markers = <Map<String, dynamic>>[];
       var initialSelected = _selectedMarker != null;
+      var lastPublishedCount = 0;
       await for (final page in service.markerPages(isCurrent: current)) {
         if (!current()) return;
         markers.addAll(_markersWithBurials(page, const []));
-        setState(() {
-          _lotMarkers = List.of(markers);
-          _loadingStage = 'Loading cemetery lots… ${markers.length} loaded';
-        });
+        // Publishing every 500-row page rebuilds the polygon index and causes
+        // flutter_map to reproject the visible layers repeatedly. Show the
+        // first page quickly, then publish larger batches while the remaining
+        // pages download.
+        if (lastPublishedCount == 0 ||
+            markers.length - lastPublishedCount >= 2000) {
+          lastPublishedCount = markers.length;
+          setState(() {
+            _lotMarkers = List.of(markers);
+            _loadingStage = 'Loading cemetery lots… ${markers.length} loaded';
+          });
+        }
         if (!initialSelected &&
             widget.initialLotId != null &&
             markers.any(
@@ -219,10 +229,16 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
         }
       }
       if (!current()) return;
-      setState(() => _loadingStage = 'Loading grave details…');
-      final graves = await service.loadGraves(isCurrent: current);
-      if (!current()) return;
-      setState(() => _gravesByLotId = graves);
+      if (_lotMarkers.length != markers.length) {
+        setState(() {
+          _lotMarkers = List.of(markers);
+          _loadingStage = 'Loading cemetery lots… ${markers.length} loaded';
+        });
+      }
+      // Grave rows are only needed after a lot is selected. Let the map become
+      // interactive first; this secondary request updates the grave chooser
+      // once it completes and does not hold the map's loading lifecycle open.
+      unawaited(_loadGraveDetails(service, current));
       if (!initialSelected && widget.initialLotId != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (current()) _selectInitialLot();
@@ -247,6 +263,20 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
           _loadInProgress = false;
         });
       }
+    }
+  }
+
+  Future<void> _loadGraveDetails(
+    VisitorMapDataService service,
+    bool Function() isCurrent,
+  ) async {
+    try {
+      final graves = await service.loadGraves(isCurrent: isCurrent);
+      if (!isCurrent()) return;
+      setState(() => _gravesByLotId = graves);
+    } catch (_) {
+      // Grave records are supplementary; the nested burial records in each
+      // marker still provide lot details when this background request fails.
     }
   }
 
@@ -291,7 +321,9 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
     currentMarker['cemetery_lot'] = {...currentLot, ...updatedLot};
 
     setState(() {
-      _lotMarkers[index] = currentMarker;
+      final nextMarkers = List<Map<String, dynamic>>.of(_lotMarkers);
+      nextMarkers[index] = currentMarker;
+      _lotMarkers = nextMarkers;
       if (_selectedMarker != null &&
           _sameRecordId(_markerLotId(_selectedMarker!), lotId)) {
         _selectedMarker = currentMarker;
@@ -311,7 +343,9 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
     }
 
     setState(() {
-      final removed = _lotMarkers.removeAt(index);
+      final nextMarkers = List<Map<String, dynamic>>.of(_lotMarkers);
+      final removed = nextMarkers.removeAt(index);
+      _lotMarkers = nextMarkers;
       _gravesByLotId.remove(lotId.toString());
       if (_selectedMarker != null &&
           _sameRecordId(
@@ -1666,7 +1700,9 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
       options: MapOptions(
         initialCenter: selectedPoint ?? _routeStart,
         initialZoom: _initialZoom,
-        minZoom: _gps.active ? 3 : 18.5,
+        // A cemetery map should never render a world-scale tile pyramid. GPS
+        // can still show the nearby approach, but stays local to the site.
+        minZoom: _gps.active ? 15.5 : 18.5,
         maxZoom: 22,
         cameraConstraint: _gps.active
             ? const CameraConstraint.unconstrained()
@@ -1692,7 +1728,8 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
           userAgentPackageName: 'com.example.cemetery_app',
           maxZoom: 22,
           maxNativeZoom: 19,
-          keepBuffer: 1,
+          tileBounds: paddedMapBounds(_cemeteryCameraBounds, 2.0),
+          keepBuffer: 0,
         ),
         features.basePolygons,
         features.basePolylines,
