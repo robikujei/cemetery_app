@@ -25,7 +25,11 @@ class _C {
 }
 
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.requiredRole, this.portalName});
+
+  /// When set, this portal accepts only accounts with this database role.
+  final String? requiredRole;
+  final String? portalName;
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -88,6 +92,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             .select('name, role')
             .eq('email', _emailCtrl.text.trim().toLowerCase())
             .single();
+        if (widget.requiredRole != null && userData['role'] != widget.requiredRole) {
+          await Supabase.instance.client.auth.signOut();
+          _showErrorSnackBar(
+            'This account is for ${_roleName(userData['role'])}. Use the ${widget.portalName ?? 'correct'} login page.',
+          );
+          return;
+        }
         await AuditService.log(
           action: 'LOGIN',
           entityType: 'user',
@@ -111,6 +122,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
+
+  String _roleName(String? role) => switch (role) {
+    'admin' => 'administrators',
+    'gate_officer' => 'gate officers',
+    'lot_owner' => 'lot owners',
+    _ => 'visitors',
+  };
 
   void _navigateByRole(String? role) {
     switch (role) {
@@ -266,8 +284,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Eternal Rest',
+                  Text(
+                    widget.portalName ?? 'Eternal Garden',
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.w600,
@@ -276,8 +294,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'A quiet guide for your journey through memories.',
+                  Text(
+                    widget.requiredRole == null
+                        ? 'A quiet guide for your journey through memories.'
+                        : 'Sign in to the ${widget.portalName ?? 'role'} portal.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 16,
@@ -303,8 +323,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                         const SizedBox(height: 8),
-                        const Text(
-                          'Access your visits, maps, and cemetery services.',
+                        Text(
+                          widget.requiredRole == 'gate_officer'
+                              ? 'Scan visitor passes and manage cemetery entry.'
+                              : widget.requiredRole == 'admin'
+                                  ? 'Manage cemetery operations and records.'
+                                  : 'Access your visits, maps, and cemetery services.',
                           style: TextStyle(color: AppColors.textSecondary),
                         ),
                         const SizedBox(height: 24),
@@ -398,43 +422,44 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ),
 
-                        // Divider + Create Account
-                        const SizedBox(height: 32),
-                        const Divider(color: _C.surfaceContainerHighest),
-                        const SizedBox(height: 24),
-                        const Text(
-                          'New to Eternal Rest?',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: _C.onSurfaceVariant,
-                            letterSpacing: 0.25,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          height: 56,
-                          child: OutlinedButton(
-                            onPressed: () => context.go('/register'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: _C.primaryContainer,
-                              side: const BorderSide(
-                                color: _C.primaryContainer,
-                                width: 2,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              textStyle: const TextStyle(
-                                fontFamily: '.SF Pro Text',
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                letterSpacing: 0.1,
-                              ),
+                        if (widget.requiredRole == null) ...[
+                          const SizedBox(height: 32),
+                          const Divider(color: _C.surfaceContainerHighest),
+                          const SizedBox(height: 24),
+                          const Text(
+                            'New to Eternal Garden?',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: _C.onSurfaceVariant,
+                              letterSpacing: 0.25,
                             ),
-                            child: const Text('Create Visitor Account'),
                           ),
-                        ),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            height: 56,
+                            child: OutlinedButton(
+                              onPressed: () => context.go('/register'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: _C.primaryContainer,
+                                side: const BorderSide(
+                                  color: _C.primaryContainer,
+                                  width: 2,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                textStyle: const TextStyle(
+                                  fontFamily: '.SF Pro Text',
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 0.1,
+                                ),
+                              ),
+                              child: const Text('Create Visitor Account'),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),

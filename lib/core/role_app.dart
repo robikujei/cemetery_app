@@ -13,6 +13,13 @@ class RoleApp extends StatelessWidget {
   final String path;
   final Widget home;
 
+  String get portalName => switch (role) {
+    'admin' => 'Administrator portal',
+    'gate_officer' => 'Gate officer portal',
+    'lot_owner' => 'Lot owner portal',
+    _ => 'Visitor portal',
+  };
+
   @override
   Widget build(BuildContext context) => ProviderScope(
         child: MaterialApp.router(
@@ -29,8 +36,13 @@ class RoleApp extends StatelessWidget {
               return profile?['role'] == role ? null : '/login';
             },
             routes: [
-              GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
-              GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
+              GoRoute(path: '/login', builder: (_, __) => LoginScreen(requiredRole: role, portalName: portalName)),
+              GoRoute(
+                path: '/register',
+                builder: (_, __) => role == 'visitor'
+                    ? const RegisterScreen()
+                    : LoginScreen(requiredRole: role, portalName: portalName),
+              ),
               GoRoute(path: path, builder: (_, __) => home),
             ],
           ),
