@@ -75,6 +75,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
   double? _entranceYPercent;
 
   final MapController _mapController = MapController();
+  final _lotLayerKey = GlobalKey<ViewportLotLayerState>();
   final TextEditingController _searchController = TextEditingController();
   final LayerHitNotifier<String> _lotPolygonHitNotifier = ValueNotifier(null);
   RealtimeChannel? _lotChangesChannel;
@@ -1707,6 +1708,10 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
         cameraConstraint: _gps.active
             ? const CameraConstraint.unconstrained()
             : CameraConstraint.containCenter(bounds: _cemeteryCameraBounds),
+        onTap: (tapPosition, point) {
+          final lotId = _lotLayerKey.currentState?.lotIdAt(point);
+          if (lotId != null) _selectMarkerByLotId(lotId);
+        },
         onMapReady: () {
           if (!mounted) return;
           setState(() {
@@ -1735,18 +1740,13 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
         features.basePolylines,
         features.overlayPolygons,
         IgnorePointer(
-          ignoring: false,
-          child: GestureDetector(
-            onTap: () {
-              final hitValues = _lotPolygonHitNotifier.value?.hitValues;
-              if (hitValues == null || hitValues.isEmpty) return;
-              _selectMarkerByLotId(hitValues.last);
-            },
-            child: ViewportLotLayer(
-              markers: _lotMarkers,
-              selectedLotId: _selectedLotId,
-              hitNotifier: _lotPolygonHitNotifier,
-            ),
+          child: ViewportLotLayer(
+            key: _lotLayerKey,
+            markers: _lotMarkers,
+            selectedLotId: _selectedLotId,
+            hitNotifier: _lotPolygonHitNotifier,
+            enableHitTesting: false,
+            viewportPaddingFactor: 0.20,
           ),
         ),
         features.overlayPolylines,

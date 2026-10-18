@@ -1192,6 +1192,7 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
   static const double _mapLngSpan = 0.0046;
 
   final MapController _mapController = MapController();
+  final _lotLayerKey = GlobalKey<ViewportLotLayerState>();
   final LayerHitNotifier<String> _lotPolygonHitNotifier = ValueNotifier(null);
   bool _isLoading = true;
   String? _errorMessage;
@@ -1440,6 +1441,10 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
             cameraConstraint: CameraConstraint.containCenter(
               bounds: _cemeteryCameraBounds,
             ),
+            onTap: (tapPosition, point) {
+              final lotId = _lotLayerKey.currentState?.lotIdAt(point);
+              if (lotId != null) _selectAvailableLotById(lotId);
+            },
             interactionOptions: const InteractionOptions(
               flags: InteractiveFlag.all,
             ),
@@ -1457,18 +1462,13 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
             features.basePolylines,
             features.overlayPolygons,
             IgnorePointer(
-              ignoring: false,
-              child: GestureDetector(
-                onTap: () {
-                  final hitValues = _lotPolygonHitNotifier.value?.hitValues;
-                  if (hitValues == null || hitValues.isEmpty) return;
-                  _selectAvailableLotById(hitValues.last);
-                },
-                child: ViewportLotLayer(
-                  markers: _lotMarkers,
-                  selectedLotId: selectedLotId,
-                  hitNotifier: _lotPolygonHitNotifier,
-                ),
+              child: ViewportLotLayer(
+                key: _lotLayerKey,
+                markers: _lotMarkers,
+                selectedLotId: selectedLotId,
+                hitNotifier: _lotPolygonHitNotifier,
+                enableHitTesting: false,
+                viewportPaddingFactor: 0.20,
               ),
             ),
             features.overlayPolylines,
