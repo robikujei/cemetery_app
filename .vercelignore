@@ -1,0 +1,9 @@
+# Upload only the locally compiled website and deployment configuration.
+/*
+!/build
+/build/*
+!/build/web
+# Vercel's generated output metadata must not be uploaded from inside the
+# Flutter build directory on the next deployment.
+/build/web/.vercel
+!/vercel.json
