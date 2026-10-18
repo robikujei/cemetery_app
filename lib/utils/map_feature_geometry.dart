@@ -270,6 +270,31 @@ List<Polygon<String>> lotPolygonsFromMarkers(
   return polygons;
 }
 
+/// Builds the lot footprint layer directly from cemetery lot rows.
+///
+/// Analytics and heatmap views should use this instead of the general map
+/// feature layer so pathways, boundaries, blocks, and other background
+/// geometry are not rendered with the lots.
+List<Polygon<String>> lotPolygonsFromLots(
+  List<Map<String, dynamic>> lots, {
+  bool lowDetail = false,
+}) {
+  final polygons = <Polygon<String>>[];
+  for (final lot in lots) {
+    final rings = geoJsonPolygonRings(lot['polygon_geo']);
+    if (rings.isEmpty) continue;
+    polygons.addAll(
+      lotPolygonsFromRings(
+        rings,
+        lotId: lot['lot_id'],
+        status: lot['status']?.toString() ?? 'Available',
+        lowDetail: lowDetail,
+      ),
+    );
+  }
+  return polygons;
+}
+
 /// Builds styles from already parsed rings held by a viewport index.
 List<Polygon<String>> lotPolygonsFromRings(
   List<List<LatLng>> rings, {

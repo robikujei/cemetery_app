@@ -620,9 +620,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
             userAgentPackageName: 'cemetery_app',
           ),
           PolygonLayer(
-            polygons: mapFeaturePolygons(
-              _data!.features.where((f) => f['is_visible'] != false).toList(),
-            ),
+            polygons: lotPolygonsFromLots(_data!.lots, lowDetail: true),
           ),
           CircleLayer(
             circles: byLocation.values
