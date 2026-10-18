@@ -1,4 +1,3 @@
-import '../../core/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -9,32 +8,6 @@ import 'visitor_qr_with_grave_screen.dart';
 import 'visitor_map_screen.dart';
 
 // ── Design tokens ────────────────────────────────────────────────────────────
-class _C {
-  static const background = AppColors.background;
-  static const primary = AppColors.brandDark;
-  static const primaryContainer = AppColors.brand;
-  static const onPrimary = Color(0xFFFFFFFF);
-  static const onPrimaryContainer = AppColors.onBrand;
-  static const primaryFixed = AppColors.brandLight;
-  static const secondaryFixed = Color(0xFFCAE7F6);
-  static const secondary = AppColors.secondary;
-  static const tertiaryFixed = Color(0xFFF5DECE);
-  static const tertiary = AppColors.secondary;
-  static const secondaryContainer = AppColors.secondaryLight;
-  static const onSecondaryContainer = AppColors.secondary;
-  static const surfaceContainerLow = AppColors.surfaceLow;
-  static const surfaceContainerHigh = AppColors.surfaceHigh;
-  static const surfaceContainer = AppColors.surfaceHigh;
-  static const surfaceContainerLowest = Color(0xFFFFFFFF);
-  static const surfaceVariant = AppColors.surfaceHighest;
-  static const onSurface = AppColors.text;
-  static const onSurfaceVariant = AppColors.textSecondary;
-  static const outline = AppColors.textMuted;
-  static const outlineVariant = AppColors.border;
-  static const white = Color(0xFFFFFFFF);
-  static const error = Color(0xFFBA1A1A);
-}
-
 class VisitorSearchScreen extends ConsumerStatefulWidget {
   const VisitorSearchScreen({super.key, this.initialQuery});
   final String? initialQuery;
@@ -45,6 +18,7 @@ class VisitorSearchScreen extends ConsumerStatefulWidget {
 }
 
 class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
+  ColorScheme _colors(BuildContext context) => Theme.of(context).colorScheme;
   late final TextEditingController _queryCtrl;
   String _query = '';
   List<Map<String, dynamic>> _allGraves = [];
@@ -111,7 +85,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading graves: $e'),
-            backgroundColor: _C.error,
+            backgroundColor: _colors(context).error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -190,12 +164,20 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
 
   // ── Avatar color cycling ─────────────────────────────────────────────────
   Color _avatarBg(int index) {
-    const colors = [_C.primaryFixed, _C.secondaryFixed, _C.tertiaryFixed];
+    final colors = [
+      _colors(context).primaryContainer,
+      _colors(context).secondaryContainer,
+      _colors(context).tertiaryContainer,
+    ];
     return colors[index % colors.length];
   }
 
   Color _avatarFg(int index) {
-    const colors = [_C.primary, _C.secondary, _C.tertiary];
+    final colors = [
+      _colors(context).primary,
+      _colors(context).secondary,
+      _colors(context).tertiary,
+    ];
     return colors[index % colors.length];
   }
 
@@ -203,28 +185,28 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _C.background,
+      backgroundColor: _colors(context).surfaceContainer,
       appBar: AppBar(
-        backgroundColor: _C.white.withOpacity(0.92),
+        backgroundColor: _colors(context).surface.withOpacity(0.92),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 1,
         shadowColor: Colors.black12,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: _C.onSurface),
+          icon: Icon(Icons.arrow_back, color: _colors(context).onSurface),
           onPressed: () => Navigator.of(context).pop(),
         ),
         titleSpacing: 4,
         title: Row(
-          children: const [
-            Icon(Icons.church, color: _C.primaryContainer, size: 20),
+          children: [
+            Icon(Icons.church, color: _colors(context).primary, size: 20),
             SizedBox(width: 8),
             Text(
               'Eternal Garden',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
-                color: _C.primaryContainer,
+                color: _colors(context).primary,
                 letterSpacing: -0.3,
               ),
             ),
@@ -232,17 +214,17 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(
+            icon: Icon(
               Icons.refresh,
-              color: _C.primaryContainer,
+              color: _colors(context).primary,
               size: 22,
             ),
             onPressed: _loadAllGraves,
           ),
           IconButton(
-            icon: const Icon(
+            icon: Icon(
               Icons.notifications_outlined,
-              color: _C.primaryContainer,
+              color: _colors(context).primary,
               size: 22,
             ),
             onPressed: () {},
@@ -251,11 +233,17 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Divider(height: 1, thickness: 1, color: Colors.grey.shade100),
+          child: Divider(
+            height: 1,
+            thickness: 1,
+            color: _colors(context).outlineVariant,
+          ),
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: _C.primary))
+          ? Center(
+              child: CircularProgressIndicator(color: _colors(context).primary),
+            )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -264,12 +252,12 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Search Results',
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.w400,
-                          color: _C.onSurface,
+                          color: _colors(context).onSurface,
                           letterSpacing: -0.3,
                         ),
                       ),
@@ -278,9 +266,9 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                         _query.isEmpty
                             ? 'Showing all ${_filteredGraves.length} records'
                             : 'Showing ${_filteredGraves.length} match${_filteredGraves.length == 1 ? '' : 'es'} for "$_query"',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
-                          color: _C.onSurfaceVariant,
+                          color: _colors(context).onSurfaceVariant,
                           letterSpacing: 0.25,
                         ),
                       ),
@@ -293,33 +281,35 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: _C.surfaceContainerHigh,
+                          color: _colors(context).surfaceContainerHigh,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: _C.outlineVariant.withOpacity(0.3),
+                            color: _colors(
+                              context,
+                            ).outlineVariant.withOpacity(0.3),
                           ),
                         ),
                         child: Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.search_rounded,
-                              color: _C.outline,
+                              color: _colors(context).outline,
                               size: 20,
                             ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: TextField(
                                 controller: _queryCtrl,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 14,
-                                  color: _C.onSurface,
+                                  color: _colors(context).onSurface,
                                 ),
                                 decoration: InputDecoration(
                                   hintText: _searchType == 'name'
                                       ? 'Search deceased name...'
                                       : 'Search lot or block...',
-                                  hintStyle: const TextStyle(
-                                    color: _C.outline,
+                                  hintStyle: TextStyle(
+                                    color: _colors(context).outline,
                                     fontSize: 14,
                                   ),
                                   border: InputBorder.none,
@@ -337,9 +327,9 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                                   _queryCtrl.clear();
                                   _filterGraves('');
                                 },
-                                child: const Icon(
+                                child: Icon(
                                   Icons.close_rounded,
-                                  color: _C.outline,
+                                  color: _colors(context).outline,
                                   size: 18,
                                 ),
                               ),
@@ -351,7 +341,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                                   horizontal: 8,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: _C.surfaceContainerLow,
+                                  color: _colors(context).surfaceContainerLow,
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: DropdownButton<String>(
@@ -380,13 +370,13 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                                   }),
                                   underline: const SizedBox(),
                                   isDense: true,
-                                  icon: const Icon(
+                                  icon: Icon(
                                     Icons.arrow_drop_down,
-                                    color: _C.primary,
+                                    color: _colors(context).primary,
                                     size: 18,
                                   ),
-                                  style: const TextStyle(
-                                    color: _C.onSurface,
+                                  style: TextStyle(
+                                    color: _colors(context).onSurface,
                                     fontSize: 13,
                                   ),
                                 ),
@@ -410,14 +400,16 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                               Icon(
                                 Icons.search_off_rounded,
                                 size: 56,
-                                color: _C.outline.withOpacity(0.4),
+                                color: _colors(
+                                  context,
+                                ).outline.withOpacity(0.4),
                               ),
                               const SizedBox(height: 12),
-                              const Text(
+                              Text(
                                 'No graves found',
                                 style: TextStyle(
                                   fontSize: 16,
-                                  color: _C.outline,
+                                  color: _colors(context).outline,
                                 ),
                               ),
                             ],
@@ -465,9 +457,9 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
         return Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: _C.surfaceContainerLowest,
+            color: _colors(context).surfaceContainerLowest,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: _C.surfaceContainerLow),
+            border: Border.all(color: _colors(context).surfaceContainerLow),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x0A3B82F6),
@@ -504,10 +496,10 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                             children: [
                               Text(
                                 grave['name_of_deceased'] ?? 'Unknown',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w500,
-                                  color: _C.onSurface,
+                                  color: _colors(context).onSurface,
                                 ),
                               ),
                               const SizedBox(height: 6),
@@ -520,17 +512,21 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(
+                                      Icon(
                                         Icons.tag_rounded,
                                         size: 16,
-                                        color: _C.onSurfaceVariant,
+                                        color: _colors(
+                                          context,
+                                        ).onSurfaceVariant,
                                       ),
                                       const SizedBox(width: 4),
                                       Text(
                                         'Lot ${lotReference(lot)}',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 13,
-                                          color: _C.onSurfaceVariant,
+                                          color: _colors(
+                                            context,
+                                          ).onSurfaceVariant,
                                           letterSpacing: 0.25,
                                         ),
                                       ),
@@ -543,9 +539,9 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                                 const SizedBox(height: 4),
                                 Text(
                                   deathDate,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11,
-                                    color: _C.outline,
+                                    color: _colors(context).outline,
                                     letterSpacing: 0.5,
                                   ),
                                 ),
@@ -566,21 +562,21 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                             child: FilledButton.icon(
                               onPressed: () => _getDirections(grave),
                               style: FilledButton.styleFrom(
-                                backgroundColor: _C.primary,
-                                foregroundColor: _C.onPrimary,
+                                backgroundColor: _colors(context).primary,
+                                foregroundColor: _colors(context).onPrimary,
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 12,
                                 ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(20),
                                 ),
-                                textStyle: const TextStyle(
+                                textStyle: TextStyle(
                                   fontFamily: '.SF Pro Text',
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              icon: const Icon(Icons.near_me_rounded, size: 16),
+                              icon: Icon(Icons.near_me_rounded, size: 16),
                               label: const FittedBox(
                                 fit: BoxFit.scaleDown,
                                 child: Text('View Location'),
@@ -595,9 +591,9 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                             child: OutlinedButton.icon(
                               onPressed: () => _generateQRForGrave(grave),
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: _C.primary,
-                                side: const BorderSide(
-                                  color: _C.outlineVariant,
+                                foregroundColor: _colors(context).primary,
+                                side: BorderSide(
+                                  color: _colors(context).outlineVariant,
                                 ),
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 12,
@@ -605,13 +601,13 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(20),
                                 ),
-                                textStyle: const TextStyle(
+                                textStyle: TextStyle(
                                   fontFamily: '.SF Pro Text',
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              icon: const Icon(Icons.qr_code_rounded, size: 14),
+                              icon: Icon(Icons.qr_code_rounded, size: 14),
                               label: const FittedBox(
                                 fit: BoxFit.scaleDown,
                                 child: Text('QR Code'),
@@ -647,10 +643,10 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                         children: [
                           Text(
                             grave['name_of_deceased'] ?? 'Unknown',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w500,
-                              color: _C.onSurface,
+                              color: _colors(context).onSurface,
                             ),
                           ),
                           const SizedBox(height: 6),
@@ -662,17 +658,17 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(
+                                  Icon(
                                     Icons.tag_rounded,
                                     size: 16,
-                                    color: _C.onSurfaceVariant,
+                                    color: _colors(context).onSurfaceVariant,
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
                                     'Lot ${lotReference(lot)}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 13,
-                                      color: _C.onSurfaceVariant,
+                                      color: _colors(context).onSurfaceVariant,
                                       letterSpacing: 0.25,
                                     ),
                                   ),
@@ -681,17 +677,17 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(
+                                  Icon(
                                     Icons.tag_rounded,
                                     size: 16,
-                                    color: _C.onSurfaceVariant,
+                                    color: _colors(context).onSurfaceVariant,
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
                                     'Lot ${lotReference(lot)}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 13,
-                                      color: _C.onSurfaceVariant,
+                                      color: _colors(context).onSurfaceVariant,
                                       letterSpacing: 0.25,
                                     ),
                                   ),
@@ -703,9 +699,9 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                             const SizedBox(height: 2),
                             Text(
                               deathDate,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
-                                color: _C.outline,
+                                color: _colors(context).outline,
                                 letterSpacing: 0.5,
                               ),
                             ),
@@ -722,8 +718,8 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                           child: FilledButton.icon(
                             onPressed: () => _getDirections(grave),
                             style: FilledButton.styleFrom(
-                              backgroundColor: _C.primary,
-                              foregroundColor: _C.onPrimary,
+                              backgroundColor: _colors(context).primary,
+                              foregroundColor: _colors(context).onPrimary,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 14,
                                 vertical: 0,
@@ -731,14 +727,14 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
                               ),
-                              textStyle: const TextStyle(
+                              textStyle: TextStyle(
                                 fontFamily: '.SF Pro Text',
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
-                            icon: const Icon(Icons.near_me_rounded, size: 16),
-                            label: const Text('View Location'),
+                            icon: Icon(Icons.near_me_rounded, size: 16),
+                            label: Text('View Location'),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -747,8 +743,10 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                           child: OutlinedButton.icon(
                             onPressed: () => _generateQRForGrave(grave),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: _C.primary,
-                              side: const BorderSide(color: _C.outlineVariant),
+                              foregroundColor: _colors(context).primary,
+                              side: BorderSide(
+                                color: _colors(context).outlineVariant,
+                              ),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 14,
                                 vertical: 0,
@@ -756,14 +754,14 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
                               ),
-                              textStyle: const TextStyle(
+                              textStyle: TextStyle(
                                 fontFamily: '.SF Pro Text',
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
-                            icon: const Icon(Icons.qr_code_rounded, size: 14),
-                            label: const Text('QR Code'),
+                            icon: Icon(Icons.qr_code_rounded, size: 14),
+                            label: Text('QR Code'),
                           ),
                         ),
                       ],
@@ -783,7 +781,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: _C.white,
+      backgroundColor: _colors(context).surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -798,7 +796,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: _C.outlineVariant,
+                  color: _colors(context).outlineVariant,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -806,10 +804,10 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
             const SizedBox(height: 20),
             Text(
               burial['name_of_deceased'] ?? 'Unknown',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w400,
-                color: _C.onSurface,
+                color: _colors(context).onSurface,
               ),
             ),
             const SizedBox(height: 16),
@@ -838,11 +836,11 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                         Navigator.pop(context);
                         _getDirections(burial);
                       },
-                      icon: const Icon(Icons.near_me_rounded, size: 18),
-                      label: const Text('Directions'),
+                      icon: Icon(Icons.near_me_rounded, size: 18),
+                      label: Text('Directions'),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: _C.primary,
-                        side: const BorderSide(color: _C.primaryContainer),
+                        foregroundColor: _colors(context).primary,
+                        side: BorderSide(color: _colors(context).primary),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
@@ -859,11 +857,11 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                         Navigator.pop(context);
                         _generateQRForGrave(burial);
                       },
-                      icon: const Icon(Icons.qr_code_rounded, size: 18),
-                      label: const Text('QR Code'),
+                      icon: Icon(Icons.qr_code_rounded, size: 18),
+                      label: Text('QR Code'),
                       style: FilledButton.styleFrom(
-                        backgroundColor: _C.primaryContainer,
-                        foregroundColor: _C.onPrimaryContainer,
+                        backgroundColor: _colors(context).primary,
+                        foregroundColor: _colors(context).onPrimaryContainer,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
@@ -885,12 +883,15 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: _C.outline),
+          Icon(icon, size: 18, color: _colors(context).outline),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(fontSize: 14, color: _C.onSurfaceVariant),
+              style: TextStyle(
+                fontSize: 14,
+                color: _colors(context).onSurfaceVariant,
+              ),
             ),
           ),
         ],

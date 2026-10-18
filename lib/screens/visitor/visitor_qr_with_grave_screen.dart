@@ -1,4 +1,3 @@
-import '../../core/app_colors.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -10,32 +9,6 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
-
-class _C {
-  static const background = AppColors.background;
-  static const primary = AppColors.brandDark;
-  static const primaryContainer = AppColors.brand;
-  static const onPrimary = Color(0xFFFFFFFF);
-  static const onPrimaryContainer = AppColors.onBrand;
-  static const primaryFixed = AppColors.brandLight;
-  static const secondaryFixed = Color(0xFFCAE7F6);
-  static const secondary = AppColors.secondary;
-  static const tertiaryFixed = Color(0xFFF5DECE);
-  static const tertiary = AppColors.secondary;
-  static const secondaryContainer = AppColors.secondaryLight;
-  static const onSecondaryContainer = AppColors.secondary;
-  static const surfaceContainerLow = AppColors.surfaceLow;
-  static const surfaceContainerHigh = AppColors.surfaceHigh;
-  static const surfaceContainer = AppColors.surfaceHigh;
-  static const surfaceContainerLowest = Color(0xFFFFFFFF);
-  static const surfaceVariant = AppColors.surfaceHighest;
-  static const onSurface = AppColors.text;
-  static const onSurfaceVariant = AppColors.textSecondary;
-  static const outline = AppColors.textMuted;
-  static const outlineVariant = AppColors.border;
-  static const white = Color(0xFFFFFFFF);
-  static const error = Color(0xFFBA1A1A);
-}
 
 class VisitorQrWithGraveScreen extends ConsumerStatefulWidget {
   const VisitorQrWithGraveScreen({
@@ -60,6 +33,7 @@ class VisitorQrWithGraveScreen extends ConsumerStatefulWidget {
 
 class _VisitorQrWithGraveScreenState
     extends ConsumerState<VisitorQrWithGraveScreen> {
+  ColorScheme _colors(BuildContext context) => Theme.of(context).colorScheme;
   String? _qrData;
   String _userName = 'Visitor';
   String _selectedGrave = 'No grave selected';
@@ -160,8 +134,8 @@ class _VisitorQrWithGraveScreenState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('QR Code saved to device'),
-            backgroundColor: _C.primary,
+            content: Text('QR Code saved to device'),
+            backgroundColor: _colors(context).primary,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
@@ -174,7 +148,7 @@ class _VisitorQrWithGraveScreenState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error saving QR code: $e'),
-            backgroundColor: _C.error,
+            backgroundColor: _colors(context).error,
           ),
         );
       }
@@ -184,28 +158,28 @@ class _VisitorQrWithGraveScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _C.background,
+      backgroundColor: _colors(context).surfaceContainer,
       appBar: AppBar(
-        backgroundColor: _C.white.withOpacity(0.92),
+        backgroundColor: _colors(context).surface.withOpacity(0.92),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 1,
         shadowColor: Colors.black12,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: _C.onSurface),
+          icon: Icon(Icons.arrow_back, color: _colors(context).onSurface),
           onPressed: () => Navigator.pop(context),
         ),
         titleSpacing: 4,
         title: Row(
-          children: const [
-            Icon(Icons.church, color: _C.primaryContainer, size: 20),
+          children: [
+            Icon(Icons.church, color: _colors(context).primary, size: 20),
             SizedBox(width: 8),
             Text(
               'Eternal Garden',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
-                color: _C.primaryContainer,
+                color: _colors(context).primary,
                 letterSpacing: -0.3,
               ),
             ),
@@ -213,13 +187,13 @@ class _VisitorQrWithGraveScreenState
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: _C.primaryContainer),
+            icon: Icon(Icons.refresh, color: _colors(context).primary),
             onPressed: _loadUserData,
           ),
           IconButton(
-            icon: const Icon(
+            icon: Icon(
               Icons.notifications_outlined,
-              color: _C.primaryContainer,
+              color: _colors(context).primary,
             ),
             onPressed: () {},
           ),
@@ -227,7 +201,9 @@ class _VisitorQrWithGraveScreenState
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: _C.primary))
+          ? Center(
+              child: CircularProgressIndicator(color: _colors(context).primary),
+            )
           : _errorMessage != null
           ? _buildErrorWidget()
           : _qrData == null
@@ -243,24 +219,24 @@ class _VisitorQrWithGraveScreenState
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: _C.error),
+            Icon(Icons.error_outline, size: 64, color: _colors(context).error),
             const SizedBox(height: 16),
             Text(
               _errorMessage!,
-              style: const TextStyle(fontSize: 16, color: _C.error),
+              style: TextStyle(fontSize: 16, color: _colors(context).error),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
             FilledButton(
               onPressed: () => Navigator.pop(context),
               style: FilledButton.styleFrom(
-                backgroundColor: _C.primary,
-                foregroundColor: _C.onPrimary,
+                backgroundColor: _colors(context).primary,
+                foregroundColor: _colors(context).onPrimary,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
               ),
-              child: const Text('Go Back'),
+              child: Text('Go Back'),
             ),
           ],
         ),
@@ -276,21 +252,21 @@ class _VisitorQrWithGraveScreenState
           Icon(
             Icons.qr_code_scanner,
             size: 80,
-            color: _C.outline.withOpacity(0.5),
+            color: _colors(context).outline.withOpacity(0.5),
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Unable to generate QR code',
-            style: TextStyle(fontSize: 16, color: _C.outline),
+            style: TextStyle(fontSize: 16, color: _colors(context).outline),
           ),
           const SizedBox(height: 24),
           FilledButton(
             onPressed: () => Navigator.pop(context),
             style: FilledButton.styleFrom(
-              backgroundColor: _C.primary,
-              foregroundColor: _C.onPrimary,
+              backgroundColor: _colors(context).primary,
+              foregroundColor: _colors(context).onPrimary,
             ),
-            child: const Text('Go Back'),
+            child: Text('Go Back'),
           ),
         ],
       ),
@@ -305,13 +281,13 @@ class _VisitorQrWithGraveScreenState
           children: [
             // Welcome Section
             Column(
-              children: const [
+              children: [
                 Text(
                   'Visitor Pass',
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.w400,
-                    color: _C.primary,
+                    color: _colors(context).primary,
                   ),
                 ),
                 SizedBox(height: 8),
@@ -320,7 +296,7 @@ class _VisitorQrWithGraveScreenState
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
-                    color: _C.onSurfaceVariant,
+                    color: _colors(context).onSurfaceVariant,
                     letterSpacing: 0.3,
                   ),
                 ),
@@ -335,9 +311,9 @@ class _VisitorQrWithGraveScreenState
               constraints: const BoxConstraints(maxWidth: 500),
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: _C.surfaceContainerLowest,
+                color: _colors(context).surfaceContainerLowest,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _C.outlineVariant),
+                border: Border.all(color: _colors(context).outlineVariant),
                 boxShadow: const [
                   BoxShadow(
                     color: Color(0x140066CC),
@@ -355,7 +331,7 @@ class _VisitorQrWithGraveScreenState
                       width: 140,
                       height: 140,
                       decoration: BoxDecoration(
-                        color: _C.primary.withOpacity(0.05),
+                        color: _colors(context).primary.withOpacity(0.05),
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -366,9 +342,11 @@ class _VisitorQrWithGraveScreenState
                       // User Info
                       Container(
                         padding: const EdgeInsets.only(bottom: 16),
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           border: Border(
-                            bottom: BorderSide(color: _C.surfaceVariant),
+                            bottom: BorderSide(
+                              color: _colors(context).surfaceContainerHighest,
+                            ),
                           ),
                         ),
                         child: Row(
@@ -376,14 +354,14 @@ class _VisitorQrWithGraveScreenState
                             Container(
                               width: 64,
                               height: 64,
-                              decoration: const BoxDecoration(
-                                color: _C.secondaryContainer,
+                              decoration: BoxDecoration(
+                                color: _colors(context).secondaryContainer,
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.person,
                                 size: 34,
-                                color: _C.secondary,
+                                color: _colors(context).secondary,
                               ),
                             ),
 
@@ -395,18 +373,18 @@ class _VisitorQrWithGraveScreenState
                                 children: [
                                   Text(
                                     _userName,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 22,
                                       fontWeight: FontWeight.w500,
-                                      color: _C.onSurface,
+                                      color: _colors(context).onSurface,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     _selectedGrave,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 13,
-                                      color: _C.onSurfaceVariant,
+                                      color: _colors(context).onSurfaceVariant,
                                     ),
                                   ),
                                 ],
@@ -426,10 +404,10 @@ class _VisitorQrWithGraveScreenState
                             child: Container(
                               padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
-                                color: _C.white,
+                                color: _colors(context).surface,
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                  color: _C.primaryFixed,
+                                  color: _colors(context).primaryContainer,
                                   width: 4,
                                 ),
                               ),
@@ -437,12 +415,12 @@ class _VisitorQrWithGraveScreenState
                                 data: _qrData!,
                                 version: QrVersions.auto,
                                 size: 240,
-                                eyeStyle: const QrEyeStyle(
-                                  color: _C.primary,
+                                eyeStyle: QrEyeStyle(
+                                  color: _colors(context).primary,
                                   eyeShape: QrEyeShape.square,
                                 ),
-                                dataModuleStyle: const QrDataModuleStyle(
-                                  color: _C.primary,
+                                dataModuleStyle: QrDataModuleStyle(
+                                  color: _colors(context).primary,
                                   dataModuleShape: QrDataModuleShape.square,
                                 ),
                               ),
@@ -457,16 +435,18 @@ class _VisitorQrWithGraveScreenState
                               vertical: 12,
                             ),
                             decoration: BoxDecoration(
-                              color: _C.primaryFixed.withOpacity(0.2),
+                              color: _colors(
+                                context,
+                              ).primaryContainer.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
-                              children: const [
+                              children: [
                                 Icon(
                                   Icons.verified,
                                   size: 18,
-                                  color: _C.primary,
+                                  color: _colors(context).primary,
                                 ),
                                 SizedBox(width: 8),
                                 Text(
@@ -475,7 +455,7 @@ class _VisitorQrWithGraveScreenState
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
                                     letterSpacing: 1.2,
-                                    color: _C.primary,
+                                    color: _colors(context).primary,
                                   ),
                                 ),
                               ],
@@ -491,18 +471,18 @@ class _VisitorQrWithGraveScreenState
                         width: double.infinity,
                         padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
-                          color: _C.surfaceContainerLow,
+                          color: _colors(context).surfaceContainerLow,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Column(
-                          children: const [
+                          children: [
                             Text(
                               'Present this QR code at the entrance',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
-                                color: _C.onSurfaceVariant,
+                                color: _colors(context).onSurfaceVariant,
                               ),
                             ),
                             SizedBox(height: 4),
@@ -512,7 +492,7 @@ class _VisitorQrWithGraveScreenState
                               style: TextStyle(
                                 fontSize: 11,
                                 letterSpacing: 0.5,
-                                color: _C.outline,
+                                color: _colors(context).outline,
                               ),
                             ),
                           ],
@@ -532,20 +512,20 @@ class _VisitorQrWithGraveScreenState
               child: FilledButton.icon(
                 onPressed: _saveQrCode,
                 style: FilledButton.styleFrom(
-                  backgroundColor: _C.primary,
-                  foregroundColor: _C.onPrimary,
+                  backgroundColor: _colors(context).primary,
+                  foregroundColor: _colors(context).onPrimary,
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  textStyle: const TextStyle(
+                  textStyle: TextStyle(
                     fontFamily: '.SF Pro Text',
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                icon: const Icon(Icons.download_rounded),
-                label: const Text('Save to Device'),
+                icon: Icon(Icons.download_rounded),
+                label: Text('Save to Device'),
               ),
             ),
 
@@ -557,20 +537,20 @@ class _VisitorQrWithGraveScreenState
               child: OutlinedButton.icon(
                 onPressed: () => Navigator.pop(context),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: _C.primary,
-                  side: const BorderSide(color: _C.outlineVariant),
+                  foregroundColor: _colors(context).primary,
+                  side: BorderSide(color: _colors(context).outlineVariant),
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  textStyle: const TextStyle(
+                  textStyle: TextStyle(
                     fontFamily: '.SF Pro Text',
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                icon: const Icon(Icons.arrow_back_rounded),
-                label: const Text('Back to Search'),
+                icon: Icon(Icons.arrow_back_rounded),
+                label: Text('Back to Search'),
               ),
             ),
           ],

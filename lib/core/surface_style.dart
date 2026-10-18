@@ -9,6 +9,8 @@ class SurfaceStyle {
   }) => BoxDecoration(
     color: color,
     borderRadius: BorderRadius.circular(radius),
-    border: Border.all(color: AppColors.borderSubtle, width: 0.5),
+    // Derive the border from the surface itself so panels remain readable in
+    // both themes instead of carrying the light palette into dark mode.
+    border: Border.all(color: color.withValues(alpha: 0.12), width: 0.5),
   );
 }

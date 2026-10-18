@@ -3,20 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 
-import '../../core/app_colors.dart';
 import '../../core/surface_style.dart';
 import '../../utils/lot_formatters.dart';
-
-class _HistoryPalette {
-  static const background = AppColors.background;
-  static const ink = AppColors.text;
-  static const muted = AppColors.textMuted;
-  static const primary = AppColors.brand;
-  static const primarySoft = AppColors.brandLight;
-  static const blueSoft = AppColors.secondaryLight;
-  static const outline = AppColors.border;
-  static const white = AppColors.surface;
-}
 
 class VisitorHistoryScreen extends ConsumerStatefulWidget {
   const VisitorHistoryScreen({super.key});
@@ -27,6 +15,7 @@ class VisitorHistoryScreen extends ConsumerStatefulWidget {
 }
 
 class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
+  ColorScheme _colors(BuildContext context) => Theme.of(context).colorScheme;
   List<Map<String, dynamic>> _visitHistory = [];
   List<Map<String, dynamic>> _filteredHistory = [];
 
@@ -190,24 +179,24 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _HistoryPalette.background,
+      backgroundColor: _colors(context).surfaceContainer,
       appBar: AppBar(
         leading: IconButton(
           onPressed: () => Navigator.of(context).maybePop(),
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: Icon(Icons.arrow_back_rounded),
           tooltip: 'Back',
         ),
         elevation: 0,
-        backgroundColor: _HistoryPalette.background,
+        backgroundColor: _colors(context).surfaceContainer,
         surfaceTintColor: Colors.transparent,
         titleSpacing: 0,
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Visit history',
               style: TextStyle(
-                color: _HistoryPalette.ink,
+                color: _colors(context).onSurface,
                 fontWeight: FontWeight.w700,
                 fontSize: 20,
                 letterSpacing: -0.2,
@@ -216,7 +205,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
             Text(
               'Your quiet moments of remembrance',
               style: TextStyle(
-                color: _HistoryPalette.muted,
+                color: _colors(context).onSurfaceVariant,
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
               ),
@@ -226,10 +215,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
         actions: [
           IconButton(
             onPressed: _loadVisitHistory,
-            icon: const Icon(
-              Icons.refresh_rounded,
-              color: _HistoryPalette.primary,
-            ),
+            icon: Icon(Icons.refresh_rounded, color: _colors(context).primary),
             tooltip: 'Refresh history',
           ),
           const SizedBox(width: 8),
@@ -262,7 +248,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: SurfaceStyle.panel(
-          color: _HistoryPalette.primary,
+          color: _colors(context).primary,
           radius: 26,
         ),
         child: Row(
@@ -274,11 +260,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                 color: Colors.white.withValues(alpha: 0.16),
                 borderRadius: BorderRadius.circular(17),
               ),
-              child: const Icon(
-                Icons.history_rounded,
-                color: Colors.white,
-                size: 26,
-              ),
+              child: Icon(Icons.history_rounded, color: Colors.white, size: 26),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -287,17 +269,17 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                 children: [
                   Text(
                     '${_visitHistory.length} ${_visitHistory.length == 1 ? 'visit' : 'visits'} recorded',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
                       fontSize: 18,
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     'A gentle record of the people and places you have honored.',
                     style: TextStyle(
-                      color: AppColors.brandLight,
+                      color: _colors(context).onPrimary.withValues(alpha: 0.78),
                       height: 1.35,
                       fontSize: 13,
                     ),
@@ -319,13 +301,13 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
         onChanged: (_) => _applyFilters(),
         decoration: InputDecoration(
           hintText: 'Search by deceased name...',
-          hintStyle: const TextStyle(
-            color: _HistoryPalette.muted,
+          hintStyle: TextStyle(
+            color: _colors(context).onSurfaceVariant,
             fontSize: 14,
           ),
-          prefixIcon: const Icon(
+          prefixIcon: Icon(
             Icons.search_rounded,
-            color: _HistoryPalette.muted,
+            color: _colors(context).onSurfaceVariant,
           ),
           suffixIcon: _searchController.text.isEmpty
               ? null
@@ -334,12 +316,12 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                     _searchController.clear();
                     _applyFilters();
                   },
-                  icon: const Icon(Icons.close_rounded),
-                  color: _HistoryPalette.muted,
+                  icon: Icon(Icons.close_rounded),
+                  color: _colors(context).onSurfaceVariant,
                   tooltip: 'Clear search',
                 ),
           filled: true,
-          fillColor: _HistoryPalette.white,
+          fillColor: _colors(context).surface,
           contentPadding: const EdgeInsets.symmetric(vertical: 17),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
@@ -347,14 +329,11 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(color: _HistoryPalette.outline),
+            borderSide: BorderSide(color: _colors(context).outlineVariant),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(
-              color: _HistoryPalette.primary,
-              width: 1.5,
-            ),
+            borderSide: BorderSide(color: _colors(context).primary, width: 1.5),
           ),
         ),
       ),
@@ -389,22 +368,22 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                     ? Icons.calendar_today_rounded
                     : Icons.person_outline_rounded,
                 size: 17,
-                color: selected ? Colors.white : _HistoryPalette.primary,
+                color: selected ? Colors.white : _colors(context).primary,
               ),
               label: Text(filter),
               labelStyle: TextStyle(
-                color: selected ? Colors.white : _HistoryPalette.ink,
+                color: selected ? Colors.white : _colors(context).onSurface,
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
               ),
               showCheckmark: false,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              backgroundColor: _HistoryPalette.white,
-              selectedColor: _HistoryPalette.primary,
+              backgroundColor: _colors(context).surface,
+              selectedColor: _colors(context).primary,
               side: BorderSide(
                 color: selected
-                    ? _HistoryPalette.primary
-                    : _HistoryPalette.outline,
+                    ? _colors(context).primary
+                    : _colors(context).outlineVariant,
               ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
@@ -421,8 +400,8 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
 
     return RefreshIndicator(
       onRefresh: _loadVisitHistory,
-      color: _HistoryPalette.primary,
-      backgroundColor: _HistoryPalette.white,
+      color: _colors(context).primary,
+      backgroundColor: _colors(context).surface,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
@@ -434,11 +413,11 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                 padding: const EdgeInsets.only(top: 16, bottom: 12),
                 child: Text(
                   entry.key.toUpperCase(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     letterSpacing: 1.2,
                     fontWeight: FontWeight.w700,
-                    color: _HistoryPalette.muted,
+                    color: _colors(context).onSurfaceVariant,
                   ),
                 ),
               ),
@@ -461,9 +440,9 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: _HistoryPalette.white,
+                    color: _colors(context).surface,
                     borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: _HistoryPalette.outline),
+                    border: Border.all(color: _colors(context).outlineVariant),
                     boxShadow: const [
                       BoxShadow(
                         color: Color(0x0D0066CC),
@@ -479,12 +458,12 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                         width: 52,
                         height: 52,
                         decoration: BoxDecoration(
-                          color: _HistoryPalette.blueSoft,
+                          color: _colors(context).secondaryContainer,
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.church_rounded,
-                          color: _HistoryPalette.primary,
+                          color: _colors(context).primary,
                           size: 24,
                         ),
                       ),
@@ -501,8 +480,8 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                                     deceasedName,
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: _HistoryPalette.ink,
+                                    style: TextStyle(
+                                      color: _colors(context).onSurface,
                                       fontSize: 16,
                                       height: 1.2,
                                       fontWeight: FontWeight.w700,
@@ -513,8 +492,8 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                                 const SizedBox(width: 8),
                                 Text(
                                   formattedTime,
-                                  style: const TextStyle(
-                                    color: _HistoryPalette.muted,
+                                  style: TextStyle(
+                                    color: _colors(context).onSurfaceVariant,
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -524,10 +503,10 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                             const SizedBox(height: 8),
                             Row(
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.place_outlined,
                                   size: 15,
-                                  color: _HistoryPalette.muted,
+                                  color: _colors(context).onSurfaceVariant,
                                 ),
                                 const SizedBox(width: 5),
                                 Expanded(
@@ -535,8 +514,8 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                                     '$blockLabel · Lot $lotNumber',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: _HistoryPalette.muted,
+                                    style: TextStyle(
+                                      color: _colors(context).onSurfaceVariant,
                                       fontSize: 13,
                                     ),
                                   ),
@@ -552,13 +531,13 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                                     vertical: 5,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: _HistoryPalette.primarySoft,
+                                    color: _colors(context).primaryContainer,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
                                     formattedDate,
-                                    style: const TextStyle(
-                                      color: _HistoryPalette.primary,
+                                    style: TextStyle(
+                                      color: _colors(context).primary,
                                       fontSize: 11,
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -568,8 +547,8 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                                   const SizedBox(width: 8),
                                   Text(
                                     visit['method'].toString(),
-                                    style: const TextStyle(
-                                      color: _HistoryPalette.muted,
+                                    style: TextStyle(
+                                      color: _colors(context).onSurfaceVariant,
                                       fontSize: 11,
                                     ),
                                   ),
@@ -601,29 +580,32 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
               width: 76,
               height: 76,
               decoration: BoxDecoration(
-                color: _HistoryPalette.primarySoft,
+                color: _colors(context).primaryContainer,
                 borderRadius: BorderRadius.circular(24),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.auto_stories_outlined,
-                color: _HistoryPalette.primary,
+                color: _colors(context).primary,
                 size: 34,
               ),
             ),
             const SizedBox(height: 18),
-            const Text(
+            Text(
               'No visits yet',
               style: TextStyle(
-                color: _HistoryPalette.ink,
+                color: _colors(context).onSurface,
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 6),
-            const Text(
+            Text(
               'Your completed cemetery visits will appear here.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: _HistoryPalette.muted, fontSize: 13),
+              style: TextStyle(
+                color: _colors(context).onSurfaceVariant,
+                fontSize: 13,
+              ),
             ),
           ],
         ),
@@ -638,17 +620,17 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               Icons.cloud_off_rounded,
-              color: _HistoryPalette.muted,
+              color: _colors(context).onSurfaceVariant,
               size: 42,
             ),
             const SizedBox(height: 14),
             Text(
               'We could not load your visits',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: _HistoryPalette.ink,
+              style: TextStyle(
+                color: _colors(context).onSurface,
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
               ),
@@ -657,16 +639,16 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
             Text(
               _errorMessage ?? 'Please try again.',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: _HistoryPalette.muted,
+              style: TextStyle(
+                color: _colors(context).onSurfaceVariant,
                 fontSize: 13,
               ),
             ),
             const SizedBox(height: 18),
             FilledButton.icon(
               onPressed: _loadVisitHistory,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Try again'),
+              icon: Icon(Icons.refresh_rounded),
+              label: Text('Try again'),
             ),
           ],
         ),
