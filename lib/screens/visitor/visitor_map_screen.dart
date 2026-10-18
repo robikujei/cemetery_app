@@ -90,6 +90,10 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
   final GpsTracker _gps = GpsTracker();
   bool _mapReady = false;
   bool _centerOnNextFix = false;
+  bool _navigating = false;
+  bool _followGps = false;
+  Object? _lastRouteKey;
+  List<LatLng> _lastRoute = const [];
 
   @override
   void initState() {
@@ -131,7 +135,10 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
   void _onGpsChanged() {
     if (!mounted) return;
     setState(() {});
-    if (_centerOnNextFix && _gps.position != null && _mapReady) {
+    if ((_centerOnNextFix || (_usingNavigationFix && _followGps)) &&
+        !_gps.stale &&
+        _gps.position != null &&
+        _mapReady) {
       _centerOnNextFix = false;
       WidgetsBinding.instance.addPostFrameCallback((_) => _recenterGps());
     }
@@ -149,6 +156,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
   }
 
   void _startOrCenterGps() {
+    _followGps = true;
     if (_gps.active) {
       if (_gps.position != null) _recenterGps();
       return;
@@ -298,6 +306,9 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
       (marker) => _sameRecordId(_markerLotId(marker), lotId),
     );
     if (index == -1) return;
+    if (_navigating && _sameRecordId(lotId, _selectedLotId)) {
+      _stopNavigation();
+    }
 
     setState(() {
       final removed = _lotMarkers.removeAt(index);
@@ -377,8 +388,11 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
     bool showRoute = false,
     Map<String, dynamic>? grave,
   }) {
+    if (_navigating) _stopNavigation();
     final lot = marker['cemetery_lot'] ?? {};
     setState(() {
+      _navigating = false;
+      _followGps = false;
       _selectedMarker = marker;
       _selectedGrave = grave;
       _selectedLotId = lot['lot_id'];
@@ -396,7 +410,59 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
     Map<String, dynamic>? grave,
   }) {
     _selectMarker(marker, showRoute: true, grave: grave);
+    setState(() {
+      _navigating = true;
+      _followGps = true;
+      _centerOnNextFix = false;
+    });
+    unawaited(_gps.start());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_mapReady || !_navigating) return;
+      if (_usingNavigationFix) {
+        _recenterGps();
+      } else {
+        // Keep the cemetery route in view while permission/fix is pending.
+        final points = _routeFromEntranceToLot(marker);
+        if (points.length > 1) {
+          _mapController.fitCamera(
+            CameraFit.bounds(
+              bounds: LatLngBounds.fromPoints(points),
+              padding: const EdgeInsets.fromLTRB(48, 100, 48, 240),
+              maxZoom: 19.5,
+            ),
+          );
+        } else {
+          _mapController.move(_markerToLatLng(marker), _initialZoom);
+        }
+      }
+    });
   }
+
+  void _stopNavigation() {
+    setState(() {
+      _navigating = false;
+      _followGps = false;
+      _centerOnNextFix = false;
+      _showNavigationRoute = false;
+    });
+    _gps.stop();
+  }
+
+  String? get _navigationNotice {
+    if (!_navigating) return null;
+    if (!_gps.active || _gps.position == null) {
+      return _gps.message ?? 'Tap GPS to resume navigation.';
+    }
+    if (_gps.stale) return 'GPS signal lost. Waiting for a fresh location.';
+    final fix = _gps.position!;
+    if (fix.accuracy > 50) return 'Waiting for a more accurate GPS location.';
+    if (!_cemeteryCameraBounds.contains(LatLng(fix.latitude, fix.longitude))) {
+      return 'Go to the cemetery to begin walking guidance.';
+    }
+    return null;
+  }
+
+  bool get _usingNavigationFix => _navigating && _navigationNotice == null;
 
   void _selectMarkerByLotId(String lotId, {bool showSheet = false}) {
     final marker = _lotMarkers.cast<Map<String, dynamic>?>().firstWhere(
@@ -407,6 +473,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
   }
 
   void _clearSelection() {
+    if (_navigating) _stopNavigation();
     setState(() {
       _selectedMarker = null;
       _selectedGrave = null;
@@ -1010,7 +1077,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
             const SizedBox(width: 8),
             const Expanded(
               child: Text(
-                'Eternal Rest',
+                'Eternal Garden',
                 style: TextStyle(
                   color: _C.primaryContainer,
                   fontSize: 20,
@@ -1230,11 +1297,28 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
         ? <LatLng>[]
         : _routeFromEntranceToLot(_selectedMarker!);
     final distanceMeters = _routeDistanceMeters(routePoints);
-    final routeSummary = distanceMeters == null
-        ? 'Route unavailable'
-        : distanceMeters >= 1000
-        ? '${(distanceMeters / 1000).toStringAsFixed(1)} km • ${max(1, (distanceMeters / 75).ceil())} mins walking'
-        : '${distanceMeters.round()}m • ${max(1, (distanceMeters / 75).ceil())} mins walking';
+    final arrived =
+        _navigating &&
+        _navigationNotice == null &&
+        _selectedMarker != null &&
+        _gps.position != null &&
+        _gps.position!.accuracy <= 15 &&
+        const Distance()(
+              LatLng(_gps.position!.latitude, _gps.position!.longitude),
+              _markerToLatLng(_selectedMarker!),
+            ) <=
+            10;
+    final distanceSummary = distanceMeters == null
+        ? 'No walking route is mapped for this lot yet.'
+        : '${_usingNavigationFix ? 'From your location' : 'From the entrance'}: '
+              '${distanceMeters >= 1000 ? '${(distanceMeters / 1000).toStringAsFixed(1)} km' : '${distanceMeters.round()}m'}'
+              ' • ${max(1, (distanceMeters / 75).ceil())} mins walking';
+    final routeSummary = [
+      if (_navigationNotice case final notice?) notice,
+      arrived
+          ? 'You are near your destination. Check the plot label.'
+          : distanceSummary,
+    ].join('\n');
 
     return Positioned(
       left: 24,
@@ -1300,7 +1384,9 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
             ),
             const SizedBox(width: 10),
             FilledButton(
-              onPressed: _selectedMarker == null
+              onPressed: _navigating
+                  ? _stopNavigation
+                  : _selectedMarker == null
                   ? null
                   : () => _startRouteToMarker(
                       _selectedMarker!,
@@ -1318,7 +1404,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
-              child: const Text('Start Route'),
+              child: Text(_navigating ? 'Stop' : 'Start Route'),
             ),
           ],
         ),
@@ -1596,6 +1682,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
           }
         },
         onPositionChanged: (position, hasGesture) {
+          if (hasGesture) _followGps = false;
           _currentZoom = position.zoom;
         },
       ),
@@ -1627,10 +1714,16 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
         ),
         features.overlayPolylines,
         if (routePoints.length > 1)
-          PolylineLayer(
-            polylines: [
-              Polyline(points: routePoints, color: _C.primary, strokeWidth: 5),
-            ],
+          IgnorePointer(
+            child: PolylineLayer(
+              polylines: [
+                Polyline(
+                  points: routePoints,
+                  color: _C.primary,
+                  strokeWidth: 5,
+                ),
+              ],
+            ),
           ),
         features.points,
         ViewportMarkerLayer(markers: markers),
@@ -1719,10 +1812,30 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
   }
 
   List<LatLng> _routeFromEntranceToLot(Map<String, dynamic> marker) {
-    if (!_hasRouteStart) return [];
-    final start = _routeStart;
+    if (!_usingNavigationFix && !_hasRouteStart) return [];
+    final fix = _gps.position;
+    final start = _usingNavigationFix && fix != null
+        ? LatLng(fix.latitude, fix.longitude)
+        : _routeStart;
     final end = _markerToLatLng(marker);
+    // The route card and map request the same route. Reuse it until a location,
+    // destination or freshly loaded network snapshot changes.
+    final key = (
+      start,
+      end,
+      _mapFeatures,
+      _pathNodes,
+      _pathEdges,
+      _mapCenter,
+      _activeMarkerLatSpan,
+      _activeMarkerLngSpan,
+    );
+    if (_lastRouteKey == key) return _lastRoute;
+    _lastRouteKey = key;
+    return _lastRoute = _calculateWalkingRoute(start, end);
+  }
 
+  List<LatLng> _calculateWalkingRoute(LatLng start, LatLng end) {
     final qgisRoute = shortestRouteThroughPathways(
       pathwayLines: mapFeaturePathwayLines(_mapFeatures),
       start: start,
@@ -1730,19 +1843,19 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
     );
     if (qgisRoute.isNotEmpty) return qgisRoute;
 
-    if (_pathNodes.isEmpty) return [start, end];
+    if (_pathNodes.isEmpty) return [];
 
     final startNode = _nearestNodeTo(start);
     final endNode = _nearestNodeTo(end);
-    if (startNode == null || endNode == null) return [start, end];
+    if (startNode == null || endNode == null) return [];
 
     final startId = _asNodeId(startNode['node_id']);
     final endId = _asNodeId(endNode['node_id']);
-    if (startId == null || endId == null) return [start, end];
+    if (startId == null || endId == null) return [];
 
     final nodePath = _shortestNodePath(startId, endId);
     if (nodePath.isEmpty) {
-      return [start, _nodeToLatLng(startNode), _nodeToLatLng(endNode), end];
+      return [];
     }
 
     return [
