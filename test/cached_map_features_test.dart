@@ -26,6 +26,18 @@ void main() {
             .polylines,
         isEmpty,
       );
+      final adminPreview = cache.resolve(
+        source,
+        publicPreview: false,
+        showPathNetwork: false,
+      );
+      expect(adminPreview, isNot(same(admin)));
+      expect(
+        ((adminPreview.overlayPolylines as IgnorePointer).child
+                as PolylineLayer)
+            .polylines,
+        isEmpty,
+      );
       final reloaded = cache.resolve(List.of(source), publicPreview: true);
       expect(reloaded, isNot(same(visitor)));
     },
