@@ -30,6 +30,10 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
   SpatialResult _spatial = const SpatialResult([], [], 0, 0);
   RealtimeChannel? _channel;
   Timer? _refreshTimer;
+  static const _mockEnabled = bool.fromEnvironment(
+    'MOCK_ANALYTICS',
+    defaultValue: false,
+  );
   static const _accent = AppColors.brand;
   static const _types = [
     'Burial records',
@@ -46,6 +50,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
   void initState() {
     super.initState();
     _load();
+    if (_mockEnabled) return;
     var channel = Supabase.instance.client.channel('reports-monitoring');
     for (final table in [
       'cemetery_lot',
@@ -78,7 +83,9 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
   Future<void> _load() async {
     if (_loading) return;
     setState(() => _loading = true);
-    final data = await AnalyticsData.load(Supabase.instance.client);
+    final data = _mockEnabled
+        ? AnalyticsData.mock()
+        : await AnalyticsData.load(Supabase.instance.client);
     if (!mounted) return;
     setState(() {
       _data = data;
@@ -264,8 +271,20 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
                 icon: const Icon(Icons.refresh),
               ),
               Text('Updated ${DateFormat.Hm().format(data.loadedAt!)}'),
+              if (_mockEnabled)
+                const Chip(
+                  avatar: Icon(Icons.science_outlined, size: 16),
+                  label: Text('Demo data'),
+                ),
             ],
           ),
+          if (_mockEnabled)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text(
+                'Showing sample reports and analytics. This data is local and is not connected to Supabase.',
+              ),
+            ),
           const SizedBox(height: 12),
           if (data.errors.isNotEmpty)
             _card(

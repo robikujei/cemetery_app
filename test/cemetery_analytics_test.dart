@@ -111,4 +111,18 @@ void main() {
     expect(data.spatial().excluded, 2);
     expect(data.spatial().points.single.id, '2');
   });
+  test('Mock analytics data fills every report source and lot polygons', () {
+    final data = AnalyticsData.mock();
+
+    expect(data.errors, isEmpty);
+    expect(data.lots, hasLength(48));
+    expect(data.burials, isNotEmpty);
+    expect(data.sales, isNotEmpty);
+    expect(data.payments, isNotEmpty);
+    expect(data.visitors, hasLength(120));
+    expect(data.features, isEmpty);
+    expect(data.mappedLotAreas(), hasLength(3));
+    expect(data.spatial(minPoints: 2).points, isNotEmpty);
+    expect(data.position(data.lots.first), isNotNull);
+  });
 }

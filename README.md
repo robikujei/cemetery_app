@@ -1,17 +1,19 @@
 # cemetery_app
 
-A new Flutter project.
+Flutter cemetery management and grave-finder application.
 
-## Getting Started
+## Reports and analytics demo data
 
-This project is a starting point for a Flutter application.
+The admin reports screen can be previewed without a Supabase dataset. Start or
+build the app with the opt-in compile-time flag:
 
-A few resources to get you started if this is your first Flutter project:
+```bash
+flutter run -d chrome --dart-define=MOCK_ANALYTICS=true
+flutter build web --dart-define=MOCK_ANALYTICS=true
+```
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+The demo dataset includes lots with polygons, burial records, visitor logs,
+ownerships, and payments so every report and the lot-only hotspot map can be
+reviewed. A `Demo data` badge is shown in the admin screen, and the default
+build leaves the flag disabled and continues to load production data from
+Supabase.
