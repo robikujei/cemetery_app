@@ -42,11 +42,19 @@ export function App() {
   const [lots, setLots] = useState<Lot[]>([]);
   const [selected, setSelected] = useState<Lot | null>(null);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [user, setUser] = useState<any>(null);
+  const [authError, setAuthError] = useState('');
+  useEffect(() => { supabase.auth.getUser().then(({ data }) => setUser(data.user)); const { data } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user ?? null)); return () => data.subscription.unsubscribe(); }, []);
   useEffect(() => { (async () => {
     const { data } = await supabase.from('lot_markers').select('x_percent,y_percent,cemetery_lot(lot_id,lot_number,status)').limit(2000);
     setLots((data ?? []).map((row: any) => ({ x_percent: row.x_percent, y_percent: row.y_percent, ...row.cemetery_lot })));
     setLoading(false);
   })(); }, []);
-  return <main><header><strong>Eternal Garden</strong><span>{loading ? 'Loading lots…' : `${lots.length} lots`}</span></header><MapView lots={lots} selected={selected} onSelect={setSelected} />{selected && <aside><b>Lot {selected.lot_number ?? selected.lot_id}</b><span>{selected.status ?? 'Unknown'}</span><button onClick={() => setSelected(null)}>Close</button></aside>}</main>;
+  const visibleLots = lots.filter((lot) => !query || String(lot.lot_number ?? lot.lot_id).toLowerCase().includes(query.toLowerCase()));
+  async function signIn(e: Event) { e.preventDefault(); setAuthError(''); const { data, error } = await supabase.auth.signInWithPassword({ email, password }); if (error) setAuthError(error.message); else setUser(data.user); }
+  return <main><header><strong>Eternal Garden</strong><span>{loading ? 'Loading lots…' : `${visibleLots.length} lots`}</span><nav>{user ? <><span>{user.email}</span><button onClick={() => supabase.auth.signOut()}>Sign out</button></> : <span>Visitor</span>}</nav></header><section class="toolbar"><input aria-label="Search lots" value={query} onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)} placeholder="Search lot number" />{!user && <details><summary>Sign in</summary><form onSubmit={signIn}><input type="email" required value={email} onInput={(e) => setEmail((e.currentTarget as HTMLInputElement).value)} placeholder="Email" /><input type="password" required value={password} onInput={(e) => setPassword((e.currentTarget as HTMLInputElement).value)} placeholder="Password" /><button>Sign in</button>{authError && <small>{authError}</small>}</form></details>}</section><MapView lots={visibleLots} selected={selected} onSelect={setSelected} />{selected && <aside><b>Lot {selected.lot_number ?? selected.lot_id}</b><span>{selected.status ?? 'Unknown'}</span><button onClick={() => setSelected(null)}>Close</button></aside>}</main>;
 }
 render(<App />, document.getElementById('app')!);
