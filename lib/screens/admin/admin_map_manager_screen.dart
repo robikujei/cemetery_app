@@ -2432,10 +2432,13 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
   }
 
   Widget _buildMap() {
-    final routePoints = _selectedMarker == null
-        ? <LatLng>[]
-        : _routeFromEntranceToLot(_selectedMarker!);
-    final features = _featureLayers.resolve(_mapFeatures, publicPreview: false);
+    final showPathNetwork = _mode == _MapMode.connectNodes;
+    final routePoints = const <LatLng>[];
+    final features = _featureLayers.resolve(
+      _mapFeatures,
+      publicPreview: false,
+      showPathNetwork: showPathNetwork,
+    );
 
     return Container(
       key: _mapKey,
@@ -2495,17 +2498,18 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
             ),
           ),
           features.overlayPolylines,
-          PolylineLayer(
-            polylines: [
-              ..._edgePolylines(),
-              if (routePoints.length > 1)
-                Polyline(
-                  points: routePoints,
-                  color: _C.primary,
-                  strokeWidth: 5,
-                ),
-            ],
-          ),
+          if (showPathNetwork || routePoints.length > 1)
+            PolylineLayer(
+              polylines: [
+                if (showPathNetwork) ..._edgePolylines(),
+                if (routePoints.length > 1)
+                  Polyline(
+                    points: routePoints,
+                    color: _C.primary,
+                    strokeWidth: 5,
+                  ),
+              ],
+            ),
           features.points,
           ViewportMarkerLayer(markers: _mapMarkers()),
           RichAttributionWidget(
