@@ -8,6 +8,9 @@ import '../screens/admin/admin_shell_screen.dart' deferred as admin;
 import '../screens/guard/qr_scanner_screen.dart' deferred as guard;
 import '../screens/lot_owner/lot_owner_home_screen.dart' deferred as owner;
 
+String? _cachedRoleUserId;
+String? _cachedHome;
+
 final router = GoRouter(
   initialLocation: '/login',
   redirect: (context, state) async {
@@ -18,6 +21,9 @@ final router = GoRouter(
     final client = Supabase.instance.client;
     final user = client.auth.currentUser;
     if (user == null) return '/login';
+    if (_cachedRoleUserId == user.id && _cachedHome != null) {
+      return state.matchedLocation == _cachedHome ? null : _cachedHome;
+    }
     try {
       final profile = await client
           .from('users')
@@ -31,6 +37,8 @@ final router = GoRouter(
         'visitor' => '/visitor',
         _ => '/login',
       };
+      _cachedRoleUserId = user.id;
+      _cachedHome = home;
       return state.matchedLocation == home ? null : home;
     } catch (_) {
       return '/login';
