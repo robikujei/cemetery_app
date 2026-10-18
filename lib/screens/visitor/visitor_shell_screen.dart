@@ -2,7 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/app_colors.dart';
 import '../../providers/visitor_nav_providers.dart';
 import 'visitor_home_screen.dart';
 import 'visitor_map_screen.dart';
@@ -24,6 +23,7 @@ class VisitorShellScreen extends ConsumerWidget {
       VisitorProfileScreen(),
     ];
     final wide = MediaQuery.sizeOf(context).width >= 840;
+    final colors = Theme.of(context).colorScheme;
     final body = RepaintBoundary(child: screens[index]);
     return Scaffold(
       // Reserve the navigation area so it cannot cover profile actions.
@@ -33,35 +33,33 @@ class VisitorShellScreen extends ConsumerWidget {
                 NavigationRail(
                   extended: true,
                   minExtendedWidth: 208,
-                  backgroundColor: AppColors.surfaceLow,
+                  backgroundColor: colors.surfaceContainerLow,
                   selectedIndex: index,
                   onDestinationSelected: select,
                   useIndicator: true,
-                  indicatorColor: AppColors.brandLight,
+                  indicatorColor: colors.primaryContainer,
                   indicatorShape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  selectedIconTheme: const IconThemeData(
-                    color: AppColors.brand,
+                  selectedIconTheme: IconThemeData(color: colors.primary),
+                  unselectedIconTheme: IconThemeData(
+                    color: colors.onSurfaceVariant,
                   ),
-                  unselectedIconTheme: const IconThemeData(
-                    color: AppColors.textSecondary,
-                  ),
-                  selectedLabelTextStyle: const TextStyle(
+                  selectedLabelTextStyle: TextStyle(
                     fontFamily: '.SF Pro Text',
-                    color: AppColors.brandDark,
+                    color: colors.onPrimaryContainer,
                     fontWeight: FontWeight.w600,
                   ),
-                  unselectedLabelTextStyle: const TextStyle(
+                  unselectedLabelTextStyle: TextStyle(
                     fontFamily: '.SF Pro Text',
-                    color: AppColors.textSecondary,
+                    color: colors.onSurfaceVariant,
                   ),
-                  leading: const Padding(
+                  leading: Padding(
                     padding: EdgeInsets.fromLTRB(16, 20, 16, 28),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.church_outlined, color: AppColors.brand),
+                        Icon(Icons.church_outlined, color: colors.primary),
                         SizedBox(width: 12),
                         Text(
                           'Visitor services',
@@ -100,16 +98,16 @@ class VisitorShellScreen extends ConsumerWidget {
       bottomNavigationBar: wide
           ? null
           : DecoratedBox(
-              decoration: const BoxDecoration(
-                border: Border(top: BorderSide(color: AppColors.borderSubtle)),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: colors.outlineVariant)),
               ),
               child: BottomNavigationBar(
                 type: BottomNavigationBarType.fixed,
                 currentIndex: index,
                 onTap: select,
-                backgroundColor: AppColors.surface,
-                selectedItemColor: AppColors.brand,
-                unselectedItemColor: AppColors.textSecondary,
+                backgroundColor: colors.surface,
+                selectedItemColor: colors.primary,
+                unselectedItemColor: colors.onSurfaceVariant,
                 showUnselectedLabels: true,
                 selectedFontSize: 11,
                 unselectedFontSize: 11,

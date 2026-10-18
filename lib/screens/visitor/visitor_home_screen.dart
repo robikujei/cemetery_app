@@ -1,4 +1,3 @@
-import '../../core/app_colors.dart';
 import '../../core/surface_style.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -12,18 +11,6 @@ import 'visitor_map_screen.dart';
 import '../../providers/visitor_nav_providers.dart';
 
 // ── Design tokens ────────────────────────────────────────────────────────────
-class _C {
-  static const background = AppColors.background;
-  static const primary = AppColors.brandDark;
-  static const primaryContainer = AppColors.brand;
-  static const surfaceContainerLow = AppColors.surfaceLow;
-  static const surfaceContainer = AppColors.surfaceHigh;
-  static const onSecondaryContainer = AppColors.secondary;
-  static const onSurface = AppColors.text;
-  static const outline = AppColors.textMuted;
-  static const white = Color(0xFFFFFFFF);
-}
-
 class VisitorHomeScreen extends ConsumerStatefulWidget {
   const VisitorHomeScreen({super.key});
 
@@ -126,6 +113,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
   }
 
   Future<void> _clearRecentSearches() async {
+    final colors = Theme.of(context).colorScheme;
     try {
       final prefs = await SharedPreferences.getInstance();
       final userId = Supabase.instance.client.auth.currentUser?.id;
@@ -138,7 +126,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
               content: const Text('Recent searches cleared'),
               duration: const Duration(seconds: 2),
               behavior: SnackBarBehavior.floating,
-              backgroundColor: _C.primaryContainer,
+              backgroundColor: colors.primaryContainer,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -183,11 +171,12 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
   // ── Build ────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: _C.background,
+      backgroundColor: colors.surfaceContainer,
       // Top App Bar
       appBar: AppBar(
-        backgroundColor: _C.white.withOpacity(0.92),
+        backgroundColor: colors.surface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 1,
@@ -195,17 +184,17 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
         titleSpacing: 24,
         title: Row(
           children: [
-            const Icon(Icons.church, color: _C.primaryContainer, size: 22),
+            Icon(Icons.church, color: colors.primary, size: 22),
             const SizedBox(width: 10),
             Flexible(
               child: Text(
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 'Eternal Garden',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
-                  color: _C.primaryContainer,
+                  color: colors.primary,
                   letterSpacing: -0.3,
                 ),
               ),
@@ -214,9 +203,9 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(
+            icon: Icon(
               Icons.notifications_outlined,
-              color: _C.primaryContainer,
+              color: colors.primary,
               size: 22,
             ),
             onPressed: () {},
@@ -225,7 +214,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Divider(height: 1, thickness: 1, color: Colors.grey.shade100),
+          child: Divider(height: 1, thickness: 1, color: colors.outlineVariant),
         ),
       ),
       body: Align(
@@ -243,21 +232,21 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                 // ── Welcome Hero ──────────────────────────────────────────
                 Text(
                   'Your cemetery companion',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 1.2,
-                    color: _C.primary,
+                    color: colors.primary,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Welcome back, $_userName',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 34,
                     fontWeight: FontWeight.w600,
                     height: 1.25,
-                    color: _C.onSurface,
+                    color: colors.onSurface,
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -271,19 +260,23 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                       vertical: 16,
                     ),
                     decoration: SurfaceStyle.panel(
-                      color: Colors.white,
+                      color: colors.surface,
                       radius: 4,
                     ),
                     child: Row(
-                      children: const [
-                        Icon(Icons.search_rounded, color: _C.outline, size: 22),
+                      children: [
+                        Icon(
+                          Icons.search_rounded,
+                          color: colors.onSurfaceVariant,
+                          size: 22,
+                        ),
                         SizedBox(width: 14),
                         Expanded(
                           child: Text(
                             'Search deceased name, lot number, or block',
                             style: TextStyle(
                               fontSize: 14,
-                              color: _C.outline,
+                              color: colors.onSurfaceVariant,
                               letterSpacing: 0.1,
                             ),
                           ),
@@ -302,19 +295,19 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Recent Searches',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w500,
-                        color: _C.onSurface,
+                        color: colors.onSurface,
                       ),
                     ),
                     if (_recentSearches.isNotEmpty)
                       TextButton(
                         onPressed: _clearRecentSearches,
                         style: TextButton.styleFrom(
-                          foregroundColor: _C.primary,
+                          foregroundColor: colors.primary,
                           padding: EdgeInsets.zero,
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -339,12 +332,17 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                           Icon(
                             Icons.history_rounded,
                             size: 44,
-                            color: _C.outline.withOpacity(0.4),
+                            color: colors.onSurfaceVariant.withValues(
+                              alpha: 0.4,
+                            ),
                           ),
                           const SizedBox(height: 10),
-                          const Text(
+                          Text(
                             'No recent searches',
-                            style: TextStyle(fontSize: 14, color: _C.outline),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: colors.onSurfaceVariant,
+                            ),
                           ),
                         ],
                       ),
@@ -374,52 +372,55 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
   // ── Bento Grid (mirrors the 2×2 HTML template exactly) ──────────────────
   Widget _buildBentoGrid() {
     return LayoutBuilder(
-      builder: (context, constraints) => GridView.count(
-        crossAxisCount: constraints.maxWidth >= 720 ? 4 : 2,
-        mainAxisExtent: 100 + MediaQuery.textScalerOf(context).scale(48),
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        children: [
-          _buildBentoCard(
-            label: 'Find Grave',
-            icon: Icons.person_search_rounded,
-            bgColor: _C.primary,
-            iconBgColor: Colors.white.withOpacity(0.2),
-            iconColor: Colors.white,
-            labelColor: Colors.white,
-            onTap: _openSearch,
-          ),
-          _buildBentoCard(
-            label: 'View Map',
-            icon: Icons.map_outlined,
-            bgColor: Colors.white,
-            iconBgColor: _C.primary.withOpacity(0.1),
-            iconColor: _C.onSecondaryContainer,
-            labelColor: _C.onSecondaryContainer,
-            onTap: _goToMapTab,
-          ),
-          _buildBentoCard(
-            label: 'My Visits',
-            icon: Icons.event_note_outlined,
-            bgColor: Colors.white,
-            iconBgColor: AppColors.brandLight,
-            iconColor: AppColors.brand,
-            labelColor: AppColors.text,
-            onTap: _openHistoryScreen,
-          ),
-          _buildBentoCard(
-            label: 'My QR',
-            icon: Icons.qr_code_rounded,
-            bgColor: Colors.white,
-            iconBgColor: _C.primary.withOpacity(0.1),
-            iconColor: _C.primary,
-            labelColor: _C.onSurface,
-            onTap: _openQrScreen,
-          ),
-        ],
-      ),
+      builder: (context, constraints) {
+        final colors = Theme.of(context).colorScheme;
+        return GridView.count(
+          crossAxisCount: constraints.maxWidth >= 720 ? 4 : 2,
+          mainAxisExtent: 100 + MediaQuery.textScalerOf(context).scale(48),
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            _buildBentoCard(
+              label: 'Find Grave',
+              icon: Icons.person_search_rounded,
+              bgColor: colors.primary,
+              iconBgColor: colors.onPrimary.withValues(alpha: 0.2),
+              iconColor: colors.onPrimary,
+              labelColor: colors.onPrimary,
+              onTap: _openSearch,
+            ),
+            _buildBentoCard(
+              label: 'View Map',
+              icon: Icons.map_outlined,
+              bgColor: colors.surface,
+              iconBgColor: colors.primary.withValues(alpha: 0.1),
+              iconColor: colors.onSurfaceVariant,
+              labelColor: colors.onSurface,
+              onTap: _goToMapTab,
+            ),
+            _buildBentoCard(
+              label: 'My Visits',
+              icon: Icons.event_note_outlined,
+              bgColor: colors.surface,
+              iconBgColor: colors.primary.withValues(alpha: 0.1),
+              iconColor: colors.primary,
+              labelColor: colors.onSurface,
+              onTap: _openHistoryScreen,
+            ),
+            _buildBentoCard(
+              label: 'My QR',
+              icon: Icons.qr_code_rounded,
+              bgColor: colors.surface,
+              iconBgColor: colors.primary.withValues(alpha: 0.1),
+              iconColor: colors.primary,
+              labelColor: colors.onSurface,
+              onTap: _openQrScreen,
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -481,8 +482,9 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
     required String details,
     required VoidCallback onTap,
   }) {
+    final colors = Theme.of(context).colorScheme;
     return Material(
-      color: _C.white,
+      color: colors.surface,
       borderRadius: BorderRadius.circular(20),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -490,7 +492,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            border: Border.all(color: _C.surfaceContainer),
+            border: Border.all(color: colors.outlineVariant),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Row(
@@ -500,12 +502,12 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: _C.surfaceContainerLow,
+                  color: colors.surfaceContainerLow,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.person_outline_rounded,
-                  color: _C.outline,
+                  color: colors.onSurfaceVariant,
                   size: 22,
                 ),
               ),
@@ -516,26 +518,30 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                   children: [
                     Text(
                       name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
                         letterSpacing: 0.15,
-                        color: _C.onSurface,
+                        color: colors.onSurface,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       details,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         letterSpacing: 0.25,
-                        color: _C.outline,
+                        color: colors.onSurfaceVariant,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.history_rounded, color: _C.outline, size: 20),
+              Icon(
+                Icons.history_rounded,
+                color: colors.onSurfaceVariant,
+                size: 20,
+              ),
             ],
           ),
         ),

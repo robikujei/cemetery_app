@@ -14,7 +14,8 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
+    final theme = Theme.of(context);
+    final t = theme.textTheme;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -22,10 +23,18 @@ class SectionHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+              Text(
+                title,
+                style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+              ),
               if (subtitle != null) ...[
                 const SizedBox(height: 4),
-                Text(subtitle!, style: t.bodyMedium?.copyWith(color: Colors.black54)),
+                Text(
+                  subtitle!,
+                  style: t.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
               ],
             ],
           ),
@@ -35,4 +44,3 @@ class SectionHeader extends StatelessWidget {
     );
   }
 }
-

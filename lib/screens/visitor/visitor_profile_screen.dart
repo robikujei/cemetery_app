@@ -1,4 +1,3 @@
-import '../../core/app_colors.dart';
 import '../../widgets/logout_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -133,16 +132,19 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Name updated!'),
-            backgroundColor: AppColors.brand,
+            backgroundColor: Theme.of(context).colorScheme.primary,
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
         );
       }
     } finally {
@@ -193,9 +195,9 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Password changed!'),
-            backgroundColor: AppColors.brand,
+            backgroundColor: Theme.of(context).colorScheme.primary,
           ),
         );
         _currentPasswordController.clear();
@@ -208,7 +210,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error changing password: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -306,9 +308,9 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Profile photo updated!'),
-          backgroundColor: AppColors.brand,
+          backgroundColor: Theme.of(context).colorScheme.primary,
         ),
       );
     } catch (e) {
@@ -316,7 +318,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error uploading photo: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
     } finally {
@@ -348,9 +350,9 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Profile photo removed!'),
-          backgroundColor: AppColors.brand,
+          backgroundColor: Theme.of(context).colorScheme.primary,
         ),
       );
     } catch (e) {
@@ -358,7 +360,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error removing photo: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
     } finally {
@@ -372,22 +374,23 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
     required String labelText,
     required IconData icon,
   }) {
+    final colors = Theme.of(context).colorScheme;
     return InputDecoration(
       labelText: labelText,
-      prefixIcon: Icon(icon, color: AppColors.brandDark),
+      prefixIcon: Icon(icon, color: colors.primary),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: colors.surfaceContainerLowest,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(20),
-        borderSide: const BorderSide(color: AppColors.border),
+        borderSide: BorderSide(color: colors.outline),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(20),
-        borderSide: const BorderSide(color: AppColors.border),
+        borderSide: BorderSide(color: colors.outline),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(20),
-        borderSide: const BorderSide(color: AppColors.brandDark, width: 1.4),
+        borderSide: BorderSide(color: colors.primary, width: 1.4),
       ),
     );
   }
@@ -397,67 +400,78 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.background,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: AppColors.brandLight,
-                borderRadius: BorderRadius.circular(12),
+      builder: (context) {
+        final colors = Theme.of(context).colorScheme;
+        return AlertDialog(
+          backgroundColor: colors.surface,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: colors.primaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.badge_outlined,
+                  color: colors.onPrimaryContainer,
+                ),
               ),
-              child: const Icon(
-                Icons.badge_outlined,
-                color: AppColors.brandDark,
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Change Name',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
               ),
+            ],
+          ),
+          content: TextField(
+            controller: _editNameController,
+            decoration: _profileFieldDecoration(
+              labelText: 'Full Name',
+              icon: Icons.person_outline_rounded,
             ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                'Change Name',
-                style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              style: TextButton.styleFrom(
+                foregroundColor: colors.onSurfaceVariant,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 12,
+                ),
               ),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _updateDisplayName();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors.primary,
+                foregroundColor: colors.onPrimary,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 22,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('Save'),
             ),
           ],
-        ),
-        content: TextField(
-          controller: _editNameController,
-          decoration: _profileFieldDecoration(
-            labelText: 'Full Name',
-            icon: Icons.person_outline_rounded,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.textSecondary,
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            ),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _updateDisplayName();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.brandDark,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -468,88 +482,99 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.background,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: AppColors.brandLight,
-                borderRadius: BorderRadius.circular(12),
+      builder: (context) {
+        final colors = Theme.of(context).colorScheme;
+        return AlertDialog(
+          backgroundColor: colors.surface,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: colors.primaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.lock_outline_rounded,
+                  color: colors.onPrimaryContainer,
+                ),
               ),
-              child: const Icon(
-                Icons.lock_outline_rounded,
-                color: AppColors.brandDark,
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Change Password',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
               ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _currentPasswordController,
+                obscureText: true,
+                decoration: _profileFieldDecoration(
+                  labelText: 'Current Password',
+                  icon: Icons.lock_outline_rounded,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _newPasswordController,
+                obscureText: true,
+                decoration: _profileFieldDecoration(
+                  labelText: 'New Password',
+                  icon: Icons.password_rounded,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _confirmPasswordController,
+                obscureText: true,
+                decoration: _profileFieldDecoration(
+                  labelText: 'Confirm New Password',
+                  icon: Icons.verified_user_outlined,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              style: TextButton.styleFrom(
+                foregroundColor: colors.onSurfaceVariant,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 12,
+                ),
+              ),
+              child: const Text('Cancel'),
             ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                'Change Password',
-                style: TextStyle(fontWeight: FontWeight.w600),
+            ElevatedButton(
+              onPressed: _changePassword,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors.primary,
+                foregroundColor: colors.onPrimary,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 22,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
+              child: const Text('Change Password'),
             ),
           ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _currentPasswordController,
-              obscureText: true,
-              decoration: _profileFieldDecoration(
-                labelText: 'Current Password',
-                icon: Icons.lock_outline_rounded,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _newPasswordController,
-              obscureText: true,
-              decoration: _profileFieldDecoration(
-                labelText: 'New Password',
-                icon: Icons.password_rounded,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _confirmPasswordController,
-              obscureText: true,
-              decoration: _profileFieldDecoration(
-                labelText: 'Confirm New Password',
-                icon: Icons.verified_user_outlined,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.textSecondary,
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            ),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: _changePassword,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.brandDark,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text('Change Password'),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -592,7 +617,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colorScheme.surfaceContainer,
       appBar: _buildTopBar(),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
@@ -620,9 +645,10 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
   }
 
   PreferredSizeWidget _buildTopBar() {
+    final colors = Theme.of(context).colorScheme;
     return AppBar(
       toolbarHeight: 72,
-      backgroundColor: Colors.white.withValues(alpha: 0.9),
+      backgroundColor: colors.surface.withValues(alpha: 0.94),
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
@@ -631,17 +657,17 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
         children: [
           IconButton(
             onPressed: () {},
-            icon: const Icon(Icons.menu_rounded, color: AppColors.brandDark),
+            icon: Icon(Icons.menu_rounded, color: colors.primary),
             tooltip: 'Menu',
           ),
           const SizedBox(width: 8),
-          const Flexible(
+          Flexible(
             child: Text(
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               'Eternal Garden',
               style: TextStyle(
-                color: AppColors.brand,
+                color: colors.primary,
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
               ),
@@ -652,17 +678,14 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       actions: [
         IconButton(
           onPressed: () {},
-          icon: const Icon(
-            Icons.notifications_outlined,
-            color: AppColors.brandDark,
-          ),
+          icon: Icon(Icons.notifications_outlined, color: colors.primary),
           tooltip: 'Notifications',
         ),
         const SizedBox(width: 8),
       ],
-      bottom: const PreferredSize(
+      bottom: PreferredSize(
         preferredSize: Size.fromHeight(1),
-        child: Divider(height: 1, color: AppColors.surfaceHighest),
+        child: Divider(height: 1),
       ),
     );
   }
@@ -684,7 +707,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
               child: Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: colorScheme.surface,
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: const [
                     BoxShadow(
@@ -702,7 +725,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                       children: [
                         CircleAvatar(
                           radius: 48,
-                          backgroundColor: AppColors.brandLight,
+                          backgroundColor: colorScheme.primaryContainer,
                           backgroundImage:
                               _avatarUrl != null && _avatarUrl!.isNotEmpty
                               ? NetworkImage(_avatarUrl!)
@@ -710,8 +733,8 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                           child: _avatarUrl == null || _avatarUrl!.isEmpty
                               ? Text(
                                   _initials(displayName),
-                                  style: const TextStyle(
-                                    color: AppColors.brandDark,
+                                  style: TextStyle(
+                                    color: colorScheme.onPrimaryContainer,
                                     fontSize: 20,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -729,26 +752,26 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                             child: Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: AppColors.brandDark,
+                                color: colorScheme.primary,
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: Colors.white,
+                                  color: colorScheme.onPrimary,
                                   width: 2,
                                 ),
                               ),
                               child: _isUploadingPhoto
-                                  ? const SizedBox(
+                                  ? SizedBox(
                                       width: 14,
                                       height: 14,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        color: Colors.white,
+                                        color: colorScheme.onPrimary,
                                       ),
                                     )
-                                  : const Icon(
+                                  : Icon(
                                       Icons.edit_rounded,
                                       size: 14,
-                                      color: Colors.white,
+                                      color: colorScheme.onPrimary,
                                     ),
                             ),
                           ),
@@ -781,7 +804,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                               vertical: 7,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.secondaryLight,
+                              color: colorScheme.secondaryContainer,
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Row(
@@ -816,7 +839,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                 height: 172,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: AppColors.brand,
+                  color: colorScheme.primary,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Column(
@@ -829,18 +852,23 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                         Text(
                           'Saved Memorials',
                           style: textTheme.labelLarge?.copyWith(
-                            color: Colors.white.withValues(alpha: 0.82),
+                            color: colorScheme.onPrimary.withValues(
+                              alpha: 0.82,
+                            ),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        const Icon(Icons.bookmark_rounded, color: Colors.white),
+                        Icon(
+                          Icons.bookmark_rounded,
+                          color: colorScheme.onPrimary,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 10),
                     Text(
                       _savedMemorials.toString(),
                       style: textTheme.displayMedium?.copyWith(
-                        color: Colors.white,
+                        color: colorScheme.onPrimary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -850,7 +878,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                           ? '1 visit recorded'
                           : '$_savedMemorials visits recorded',
                       style: textTheme.labelSmall?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.75),
+                        color: colorScheme.onPrimary.withValues(alpha: 0.75),
                       ),
                     ),
                   ],
@@ -869,7 +897,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
         boxShadow: const [
           BoxShadow(
@@ -894,21 +922,21 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                 ),
               ),
             ),
-            const Divider(height: 1, color: AppColors.surfaceLow),
+            Divider(height: 1, color: colorScheme.outlineVariant),
             _ProfileSettingTile(
               icon: Icons.person_outline_rounded,
               title: 'Change Name',
               subtitle: 'Update your display name',
               onTap: _showEditNameDialog,
             ),
-            const Divider(height: 1, color: AppColors.surfaceLow),
+            Divider(height: 1, color: colorScheme.outlineVariant),
             _ProfileSettingTile(
               icon: Icons.lock_outline_rounded,
               title: 'Change Password',
               subtitle: 'Update your login password',
               onTap: _showChangePasswordDialog,
             ),
-            const Divider(height: 1, color: AppColors.surfaceLow),
+            Divider(height: 1, color: colorScheme.outlineVariant),
             const ThemeModeSwitchTile(),
           ],
         ),
@@ -917,13 +945,15 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
   }
 
   Widget _buildLogoutButton() {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
         onPressed: _logout,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFFFDAD6),
-          foregroundColor: const Color(0xFF93000A),
+          backgroundColor: colorScheme.errorContainer,
+          foregroundColor: colorScheme.onErrorContainer,
           elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
@@ -965,6 +995,7 @@ class _ProfileSettingTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final colors = Theme.of(context).colorScheme;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -977,10 +1008,10 @@ class _ProfileSettingTile extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: AppColors.secondaryLight.withValues(alpha: 0.4),
+                  color: colors.secondaryContainer.withValues(alpha: 0.55),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: AppColors.brandDark, size: 22),
+                child: Icon(icon, color: colors.primary, size: 22),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -991,22 +1022,22 @@ class _ProfileSettingTile extends StatelessWidget {
                       title,
                       style: textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
-                        color: AppColors.text,
+                        color: colors.onSurface,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
                       style: textTheme.labelSmall?.copyWith(
-                        color: AppColors.textSecondary,
+                        color: colors.onSurfaceVariant,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
-                color: AppColors.textMuted,
+                color: colors.onSurfaceVariant,
                 size: 20,
               ),
             ],

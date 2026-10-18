@@ -19,15 +19,10 @@ import '../../services/cemetery_analytics.dart';
 import '../../utils/map_feature_geometry.dart';
 import '../../utils/map_bounds_index.dart';
 
-const _background = AppColors.background;
-const _surface = Color(0xFFFFFFFF);
 const _surfaceContainerLow = AppColors.surfaceLow;
-const _surfaceContainerHighest = AppColors.surfaceHighest;
 const _primary = AppColors.brandDark;
 const _primaryContainer = AppColors.brand;
 const _primaryFixed = AppColors.brandLight;
-const _secondary = AppColors.secondary;
-const _tertiary = AppColors.secondary;
 const _onSurface = AppColors.text;
 const _onSurfaceVariant = AppColors.textSecondary;
 
@@ -483,9 +478,9 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     final metricColumns = width < 520 ? 2 : (width < 1100 ? 2 : 4);
 
     if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: _background,
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: cs.surfaceContainer,
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -494,7 +489,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     }
 
     return Scaffold(
-      backgroundColor: _background,
+      backgroundColor: cs.surfaceContainer,
       body: RefreshIndicator(
         onRefresh: _refreshData,
         child: SingleChildScrollView(
@@ -506,7 +501,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
               const SizedBox(height: 24),
               Text(
                 'Welcome back, Administrator. Here is the daily summary for your operations.',
-                style: t.bodyMedium?.copyWith(color: AppColors.textSecondary),
+                style: t.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
               ),
               const SizedBox(height: 28),
               GridView.count(
@@ -521,14 +516,14 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                     label: 'Total Burials',
                     value: _metrics['total_burials'].toString(),
                     icon: Icons.people_outline,
-                    color: AppColors.brandDark,
+                    color: cs.primary,
                     badge: 'All records',
                   ),
                   _MetricCard(
                     label: 'Available Lots',
                     value: _metrics['available_lots'].toString(),
                     icon: Icons.grid_view_rounded,
-                    color: _secondary,
+                    color: cs.secondary,
                     badge: 'Open plots',
                   ),
                   _MetricCard(
@@ -544,7 +539,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                     label: 'Visitors Today',
                     value: _metrics['visitor_count'].toString(),
                     icon: Icons.groups_outlined,
-                    color: _tertiary,
+                    color: cs.tertiary,
                     badge: 'Live count',
                   ),
                   _MetricCard(
@@ -629,13 +624,14 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   }
 
   Widget _buildQuickActions(TextTheme t) {
+    final colors = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
           'Quick Actions',
           style: t.titleLarge?.copyWith(
-            color: AppColors.text,
+            color: colors.onSurface,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -663,9 +659,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   }
 
   Widget _buildMapPreview(TextTheme t) {
+    final colors = Theme.of(context).colorScheme;
     return _MapPreviewCard(
       titleStyle: t.titleLarge?.copyWith(
-        color: _onSurface,
+        color: colors.onSurface,
         fontWeight: FontWeight.w600,
       ),
       pillStyle: t.labelMedium?.copyWith(
@@ -1167,21 +1164,22 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   }
 
   Widget _buildErrorWidget() {
+    final colors = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: _background,
+      backgroundColor: colors.surfaceContainer,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            Icon(Icons.error_outline, size: 64, color: colors.error),
             const SizedBox(height: 16),
             Text(_errorMessage!),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _refreshData,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.brand,
-                foregroundColor: Colors.white,
+                backgroundColor: colors.primary,
+                foregroundColor: colors.onPrimary,
               ),
               child: const Text('Try Again'),
             ),
@@ -1210,9 +1208,13 @@ class _MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+    final colors = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(22),
-      decoration: SurfaceStyle.panel(color: _surfaceContainerLow, radius: 20),
+      decoration: SurfaceStyle.panel(
+        color: colors.surfaceContainerLow,
+        radius: 20,
+      ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1248,7 +1250,7 @@ class _MetricCard extends StatelessWidget {
               Text(
                 label,
                 style: t.labelLarge?.copyWith(
-                  color: _onSurfaceVariant,
+                  color: colors.onSurfaceVariant,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1256,7 +1258,7 @@ class _MetricCard extends StatelessWidget {
               Text(
                 value,
                 style: t.headlineSmall?.copyWith(
-                  color: _onSurface,
+                  color: colors.onSurface,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1283,12 +1285,13 @@ class _QuickActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground = filled ? Colors.white : _onSurfaceVariant;
+    final colors = Theme.of(context).colorScheme;
+    final foreground = filled ? colors.onPrimary : colors.onSurfaceVariant;
     return Material(
-      color: filled ? _primary : _surfaceContainerHighest,
+      color: filled ? colors.primary : colors.surfaceContainerHighest,
       borderRadius: BorderRadius.circular(20),
       elevation: filled ? 3 : 0,
-      shadowColor: _primary.withValues(alpha: 0.25),
+      shadowColor: colors.primary.withValues(alpha: 0.25),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: onPressed,
@@ -1327,9 +1330,10 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Container(
       padding: padding,
-      decoration: SurfaceStyle.panel(color: _surface, radius: 20),
+      decoration: SurfaceStyle.panel(color: colors.surface, radius: 20),
       child: child,
     );
   }
@@ -1709,6 +1713,7 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     final titleStyle =
         widget.titleStyle ?? Theme.of(context).textTheme.titleLarge;
     final pillStyle =
@@ -1717,7 +1722,7 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
 
     return Container(
       height: 400,
-      decoration: SurfaceStyle.panel(color: Colors.white, radius: 28),
+      decoration: SurfaceStyle.panel(color: colors.surface, radius: 28),
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
@@ -1775,10 +1780,10 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.92),
+                color: colors.surface.withValues(alpha: 0.92),
                 borderRadius: BorderRadius.circular(999),
                 border: Border.all(
-                  color: AppColors.border.withValues(alpha: 0.7),
+                  color: colors.outline.withValues(alpha: 0.7),
                 ),
               ),
               child: Row(
@@ -1795,7 +1800,7 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
                   const SizedBox(width: 8),
                   Text(
                     'Visitor Heatmap',
-                    style: pillStyle?.copyWith(color: _onSurface),
+                    style: pillStyle?.copyWith(color: colors.onSurface),
                   ),
                 ],
               ),
@@ -1807,16 +1812,16 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.92),
+                color: colors.surface.withValues(alpha: 0.92),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: AppColors.border.withValues(alpha: 0.7),
+                  color: colors.outline.withValues(alpha: 0.7),
                 ),
               ),
               child: Text(
                 'Visits $_totalVisits - Hotspots ${heatmap.clusters.length} - Noise ${heatmap.noise.length} - Active lots $_occupiedLots',
                 style: titleStyle?.copyWith(
-                  color: _onSurface,
+                  color: colors.onSurface,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1866,8 +1871,9 @@ class _MapToolButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Material(
-      color: Colors.white,
+      color: colors.surface,
       elevation: 5,
       shadowColor: Colors.black.withValues(alpha: 0.16),
       borderRadius: BorderRadius.circular(12),
@@ -1877,7 +1883,7 @@ class _MapToolButton extends StatelessWidget {
         child: SizedBox(
           width: 42,
           height: 42,
-          child: Icon(icon, color: _primary),
+          child: Icon(icon, color: colors.primary),
         ),
       ),
     );

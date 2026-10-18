@@ -1,4 +1,3 @@
-import '../../core/app_colors.dart';
 import '../../widgets/lazy_screen_stack.dart';
 import '../../widgets/logout_dialog.dart';
 import '../../core/surface_style.dart';
@@ -50,9 +49,10 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
   @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= 1100;
+    final colors = Theme.of(context).colorScheme;
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.surfaceContainer,
       appBar: AppBar(
         leading: IconButton(
           tooltip: 'Toggle navigation',
@@ -69,7 +69,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
             SizedBox(
               width: 260,
               child: Material(
-                color: AppColors.surfaceLow,
+                color: colors.surfaceContainerLow,
                 child: _buildNavigation(),
               ),
             ),
@@ -86,7 +86,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
             : SafeArea(
                 top: false,
                 child: Material(
-                  color: AppColors.brandLight,
+                  color: colors.primaryContainer,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -114,147 +114,150 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
     );
   }
 
-  Widget _buildNavigation() => SafeArea(
-    child: Column(
-      children: [
-        Container(
-          margin: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-          padding: const EdgeInsets.all(20),
-          decoration: SurfaceStyle.panel(color: Colors.white, radius: 20),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: AppColors.brandLight,
-                  borderRadius: BorderRadius.circular(20),
+  Widget _buildNavigation() {
+    final colors = Theme.of(context).colorScheme;
+    return SafeArea(
+      child: Column(
+        children: [
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            padding: const EdgeInsets.all(20),
+            decoration: SurfaceStyle.panel(color: colors.surface, radius: 20),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: colors.primaryContainer,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Icon(
+                    Icons.apartment_rounded,
+                    color: colors.onPrimaryContainer,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.apartment_rounded,
-                  color: AppColors.brandDark,
-                ),
-              ),
-              const SizedBox(width: 14),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Admin Panel',
-                      style: TextStyle(
-                        color: AppColors.text,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Admin Panel',
+                        style: TextStyle(
+                          color: colors.onSurface,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Manage cemetery data',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 13,
+                      SizedBox(height: 4),
+                      Text(
+                        'Manage cemetery data',
+                        style: TextStyle(
+                          color: colors.onSurfaceVariant,
+                          fontSize: 13,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            children: [
-              _NavTile(
-                selected: _selected == 0,
-                icon: Icons.dashboard_outlined,
-                label: 'Overview',
-                onTap: () => _go(0),
-              ),
-              _NavTile(
-                selected: _selected == 7,
-                icon: Icons.group_outlined,
-                label: 'User Management',
-                onTap: () => _go(7),
-              ),
-              _NavTile(
-                selected: _selected == 1,
-                icon: Icons.map,
-                label: 'Cemetery Map',
-                onTap: () => _go(1),
-              ),
-              _NavTile(
-                selected: _selected == 2,
-                icon: Icons.people_outline,
-                label: 'Burial Records',
-                onTap: () => _go(2),
-              ),
-              _NavTile(
-                selected: _selected == 3,
-                icon: Icons.grid_view_rounded,
-                label: 'Lots',
-                onTap: () => _go(3),
-              ),
-              _NavTile(
-                selected: _selected == 4,
-                icon: Icons.qr_code_scanner_rounded,
-                label: 'Visitor Logs',
-                onTap: () => _go(4),
-              ),
-              _NavTile(
-                selected: _selected == 5,
-                icon: Icons.analytics_outlined,
-                label: 'Reports',
-                onTap: () => _go(5),
-              ),
-              _NavTile(
-                selected: _selected == 6,
-                icon: Icons.history,
-                label: 'Audit Trail',
-                onTap: () => _go(6),
-              ),
-              _NavTile(
-                selected: _selected == 8,
-                icon: Icons.payments_outlined,
-                label: 'Payment Review',
-                onTap: () => _go(8),
-              ),
-              _NavTile(
-                selected: _selected == 9,
-                icon: Icons.manage_accounts_outlined,
-                label: 'Profile Settings',
-                onTap: () => _go(9),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFDAD6),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: ListTile(
-              leading: const Icon(
-                Icons.logout_rounded,
-                color: Color(0xFF93000A),
-              ),
-              title: const Text(
-                'Logout',
-                style: TextStyle(
-                  color: Color(0xFF93000A),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              onTap: _logout,
+              ],
             ),
           ),
-        ),
-      ],
-    ),
-  );
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              children: [
+                _NavTile(
+                  selected: _selected == 0,
+                  icon: Icons.dashboard_outlined,
+                  label: 'Overview',
+                  onTap: () => _go(0),
+                ),
+                _NavTile(
+                  selected: _selected == 7,
+                  icon: Icons.group_outlined,
+                  label: 'User Management',
+                  onTap: () => _go(7),
+                ),
+                _NavTile(
+                  selected: _selected == 1,
+                  icon: Icons.map,
+                  label: 'Cemetery Map',
+                  onTap: () => _go(1),
+                ),
+                _NavTile(
+                  selected: _selected == 2,
+                  icon: Icons.people_outline,
+                  label: 'Burial Records',
+                  onTap: () => _go(2),
+                ),
+                _NavTile(
+                  selected: _selected == 3,
+                  icon: Icons.grid_view_rounded,
+                  label: 'Lots',
+                  onTap: () => _go(3),
+                ),
+                _NavTile(
+                  selected: _selected == 4,
+                  icon: Icons.qr_code_scanner_rounded,
+                  label: 'Visitor Logs',
+                  onTap: () => _go(4),
+                ),
+                _NavTile(
+                  selected: _selected == 5,
+                  icon: Icons.analytics_outlined,
+                  label: 'Reports',
+                  onTap: () => _go(5),
+                ),
+                _NavTile(
+                  selected: _selected == 6,
+                  icon: Icons.history,
+                  label: 'Audit Trail',
+                  onTap: () => _go(6),
+                ),
+                _NavTile(
+                  selected: _selected == 8,
+                  icon: Icons.payments_outlined,
+                  label: 'Payment Review',
+                  onTap: () => _go(8),
+                ),
+                _NavTile(
+                  selected: _selected == 9,
+                  icon: Icons.manage_accounts_outlined,
+                  label: 'Profile Settings',
+                  onTap: () => _go(9),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+            child: Container(
+              decoration: BoxDecoration(
+                color: colors.errorContainer,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: ListTile(
+                leading: Icon(
+                  Icons.logout_rounded,
+                  color: colors.onErrorContainer,
+                ),
+                title: Text(
+                  'Logout',
+                  style: TextStyle(
+                    color: colors.onErrorContainer,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                onTap: _logout,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildContent() => LazyScreenStack(
     index: _selected,
@@ -342,6 +345,7 @@ class _NavTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Stack(
@@ -350,18 +354,20 @@ class _NavTile extends StatelessWidget {
             selected: selected,
             leading: Icon(
               icon,
-              color: selected ? AppColors.brandDark : AppColors.textSecondary,
+              color: selected
+                  ? colors.onPrimaryContainer
+                  : colors.onSurfaceVariant,
             ),
             title: Text(
               label,
               style: TextStyle(
-                color: selected ? AppColors.text : AppColors.textSecondary,
+                color: selected ? colors.onSurface : colors.onSurfaceVariant,
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
               ),
             ),
             onTap: onTap,
-            tileColor: selected ? AppColors.brandLight : null,
-            selectedTileColor: AppColors.brandLight,
+            tileColor: selected ? colors.primaryContainer : null,
+            selectedTileColor: colors.primaryContainer,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
