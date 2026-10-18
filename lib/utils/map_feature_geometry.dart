@@ -27,17 +27,23 @@ bool isMapLayerFeature(Map<String, dynamic> feature) {
 
 bool isPublicPreviewMapFeature(Map<String, dynamic> feature) {
   const visiblePreviewTypes = {'map_layer', 'boundary', 'block', 'entrance'};
-  const hiddenPreviewTypes = {
+
+  final type = mapFeatureType(feature);
+  return visiblePreviewTypes.contains(type) && !isPathNetworkFeature(feature);
+}
+
+/// Identifies the line and point features that make up the editable route
+/// network. These can be omitted from the admin preview without affecting
+/// route calculation, which still uses the original feature snapshot.
+bool isPathNetworkFeature(Map<String, dynamic> feature) {
+  const pathNetworkTypes = {
     'pathway',
     'path_node',
     'path_nodes',
     'pathway_node',
     'pathway_nodes',
   };
-
-  final type = mapFeatureType(feature);
-  return visiblePreviewTypes.contains(type) &&
-      !hiddenPreviewTypes.contains(type);
+  return pathNetworkTypes.contains(mapFeatureType(feature));
 }
 
 Widget minimalistEntranceMarker({Color color = const Color(0xFF335538)}) {

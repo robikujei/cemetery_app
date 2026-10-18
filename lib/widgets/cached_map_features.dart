@@ -8,20 +8,28 @@ import '../utils/map_feature_geometry.dart';
 class CachedMapFeatures {
   List<Map<String, dynamic>>? _source;
   bool? _publicPreview;
+  bool? _showPathNetwork;
   late MapFeatureLayers _layers;
 
   MapFeatureLayers resolve(
     List<Map<String, dynamic>> source, {
     required bool publicPreview,
+    bool showPathNetwork = true,
   }) {
-    if (identical(source, _source) && publicPreview == _publicPreview) {
+    if (identical(source, _source) &&
+        publicPreview == _publicPreview &&
+        showPathNetwork == _showPathNetwork) {
       return _layers;
     }
     _source = source;
     _publicPreview = publicPreview;
-    final visible = publicPreview
+    _showPathNetwork = showPathNetwork;
+    final previewVisible = publicPreview
         ? source.where(isPublicPreviewMapFeature)
         : source;
+    final visible = showPathNetwork
+        ? previewVisible
+        : previewVisible.where((feature) => !isPathNetworkFeature(feature));
     final base = visible.where(isMapLayerFeature).toList();
     final overlay = visible.where((f) => !isMapLayerFeature(f)).toList();
     return _layers = MapFeatureLayers(
