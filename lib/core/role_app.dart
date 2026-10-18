@@ -13,10 +13,12 @@ class RoleApp extends StatelessWidget {
     required this.role,
     required this.path,
     required this.home,
+    this.bypassAuth = false,
   });
   final String role;
   final String path;
   final Widget home;
+  final bool bypassAuth;
 
   String get portalName => switch (role) {
     'admin' => 'Administrator portal',
@@ -39,6 +41,7 @@ class RoleApp extends StatelessWidget {
           if (state.matchedLocation == '/login' ||
               state.matchedLocation == '/register')
             return null;
+          if (bypassAuth) return null;
           final user = Supabase.instance.client.auth.currentUser;
           if (user == null) return '/login';
           try {

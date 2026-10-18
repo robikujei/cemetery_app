@@ -14,6 +14,6 @@ flutter build web --dart-define=MOCK_ANALYTICS=true
 
 The demo dataset includes lots with polygons, burial records, visitor logs,
 ownerships, and payments so every report and the lot-only hotspot map can be
-reviewed. A `Demo data` badge is shown in the admin screen, and the default
-build leaves the flag disabled and continues to load production data from
-Supabase.
+reviewed. The mock admin build opens directly to Reports & Analytics and shows
+a `Demo data` badge. The default build leaves the flag disabled and continues
+to require the normal admin login and load production data from Supabase.
