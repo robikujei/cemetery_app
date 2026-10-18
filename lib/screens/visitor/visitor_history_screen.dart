@@ -297,7 +297,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                   const Text(
                     'A gentle record of the people and places you have honored.',
                     style: TextStyle(
-                      color: Color(0xFFD9E8D9),
+                      color: AppColors.brandLight,
                       height: 1.35,
                       fontSize: 13,
                     ),
@@ -466,7 +466,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                     border: Border.all(color: _HistoryPalette.outline),
                     boxShadow: const [
                       BoxShadow(
-                        color: Color(0x0D335538),
+                        color: Color(0x0D0066CC),
                         blurRadius: 16,
                         offset: Offset(0, 6),
                       ),

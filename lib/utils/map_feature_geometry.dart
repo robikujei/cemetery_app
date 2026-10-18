@@ -46,7 +46,7 @@ bool isPathNetworkFeature(Map<String, dynamic> feature) {
   return pathNetworkTypes.contains(mapFeatureType(feature));
 }
 
-Widget minimalistEntranceMarker({Color color = const Color(0xFF335538)}) {
+Widget minimalistEntranceMarker({Color color = const Color(0xFF0066CC)}) {
   return DecoratedBox(
     decoration: BoxDecoration(
       color: Colors.white.withValues(alpha: 0.94),

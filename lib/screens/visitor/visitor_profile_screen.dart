@@ -134,7 +134,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Name updated!'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.brand,
           ),
         );
       }
@@ -194,7 +194,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Password changed!'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.brand,
           ),
         );
         _currentPasswordController.clear();
@@ -307,7 +307,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Profile photo updated!'),
-          backgroundColor: Colors.green,
+        backgroundColor: AppColors.brand,
         ),
       );
     } catch (e) {
@@ -349,7 +349,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Profile photo removed!'),
-          backgroundColor: Colors.green,
+        backgroundColor: AppColors.brand,
         ),
       );
     } catch (e) {
@@ -638,7 +638,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
             child: Text(
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              'Eternal Rest',
+              'Eternal Garden',
               style: TextStyle(
                 color: AppColors.brand,
                 fontSize: 20,

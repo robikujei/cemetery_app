@@ -220,7 +220,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
             Icon(Icons.church, color: _C.primaryContainer, size: 20),
             SizedBox(width: 8),
             Text(
-              'Eternal Rest',
+              'Eternal Garden',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,

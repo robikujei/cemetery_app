@@ -1194,7 +1194,7 @@ class _AdminBurialRecordsScreenState
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Record updated!'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.brand,
           ),
         );
       } else {
@@ -1215,7 +1215,7 @@ class _AdminBurialRecordsScreenState
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Record added!'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.brand,
           ),
         );
         if (widget.closeAfterCreate) {
@@ -1305,7 +1305,7 @@ class _AdminBurialRecordsScreenState
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Record deleted!'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.brand,
           ),
         );
         await _loadData();

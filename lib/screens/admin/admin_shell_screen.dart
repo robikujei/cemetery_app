@@ -27,6 +27,13 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   int _selected = 0;
   int _mapRefreshToken = 0;
+  final _mapSaveProgress = ValueNotifier<String?>(null);
+
+  @override
+  void dispose() {
+    _mapSaveProgress.dispose();
+    super.dispose();
+  }
 
   Future<void> _logout() => showLogoutDialog(context);
 
@@ -70,6 +77,39 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
           ],
           Expanded(child: _buildContent()),
         ],
+      ),
+      bottomNavigationBar: ValueListenableBuilder<String?>(
+        valueListenable: _mapSaveProgress,
+        builder: (context, progress, child) =>
+            progress == null || _selected == 1
+            ? const SizedBox.shrink()
+            : SafeArea(
+                top: false,
+                child: Material(
+                  color: AppColors.brandLight,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      children: [
+                        const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(child: Text(progress)),
+                        TextButton(
+                          onPressed: () => _go(1),
+                          child: const Text('View save'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
       ),
     );
   }
@@ -228,6 +268,17 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
       AdminMapManagerScreen(
         onMenuPressed: _toggleNavigation,
         refreshToken: _mapRefreshToken,
+        isActive: _selected == 1,
+        onBatchProgress: (progress) {
+          if (mounted) _mapSaveProgress.value = progress;
+        },
+        onBatchFinished: (message) {
+          if (mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(message)));
+          }
+        },
       ),
       AdminBurialRecordsScreen(
         onMenuPressed: _toggleNavigation,

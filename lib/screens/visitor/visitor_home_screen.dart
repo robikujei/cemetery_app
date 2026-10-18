@@ -201,7 +201,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
               child: Text(
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                'Eternal Rest',
+                'Eternal Garden',
                 style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,

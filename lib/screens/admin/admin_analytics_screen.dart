@@ -30,7 +30,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
   SpatialResult _spatial = const SpatialResult([], [], 0, 0);
   RealtimeChannel? _channel;
   Timer? _refreshTimer;
-  static const _green = AppColors.brandDark;
+  static const _accent = AppColors.brand;
   static const _types = [
     'Burial records',
     'Visitor logs',
@@ -194,7 +194,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w600,
-              color: _green,
+              color: _accent,
             ),
           ),
           const SizedBox(height: 16),
@@ -373,7 +373,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
                                 child: LinearProgressIndicator(
                                   value: e.value / maxCount,
                                   minHeight: 12,
-                                  color: _green,
+                                  color: _accent,
                                   backgroundColor: AppColors.surfaceHighest,
                                 ),
                               ),
@@ -451,7 +451,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
                                   ? Colors.red
                                   : level == 'Medium'
                                   ? Colors.orange
-                                  : _green,
+                                  : _accent,
                               radius: 5,
                             ),
                             label: Text(

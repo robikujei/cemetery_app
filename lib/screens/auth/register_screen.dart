@@ -140,7 +140,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Account created successfully! Please login.'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.brand,
           ),
         );
         context.go('/login');
@@ -208,7 +208,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Join Eternal Rest to manage visits and keep family records connected.',
+                    'Join Eternal Garden to manage visits and keep family records connected.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 15,

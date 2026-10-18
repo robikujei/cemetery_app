@@ -92,7 +92,7 @@ class WelcomeScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 14),
                       Text(
-                        'Eternal Rest',
+                        'Eternal Garden',
                         style: t.headlineMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                           color: cs.primary,

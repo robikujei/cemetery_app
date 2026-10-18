@@ -201,7 +201,7 @@ class _VisitorQrWithGraveScreenState
             Icon(Icons.church, color: _C.primaryContainer, size: 20),
             SizedBox(width: 8),
             Text(
-              'Eternal Rest',
+              'Eternal Garden',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
@@ -316,7 +316,7 @@ class _VisitorQrWithGraveScreenState
                 ),
                 SizedBox(height: 8),
                 Text(
-                  'Welcome to Eternal Rest Cemetery & Gardens.',
+                  'Welcome to Eternal Garden Cemetery & Gardens.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
@@ -340,7 +340,7 @@ class _VisitorQrWithGraveScreenState
                 border: Border.all(color: _C.outlineVariant),
                 boxShadow: const [
                   BoxShadow(
-                    color: Color(0x14335538),
+                    color: Color(0x140066CC),
                     blurRadius: 12,
                     offset: Offset(0, 4),
                   ),

@@ -193,7 +193,7 @@ class _AdminVisitorLogsScreenState
   Color _getMethodColor(String method) {
     switch (method) {
       case 'QR':
-        return Colors.green;
+        return AppColors.brand;
       case 'Manual':
         return Colors.orange;
       default:

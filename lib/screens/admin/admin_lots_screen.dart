@@ -106,10 +106,14 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
               'ownership_id, lot_id, user_id, total_months, months_paid, user:user_id (name)',
           orderColumn: 'ownership_id',
         ),
+        _loadRegisterDetails(),
       ]);
       final lots = results[0];
       final burialRows = results[1];
       final ownershipRows = results[2];
+      final registerByLot = {
+        for (final row in results[3]) row['lot_id'].toString(): row['details'],
+      };
       final gravesByLotId = await AdminGraveService.loadGravesByLotIds(
         lots.map((lot) => lot['lot_id']),
       );
@@ -130,6 +134,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
       for (var lot in lots) {
         final lotId = lot['lot_id'];
         var lotWithDetails = Map<String, dynamic>.from(lot);
+        lotWithDetails['register_details'] = registerByLot[lotId.toString()];
         final lotBurials = List<Map<String, dynamic>>.from(
           burialsByLotId[lotId?.toString()] ?? const [],
         );
@@ -165,12 +170,32 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
     }
   }
 
+  Future<List<Map<String, dynamic>>> _loadRegisterDetails() async {
+    try {
+      return await SupabasePaginationService.selectAll(
+        supabase: Supabase.instance.client,
+        table: 'lot_register_details',
+        columns: 'lot_id, details',
+        orderColumn: 'lot_id',
+      );
+    } on PostgrestException catch (error) {
+      // The register import creates this optional table.
+      if (error.code == '42P01' || error.code == 'PGRST205') return [];
+      rethrow;
+    }
+  }
+
   void _applyFilters() {
     setState(() {
       _filteredLots = _lots.where((lot) {
         final query = _searchQuery.toLowerCase();
         final matchesSearch =
-            query.isEmpty || lotSearchText(lot).contains(query);
+            query.isEmpty ||
+            lotSearchText(lot).contains(query) ||
+            (lot['register_details']?.toString().toLowerCase().contains(
+                  query,
+                ) ??
+                false);
 
         final matchesStatus =
             _filterStatus == 'All' || lot['status'] == _filterStatus;
@@ -763,7 +788,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Grave and deceased record saved!'),
-          backgroundColor: Colors.green,
+          backgroundColor: AppColors.brand,
         ),
       );
       await _loadData();
@@ -896,7 +921,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Lot updated!'),
-          backgroundColor: Colors.green,
+          backgroundColor: AppColors.brand,
         ),
       );
 
@@ -960,7 +985,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Lot deleted!'),
-            backgroundColor: Colors.green,
+          backgroundColor: AppColors.brand,
           ),
         );
         await _loadData();
@@ -979,7 +1004,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
   Color _getStatusColor(String status) {
     switch (status) {
       case 'Available':
-        return Colors.green;
+        return AppColors.brand;
       case 'Occupied':
         return Colors.red;
       case 'Reserved':
@@ -1162,7 +1187,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
           final isNarrow = constraints.maxWidth < 520;
           final searchField = TextField(
             decoration: InputDecoration(
-              hintText: 'Search by lot, block, class/type, or status',
+              hintText: 'Search lots, blocks, owners, or deceased names',
               prefixIcon: const Icon(Icons.search_rounded),
               filled: true,
               fillColor: Colors.white,
@@ -1251,6 +1276,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
   }
 
   Widget _buildLotCard(Map<String, dynamic> lot) {
+    final register = lot['register_details'] as Map?;
     final burial = lot['burial_record'];
     final ownership = lot['ownership'];
     final graves = List<Map<String, dynamic>>.from(
@@ -1384,6 +1410,26 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
               ],
             ),
           ),
+          if (register != null && register.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Text(
+              'Lot register',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            for (final field in const {
+              'owner_name': 'Owner / purchaser',
+              'purchase_date': 'Purchase date',
+              'deceased_names': 'Deceased',
+              'purchase_note': 'Purchase note',
+            }.entries)
+              if (register[field.key] != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: SelectableText(
+                    '${field.value}: ${register[field.key]}',
+                  ),
+                ),
+          ],
         ],
       ),
     );

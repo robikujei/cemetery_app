@@ -16,11 +16,17 @@ import '../../services/admin_grave_service.dart';
 import '../../services/admin_lot_owner_service.dart';
 import '../../services/audit_service.dart';
 import '../../services/map_feature_service.dart';
+import '../../services/lot_label_batch_service.dart';
+import '../../utils/lot_label_batch.dart';
+import '../../utils/lot_row_selection.dart';
 import '../../services/supabase_pagination_service.dart';
 import '../../utils/lot_formatters.dart';
 import '../../utils/lot_pricing.dart';
 import '../../utils/map_feature_geometry.dart';
 import '../../widgets/app_date_field.dart';
+import '../../widgets/lot_drag_selection.dart';
+import '../../widgets/batch_save_progress.dart';
+import '../../widgets/row_keyboard_navigation.dart';
 import 'admin_burial_records_screen.dart';
 
 const _lotColumnsSelect =
@@ -47,17 +53,31 @@ class _C {
   static const white = Color(0xFFFFFFFF);
 }
 
-enum _MapMode { select, plotLot, addNode, connectNodes, setEntrance }
+enum _MapMode {
+  select,
+  plotLot,
+  addNode,
+  connectNodes,
+  setEntrance,
+  labelRow,
+  assignBlock,
+}
 
 class AdminMapManagerScreen extends ConsumerStatefulWidget {
   const AdminMapManagerScreen({
     super.key,
     this.onMenuPressed,
     this.refreshToken = 0,
+    this.isActive = true,
+    this.onBatchProgress,
+    this.onBatchFinished,
   });
 
   final VoidCallback? onMenuPressed;
   final int refreshToken;
+  final bool isActive;
+  final ValueChanged<String?>? onBatchProgress;
+  final ValueChanged<String>? onBatchFinished;
 
   @override
   ConsumerState<AdminMapManagerScreen> createState() =>
@@ -71,6 +91,32 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
   static const double _mapLngSpan = 0.0046;
 
   final _mapController = MapController();
+  final _lotLayerKey = GlobalKey<ViewportLotLayerState>();
+  final _batchStart = TextEditingController(text: '001');
+  final _rowKeyboardFocus = FocusNode(debugLabel: 'Row labeling arrows');
+  bool _rowSelectByEnds = true;
+  String? _rowStartId;
+  Map<String, dynamic>? _lastRowMarker;
+  Map<String, dynamic>? _lastClickedLot;
+  Map<String, dynamic>? get _mapLotAnchor => _mode == _MapMode.labelRow
+      ? _rowAnchor
+      : _mode == _MapMode.select
+      ? _lastClickedLot
+      : null;
+  bool _lastRowMarkerSaved = false;
+  Map<String, dynamic>? get _rowAnchor =>
+      _batchMarkers.isNotEmpty ? _batchMarkers.last : _lastRowMarker;
+  final _targetBlock = TextEditingController();
+  bool _dragSelect = true;
+  bool _removeArea = false;
+  bool get _isBatchMode =>
+      _mode == _MapMode.labelRow || _mode == _MapMode.assignBlock;
+  final List<Map<String, dynamic>> _batchMarkers = [];
+  bool _batchSaving = false;
+  bool _batchMinimized = false;
+  bool _stopBatchRequested = false;
+  final _batchProgress = ValueNotifier<String>('Preparing save…');
+  final Map<String, PostgresChangePayload> _pendingBatchEvents = {};
   final _mapKey = GlobalKey();
   final _blockNumberController = TextEditingController();
   final _lotNumberController = TextEditingController();
@@ -85,6 +131,8 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
   bool _isLoading = true;
   bool _isSaving = false;
   bool _mapReady = false;
+  bool _showNavigationRoute = false;
+  List<LatLng> _routePreviewPoints = const [];
 
   List<Map<String, dynamic>> _lotMarkers = [];
   List<Map<String, dynamic>> _pathNodes = [];
@@ -115,7 +163,8 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
   @override
   void didUpdateWidget(AdminMapManagerScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.refreshToken != oldWidget.refreshToken) {
+    if (!widget.isActive && oldWidget.isActive) _rowKeyboardFocus.unfocus();
+    if (widget.refreshToken != oldWidget.refreshToken && !_batchSaving) {
       _loadAll();
     }
   }
@@ -127,6 +176,10 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
       unawaited(Supabase.instance.client.removeChannel(lotChangesChannel));
     }
     _blockNumberController.dispose();
+    _batchStart.dispose();
+    _rowKeyboardFocus.dispose();
+    _batchProgress.dispose();
+    _targetBlock.dispose();
     _lotNumberController.dispose();
     _lotLabelController.dispose();
     _lotClassTypeController.dispose();
@@ -273,6 +326,11 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
 
   void _handleLotChange(PostgresChangePayload payload) {
     if (!mounted) return;
+    if (_batchSaving) {
+      final id = payload.newRecord['lot_id'] ?? payload.oldRecord['lot_id'];
+      if (id != null) _pendingBatchEvents[id.toString()] = payload;
+      return;
+    }
 
     if (payload.eventType == PostgresChangeEvent.delete) {
       final deletedLotId = payload.oldRecord['lot_id'];
@@ -322,6 +380,8 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
             _markerLotId(_selectedMarker!),
           )) {
         _selectedMarker = null;
+        _showNavigationRoute = false;
+        _routePreviewPoints = const [];
       }
     });
   }
@@ -454,6 +514,8 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
         _pathNodes.add(Map<String, dynamic>.from(inserted));
         _selectedNode = Map<String, dynamic>.from(inserted);
         _selectedMarker = null;
+        _showNavigationRoute = false;
+        _routePreviewPoints = const [];
       });
       _snack('Route node added.');
     } catch (e) {
@@ -771,6 +833,8 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
       _draggingNodeId = node['node_id'] as int;
       _selectedNode = node;
       _selectedMarker = null;
+      _showNavigationRoute = false;
+      _routePreviewPoints = const [];
       _pendingConnectNodeId = null;
       _mode = _MapMode.select;
     });
@@ -1093,6 +1157,8 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
         _lotMarkers.add(newMarker);
         _selectedMarker = newMarker;
         _mode = _MapMode.select;
+        _showNavigationRoute = false;
+        _routePreviewPoints = const [];
       });
       _snack('Lot added.');
     } catch (e) {
@@ -1421,6 +1487,8 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
         if (index != -1) _lotMarkers[index] = normalizedMarker;
         _selectedMarker = normalizedMarker;
         _selectedNode = null;
+        _showNavigationRoute = false;
+        _routePreviewPoints = const [];
       });
       _snack('Lot updated.');
     } catch (e) {
@@ -1466,6 +1534,8 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
         if (lotId != null) _ownershipByLotId.remove(lotId.toString());
         if (_selectedMarker?['marker_id'] == marker['marker_id']) {
           _selectedMarker = null;
+          _showNavigationRoute = false;
+          _routePreviewPoints = const [];
         }
       });
       _snack('Lot deleted.');
@@ -2333,14 +2403,22 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
     _lastPointer = point;
     if (_mode == _MapMode.setEntrance) {
       _saveEntrance(point);
+      return;
     } else if (_mode == _MapMode.addNode) {
       _addNode(point);
+      return;
     } else if (_mode == _MapMode.plotLot) {
       _createLotAt(point);
+      return;
+    }
+    if (_mode == _MapMode.select || _isBatchMode) {
+      final lotId = _lotLayerKey.currentState?.lotIdAt(point);
+      if (lotId != null) _selectMarkerByLotId(lotId);
     }
   }
 
   void _handleNodeTap(Map<String, dynamic> node) {
+    if (_isBatchMode) return;
     if (_mode == _MapMode.connectNodes) {
       if (_pendingConnectNodeId == null) {
         setState(() => _pendingConnectNodeId = node['node_id'] as int);
@@ -2354,15 +2432,24 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
       setState(() {
         _selectedNode = node;
         _selectedMarker = null;
+        _showNavigationRoute = false;
+        _routePreviewPoints = const [];
       });
     }
   }
 
   void _selectMarker(Map<String, dynamic> marker) {
+    if (_isBatchMode) {
+      _toggleBatchMarker(marker);
+      return;
+    }
     setState(() {
       _selectedMarker = marker;
+      _lastClickedLot = marker;
       _selectedNode = null;
       _mode = _MapMode.select;
+      _showNavigationRoute = false;
+      _routePreviewPoints = const [];
     });
   }
 
@@ -2378,7 +2465,689 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
     setState(() {
       _mode = mode;
       if (mode != _MapMode.connectNodes) _pendingConnectNodeId = null;
+      _showNavigationRoute = false;
+      _routePreviewPoints = const [];
     });
+  }
+
+  void _toggleBatchMarker(Map<String, dynamic> marker) {
+    if (_batchSaving) return;
+    if (_mode == _MapMode.labelRow) _rowKeyboardFocus.requestFocus();
+    if (_mode == _MapMode.labelRow && _rowSelectByEnds) {
+      _selectRowEndpoint(marker);
+      return;
+    }
+    final index = _batchMarkers.indexWhere(
+      (item) =>
+          _markerLotId(item).toString() == _markerLotId(marker).toString(),
+    );
+    if (index >= 0) {
+      setState(() {
+        if (_mode == _MapMode.labelRow) {
+          _lastRowMarker = _batchMarkers.last;
+          _lastRowMarkerSaved = false;
+        }
+        _batchMarkers.removeAt(index);
+      });
+      return;
+    }
+    final lot = Map<String, dynamic>.from(marker['cemetery_lot'] as Map);
+    final block = lot['block_number']?.toString().trim() ?? '';
+    if (_mode == _MapMode.labelRow && block.isEmpty) {
+      _snack('Assign a block to this lot first.', error: true);
+      return;
+    }
+    if (_mode == _MapMode.labelRow &&
+        _batchMarkers.isNotEmpty &&
+        block !=
+            (_batchMarkers.first['cemetery_lot']['block_number'] as Object)
+                .toString()
+                .trim()) {
+      _snack('Select lots from one block per batch.', error: true);
+      return;
+    }
+    setState(() {
+      final selected = {...marker, 'cemetery_lot': lot};
+      _batchMarkers.add(selected);
+      if (_mode == _MapMode.labelRow) {
+        _lastRowMarker = selected;
+        _lastRowMarkerSaved = false;
+      }
+    });
+  }
+
+  void _selectRowEndpoint(Map<String, dynamic> marker) {
+    final lot = Map<String, dynamic>.from(marker['cemetery_lot'] as Map);
+    final block = lot['block_number']?.toString().trim() ?? '';
+    if (block.isEmpty) {
+      _snack('Assign a block to this lot first.', error: true);
+      return;
+    }
+    final id = _markerLotId(marker).toString();
+    if (_rowStartId == null) {
+      setState(() {
+        _rowStartId = id;
+        _batchMarkers
+          ..clear()
+          ..add({...marker, 'cemetery_lot': lot});
+        _lastRowMarker = _batchMarkers.last;
+        _lastRowMarkerSaved = false;
+      });
+      return;
+    }
+    if (!_mapReady) return;
+    try {
+      final camera = _mapController.camera;
+      final startBlock = _batchMarkers.first['cemetery_lot']['block_number']
+          .toString()
+          .trim();
+      if (block != startBlock) {
+        throw const FormatException(
+          'The start and end lots must be in the same block.',
+        );
+      }
+      final candidates = _lotMarkers
+          .where(
+            (item) =>
+                item['cemetery_lot'] is Map &&
+                item['cemetery_lot']['block_number']?.toString().trim() ==
+                    block,
+          )
+          .toList();
+      final ids = selectLotRow(
+        candidates
+            .map(
+              (item) => RowSelectionLot(
+                id: _markerLotId(item).toString(),
+                block: block,
+                center: camera.latLngToScreenOffset(_markerToLatLng(item)),
+                outline:
+                    geoJsonPolygonRings(item['cemetery_lot']['polygon_geo'])
+                        .expand((ring) => ring)
+                        .map(camera.latLngToScreenOffset)
+                        .toList(),
+              ),
+            )
+            .toList(),
+        _rowStartId!,
+        id,
+      );
+      final byId = {
+        for (final item in candidates) _markerLotId(item).toString(): item,
+      };
+      setState(() {
+        _batchMarkers
+          ..clear()
+          ..addAll(
+            ids.map((selectedId) {
+              final item = byId[selectedId]!;
+              return {
+                ...item,
+                'cemetery_lot': Map<String, dynamic>.from(
+                  item['cemetery_lot'] as Map,
+                ),
+              };
+            }),
+          );
+        _lastRowMarker = _batchMarkers.last;
+        _lastRowMarkerSaved = false;
+        _rowSelectByEnds = false;
+        _rowStartId = null;
+      });
+      _snack(
+        '${ids.length} lots selected. Check the highlights; click individual lots to adjust.',
+      );
+    } on FormatException catch (error) {
+      _snack(error.message, error: true);
+    }
+  }
+
+  void _extendRowWithArrow(Offset direction) {
+    if (!widget.isActive ||
+        _batchSaving ||
+        !_mapReady ||
+        _mode != _MapMode.labelRow ||
+        _batchMarkers.isEmpty) {
+      return;
+    }
+    final current = _batchMarkers.last;
+    final block = current['cemetery_lot']['block_number']?.toString().trim();
+    final camera = _mapController.camera;
+    final candidates = _lotMarkers
+        .where(
+          (marker) =>
+              marker['cemetery_lot'] is Map &&
+              marker['cemetery_lot']['block_number']?.toString().trim() ==
+                  block,
+        )
+        .toList();
+    final nextId = nextLotInDirection(
+      candidates
+          .map(
+            (marker) => RowSelectionLot(
+              id: _markerLotId(marker).toString(),
+              block: block ?? '',
+              center: camera.latLngToScreenOffset(_markerToLatLng(marker)),
+              outline:
+                  _markerLotId(marker).toString() ==
+                      _markerLotId(current).toString()
+                  ? geoJsonPolygonRings(marker['cemetery_lot']['polygon_geo'])
+                        .expand((ring) => ring)
+                        .map(camera.latLngToScreenOffset)
+                        .toList()
+                  : const [],
+            ),
+          )
+          .toList(),
+      _markerLotId(current).toString(),
+      direction,
+    );
+    if (nextId == null ||
+        _batchMarkers.any(
+          (marker) => _markerLotId(marker).toString() == nextId,
+        )) {
+      return;
+    }
+    final next = candidates.firstWhere(
+      (marker) => _markerLotId(marker).toString() == nextId,
+    );
+    setState(() {
+      _rowSelectByEnds = false;
+      _rowStartId = null;
+    });
+    _toggleBatchMarker(next);
+    final position = _markerToLatLng(next);
+    final pixel = camera.latLngToScreenOffset(position);
+    final size =
+        (_mapKey.currentContext?.findRenderObject() as RenderBox?)?.size;
+    if (size != null &&
+        (pixel.dx < 60 ||
+            pixel.dx > size.width - 60 ||
+            pixel.dy < 60 ||
+            pixel.dy > size.height - 290)) {
+      _moveMap(position, _currentZoom);
+    }
+  }
+
+  void _removeRowSelection({bool all = false}) {
+    setState(() {
+      if (_batchMarkers.isNotEmpty) {
+        _lastRowMarker = _batchMarkers.last;
+        _lastRowMarkerSaved = false;
+      }
+      if (all) {
+        _batchMarkers.clear();
+      } else if (_batchMarkers.isNotEmpty) {
+        _batchMarkers.removeLast();
+      }
+      if (_batchMarkers.isEmpty) {
+        _rowStartId = null;
+        _rowSelectByEnds = true;
+      }
+    });
+  }
+
+  List<LotLabelChange> _batchPlan() => _mode == _MapMode.assignBlock
+      ? planLotBlocks(
+          _batchMarkers
+              .map(
+                (marker) =>
+                    Map<String, dynamic>.from(marker['cemetery_lot'] as Map),
+              )
+              .toList(),
+          _targetBlock.text,
+        )
+      : planLotLabels(
+          _batchMarkers
+              .map(
+                (marker) =>
+                    Map<String, dynamic>.from(marker['cemetery_lot'] as Map),
+              )
+              .toList(),
+          _batchStart.text.trim(),
+        );
+
+  String _batchBadge(int index) {
+    final start = _batchStart.text.trim();
+    final value = int.tryParse(start);
+    return value == null || value < 1
+        ? '#${index + 1}'
+        : (value + index).toString().padLeft(max(3, start.length), '0');
+  }
+
+  void _selectBlockArea(Rect area) {
+    if (!_mapReady || _batchSaving) return;
+    final camera = _mapController.camera;
+    final candidates = _lotMarkers.where(
+      (marker) =>
+          marker['cemetery_lot'] is Map &&
+          area.contains(camera.latLngToScreenOffset(_markerToLatLng(marker))),
+    );
+    setState(() {
+      final ids = _batchMarkers
+          .map((marker) => _markerLotId(marker).toString())
+          .toSet();
+      for (final marker in candidates) {
+        final id = _markerLotId(marker).toString();
+        if (_removeArea) {
+          _batchMarkers.removeWhere(
+            (selected) => _markerLotId(selected).toString() == id,
+          );
+        } else if (ids.add(id)) {
+          _batchMarkers.add({
+            ...marker,
+            'cemetery_lot': Map<String, dynamic>.from(
+              marker['cemetery_lot'] as Map,
+            ),
+          });
+        }
+      }
+    });
+  }
+
+  Widget _buildBlockPanel() => Positioned(
+    left: 12,
+    right: 12,
+    bottom: 12,
+    child: Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 850, maxHeight: 230),
+        child: _panel(
+          radius: 18,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Assign Block · ${_batchMarkers.length} lots selected',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const Text(
+                  'Drag a box to add lots whose centers are inside. Draw more boxes for irregular blocks. Use Remove area to trim the selection.',
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 140,
+                      child: TextField(
+                        controller: _targetBlock,
+                        decoration: const InputDecoration(
+                          labelText: 'New block number',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                    FilterChip(
+                      label: const Text('Drag select'),
+                      selected: _dragSelect,
+                      onSelected: (value) =>
+                          setState(() => _dragSelect = value),
+                    ),
+                    FilterChip(
+                      label: const Text('Remove area'),
+                      selected: _removeArea,
+                      onSelected: (value) => setState(() {
+                        _removeArea = value;
+                        _dragSelect = true;
+                      }),
+                    ),
+                    TextButton(
+                      onPressed: () => setState(() => _dragSelect = false),
+                      child: const Text('Move map / adjust lots'),
+                    ),
+                    TextButton(
+                      onPressed: () => setState(_batchMarkers.clear),
+                      child: const Text('Clear'),
+                    ),
+                    FilledButton(
+                      onPressed: _batchMarkers.isEmpty ? null : _reviewBatch,
+                      child: const Text('Review block'),
+                    ),
+                    TextButton(
+                      onPressed: () => setState(() {
+                        _batchMarkers.clear();
+                        _mode = _MapMode.select;
+                      }),
+                      child: const Text('Exit'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Widget _buildBatchPanel() {
+    List<LotLabelChange> plan = [];
+    try {
+      plan = _batchPlan();
+    } on FormatException {
+      /* Validated on review. */
+    }
+    final summary = plan.isEmpty
+        ? '${_batchMarkers.length} lots selected'
+        : 'Block ${plan.first.block} · ${plan.length} lots · ${plan.first.number}–${plan.last.number}';
+    return Positioned(
+      left: 12,
+      right: 12,
+      bottom: 12,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 760, maxHeight: 270),
+          child: _panel(
+            radius: 18,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Label Row · $summary',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const Text(
+                    'After clicking a lot, use ↑ ↓ ← → to add the next lot and number.',
+                  ),
+                  Text(
+                    _rowSelectByEnds
+                        ? (_rowStartId == null
+                              ? 'Click the starting lot of a straight row.'
+                              : 'Now click the last lot in the same row. Lots between them will be highlighted.')
+                        : 'Check the highlighted row. Click lots to add or remove them before reviewing. For curved rows, use Adjust lots.',
+                  ),
+                  if (_rowAnchor != null)
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on, color: Colors.deepOrange),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            '${_batchMarkers.isEmpty && _lastRowMarkerSaved ? 'Last saved' : 'Last selected'}: '
+                            '${lotReference(_rowAnchor!['cemetery_lot'])}'
+                            '${plan.isNotEmpty ? ' → ${plan.last.label}' : ''}'
+                            ' · ID ${_markerLotId(_rowAnchor!)}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: () => _moveMap(
+                            _markerToLatLng(_rowAnchor!),
+                            max(_currentZoom, 20.5),
+                          ),
+                          icon: const Icon(Icons.my_location),
+                          label: const Text('Locate'),
+                        ),
+                      ],
+                    ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('Start & end'),
+                        selected: _rowSelectByEnds,
+                        onSelected: (selected) {
+                          if (selected && !_rowSelectByEnds) {
+                            setState(() {
+                              _batchMarkers.clear();
+                              _rowStartId = null;
+                              _rowSelectByEnds = true;
+                            });
+                          }
+                        },
+                      ),
+                      ChoiceChip(
+                        label: const Text('Adjust lots'),
+                        selected: !_rowSelectByEnds,
+                        onSelected: (selected) {
+                          if (selected) {
+                            setState(() {
+                              _rowStartId = null;
+                              _rowSelectByEnds = false;
+                            });
+                          }
+                        },
+                      ),
+                      SizedBox(
+                        width: 135,
+                        child: TextField(
+                          controller: _batchStart,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Starting number',
+                            isDense: true,
+                            border: OutlineInputBorder(),
+                          ),
+                          onChanged: (_) => setState(() {}),
+                          onSubmitted: (_) => _rowKeyboardFocus.requestFocus(),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _batchMarkers.isEmpty
+                            ? null
+                            : _rowKeyboardFocus.requestFocus,
+                        child: const Text('Use arrows'),
+                      ),
+                      TextButton(
+                        onPressed: _batchMarkers.isEmpty
+                            ? null
+                            : () => _removeRowSelection(),
+                        child: const Text('Undo'),
+                      ),
+                      TextButton(
+                        onPressed: _batchMarkers.length < 2
+                            ? null
+                            : () => setState(() {
+                                final reversed = _batchMarkers.reversed
+                                    .toList();
+                                _batchMarkers
+                                  ..clear()
+                                  ..addAll(reversed);
+                              }),
+                        child: const Text('Reverse'),
+                      ),
+                      TextButton(
+                        onPressed: _batchMarkers.isEmpty
+                            ? null
+                            : () => _removeRowSelection(all: true),
+                        child: const Text('Clear'),
+                      ),
+                      FilledButton(
+                        onPressed:
+                            _batchMarkers.isEmpty ||
+                                (_rowSelectByEnds && _rowStartId != null)
+                            ? null
+                            : _reviewBatch,
+                        child: const Text('Review batch'),
+                      ),
+                      TextButton(
+                        onPressed: () => setState(() {
+                          _batchMarkers.clear();
+                          _mode = _MapMode.select;
+                        }),
+                        child: const Text('Exit'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _reviewBatch() async {
+    if (_batchSaving) return;
+    final assigningBlock = _mode == _MapMode.assignBlock;
+    late final List<LotLabelChange> plan;
+    try {
+      plan = _batchPlan();
+    } on FormatException catch (error) {
+      _snack(error.message, error: true);
+      return;
+    }
+    var acknowledge = false;
+    var allowDuplicateNumbers = true;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, updateDialog) => AlertDialog(
+          title: Text(
+            'Review ${plan.length} lots in block ${plan.first.block}',
+          ),
+          content: SizedBox(
+            width: 520,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  assigningBlock
+                      ? 'Only these selected lots will move to the new block. Lot numbers stay the same. Display labels become block-lot (or just the block for unnumbered lots). Lot IDs and burial links stay the same.'
+                      : 'Only these selected lots will change. Existing numbers and labels will be replaced. Lot IDs and burial links stay the same.',
+                ),
+                const SizedBox(height: 12),
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: plan.length,
+                    itemBuilder: (context, index) {
+                      final change = plan[index];
+                      return ListTile(
+                        dense: true,
+                        leading: Text('${index + 1}'),
+                        title: Text(
+                          '${change.before['lot_label'] ?? change.before['lot_number'] ?? 'Unlabeled'} → ${change.label}',
+                        ),
+                        subtitle: Text('Lot ID ${change.id}'),
+                      );
+                    },
+                  ),
+                ),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Allow duplicate lot numbers'),
+                  subtitle: const Text(
+                    'Only the selected lots change. Other lots with the same number are kept.',
+                  ),
+                  value: allowDuplicateNumbers,
+                  onChanged: (value) => updateDialog(
+                    () => allowDuplicateNumbers = value ?? false,
+                  ),
+                ),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text(
+                    'I checked the order and approve replacing these labels.',
+                  ),
+                  value: acknowledge,
+                  onChanged: (value) =>
+                      updateDialog(() => acknowledge = value ?? false),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Back to selection'),
+            ),
+            FilledButton(
+              onPressed: acknowledge
+                  ? () => Navigator.pop(dialogContext, true)
+                  : null,
+              child: Text(assigningBlock ? 'Save block' : 'Save row'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    _stopBatchRequested = false;
+    _batchProgress.value = 'Checking ${plan.length} lots…';
+    widget.onBatchProgress?.call(_batchProgress.value);
+    setState(() {
+      _batchSaving = true;
+      _batchMinimized = false;
+    });
+    final result = await LotLabelBatchService.save(
+      plan,
+      allowDuplicateNumbers: allowDuplicateNumbers,
+      shouldStop: () => !mounted || _stopBatchRequested,
+      onProgress: (saved, total, phase) {
+        if (mounted) {
+          _batchProgress.value = '$phase · $saved / $total confirmed saved';
+          widget.onBatchProgress?.call(_batchProgress.value);
+        }
+      },
+    );
+    if (!mounted) return;
+    setState(() {
+      _batchSaving = false;
+      if (!assigningBlock && result.savedIds.isNotEmpty) {
+        final savedId = result.savedIds.last;
+        final savedMarker = _batchMarkers.firstWhere(
+          (marker) => _markerLotId(marker).toString() == savedId,
+        );
+        final savedChange = plan.firstWhere(
+          (change) => change.id.toString() == savedId,
+        );
+        _lastRowMarker = {
+          ...savedMarker,
+          'cemetery_lot': {...savedChange.before, ...savedChange.updates},
+        };
+        _lastRowMarkerSaved = true;
+      }
+      _batchMarkers.removeWhere(
+        (marker) => result.savedIds.contains(_markerLotId(marker).toString()),
+      );
+      if (!assigningBlock && _batchMarkers.isEmpty) {
+        _rowStartId = null;
+        _rowSelectByEnds = true;
+      }
+      // Continue with the original numbers for the unsaved suffix after a partial save.
+      if (!assigningBlock) {
+        _batchStart.text =
+            (int.parse(plan.first.number) + result.savedIds.length)
+                .toString()
+                .padLeft(plan.first.number.length, '0');
+      }
+    });
+    // Merge the small result locally instead of downloading all cemetery
+    // geometry, ownership records, route nodes and map features again.
+    final savedIds = result.savedIds.toSet();
+    for (final change in plan.where(
+      (change) => savedIds.contains(change.id.toString()),
+    )) {
+      _mergeLotIntoMarker({'lot_id': change.id, ...change.updates});
+    }
+    final pendingEvents = _pendingBatchEvents.values.toList();
+    _pendingBatchEvents.clear();
+    for (final event in pendingEvents) {
+      _handleLotChange(event);
+    }
+    final message = result.error == null
+        ? 'Saved ${result.savedIds.length} lots. Select the next ${assigningBlock ? 'block' : 'row'}.'
+        : '${result.savedIds.length}/${plan.length} saved. ${result.error}';
+    widget.onBatchProgress?.call(null);
+    widget.onBatchFinished?.call(message);
+    if (widget.onBatchFinished == null) {
+      _snack(message, error: result.error != null);
+    }
   }
 
   void _zoomBy(double delta) {
@@ -2402,38 +3171,88 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
   @override
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width >= 900;
-    return Scaffold(
-      backgroundColor: _C.background,
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: _C.primary))
-          : Stack(
-              children: [
-                Positioned.fill(child: _buildMap()),
-                _buildLeftToolbar(),
-                _buildCoordinatesHud(),
-                _buildBottomHint(),
-                if (_isSaving)
-                  const Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: LinearProgressIndicator(
-                      minHeight: 2,
-                      color: _C.primary,
+    return RowKeyboardNavigation(
+      focusNode: _rowKeyboardFocus,
+      enabled: widget.isActive && _mode == _MapMode.labelRow && !_batchSaving,
+      onDirection: _extendRowWithArrow,
+      child: Scaffold(
+        backgroundColor: _C.background,
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: _C.primary))
+            : Stack(
+                children: [
+                  Positioned.fill(child: _buildMap()),
+                  if (_mode == _MapMode.assignBlock &&
+                      _dragSelect &&
+                      !_batchSaving)
+                    Positioned.fill(
+                      child: LotDragSelection(onSelected: _selectBlockArea),
                     ),
-                  ),
-                if (isDesktop)
-                  _selectedNode == null
-                      ? _buildActivePlotPanel()
-                      : _buildActiveNodePanel(),
-              ],
-            ),
+                  if (!_isBatchMode) _buildLeftToolbar(),
+                  _buildCoordinatesHud(),
+                  if (!_batchSaving) ...[
+                    if (_mode == _MapMode.assignBlock)
+                      _buildBlockPanel()
+                    else if (_mode == _MapMode.labelRow)
+                      _buildBatchPanel()
+                    else
+                      _buildBottomHint(),
+                  ],
+                  if (_isSaving)
+                    const Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: LinearProgressIndicator(
+                        minHeight: 2,
+                        color: _C.primary,
+                      ),
+                    ),
+                  if (isDesktop && !_isBatchMode)
+                    _selectedNode == null
+                        ? _buildActivePlotPanel()
+                        : _buildActiveNodePanel(),
+                  if (_batchSaving) ...[
+                    if (!_batchMinimized)
+                      const Positioned.fill(
+                        child: ModalBarrier(
+                          dismissible: false,
+                          color: Color(0x55000000),
+                        ),
+                      ),
+                    Align(
+                      alignment: _batchMinimized
+                          ? Alignment.topRight
+                          : Alignment.center,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: BatchSaveProgress(
+                          progress: _batchProgress,
+                          minimized: _batchMinimized,
+                          onToggleSize: () => setState(
+                            () => _batchMinimized = !_batchMinimized,
+                          ),
+                          onStop: () {
+                            _stopBatchRequested = true;
+                            _batchProgress.value =
+                                'Stopping after current requests finish…';
+                            widget.onBatchProgress?.call(_batchProgress.value);
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+      ),
     );
   }
 
   Widget _buildMap() {
     final showPathNetwork = _mode == _MapMode.connectNodes;
-    final routePoints = const <LatLng>[];
+    final routePoints = _showNavigationRoute && _selectedMarker != null
+        ? _routePreviewPoints
+        : const <LatLng>[];
     final features = _featureLayers.resolve(
       _mapFeatures,
       publicPreview: false,
@@ -2481,23 +3300,53 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
           features.basePolylines,
           features.overlayPolygons,
           IgnorePointer(
-            ignoring: _mode != _MapMode.select,
-            child: GestureDetector(
-              onTap: () {
-                final hitValues = _lotPolygonHitNotifier.value?.hitValues;
-                if (hitValues == null || hitValues.isEmpty) return;
-                _selectMarkerByLotId(hitValues.last);
-              },
-              child: ViewportLotLayer(
-                markers: _lotMarkers,
-                selectedLotId: _selectedMarker == null
-                    ? null
-                    : _markerLotId(_selectedMarker!),
-                hitNotifier: _lotPolygonHitNotifier,
-              ),
+            ignoring: true,
+            child: ViewportLotLayer(
+              key: _lotLayerKey,
+              markers: _lotMarkers,
+              detailZoom: _isBatchMode ? 0 : 18.75,
+              selectedLotId: _selectedMarker == null
+                  ? null
+                  : _markerLotId(_selectedMarker!),
+              hitNotifier: _lotPolygonHitNotifier,
+              enableHitTesting: false,
+              viewportPaddingFactor: 0.20,
             ),
           ),
           features.overlayPolylines,
+          if (_isBatchMode && _batchMarkers.isNotEmpty)
+            IgnorePointer(
+              child: PolygonLayer<String>(
+                polygons: [
+                  for (final marker in _batchMarkers)
+                    for (final ring in geoJsonPolygonRings(
+                      marker['cemetery_lot']['polygon_geo'],
+                    ))
+                      Polygon<String>(
+                        points: ring,
+                        color: const Color(0x6688CCFF),
+                        borderColor: Colors.blue,
+                        borderStrokeWidth: 3,
+                      ),
+                ],
+              ),
+            ),
+          if (_mapLotAnchor != null)
+            IgnorePointer(
+              child: PolygonLayer<String>(
+                polygons: [
+                  for (final ring in geoJsonPolygonRings(
+                    _mapLotAnchor!['cemetery_lot']['polygon_geo'],
+                  ))
+                    Polygon<String>(
+                      points: ring,
+                      color: const Color(0x33FF9800),
+                      borderColor: Colors.deepOrange,
+                      borderStrokeWidth: 4,
+                    ),
+                ],
+              ),
+            ),
           if (showPathNetwork || routePoints.length > 1)
             PolylineLayer(
               polylines: [
@@ -2512,6 +3361,38 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
             ),
           features.points,
           ViewportMarkerLayer(markers: _mapMarkers()),
+          if (_mode == _MapMode.labelRow)
+            IgnorePointer(
+              child: MarkerLayer(
+                markers: [
+                  for (var index = 0; index < _batchMarkers.length; index++)
+                    Marker(
+                      point: _markerToLatLng(_batchMarkers[index]),
+                      width: 72,
+                      height: 24,
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade800,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            _batchBadge(index),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           RichAttributionWidget(
             attributions: [
               TextSourceAttribution('OpenStreetMap contributors', onTap: () {}),
@@ -2669,6 +3550,38 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                  ),
+                  _ActionButton(
+                    icon: Icons.select_all,
+                    label: 'Assign Block',
+                    onTap: () => setState(() {
+                      _batchMarkers.clear();
+                      _selectedMarker = null;
+                      _selectedNode = null;
+                      _showNavigationRoute = false;
+                      _routePreviewPoints = const [];
+                      _dragSelect = true;
+                      _removeArea = false;
+                      _mode = _MapMode.assignBlock;
+                    }),
+                  ),
+                  _ActionButton(
+                    icon: Icons.format_list_numbered,
+                    label: 'Label Row',
+                    onTap: () => setState(() {
+                      _batchMarkers.clear();
+                      _rowStartId = null;
+                      _rowSelectByEnds = true;
+                      if (_lastClickedLot != null) {
+                        _lastRowMarker = _lastClickedLot;
+                        _lastRowMarkerSaved = false;
+                      }
+                      _selectedMarker = null;
+                      _selectedNode = null;
+                      _showNavigationRoute = false;
+                      _routePreviewPoints = const [];
+                      _mode = _MapMode.labelRow;
+                    }),
                   ),
                   _ActionButton(
                     icon: Icons.add_location_alt_rounded,
@@ -3080,13 +3993,9 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                     child: OutlinedButton.icon(
                       onPressed: marker == null
                           ? null
-                          : () => _moveMap(_markerToLatLng(marker), 19),
+                          : () => _viewRoute(marker),
                       icon: const Icon(Icons.alt_route_rounded, size: 16),
-                      label: Text(
-                        _entranceXPercent == null || _entranceYPercent == null
-                            ? 'Focus Lot'
-                            : 'View Route',
-                      ),
+                      label: const Text('View Route'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: _C.onSurface,
                         side: const BorderSide(color: _C.outline),
@@ -3255,7 +4164,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                 child: Text(
                   value.toUpperCase(),
                   style: const TextStyle(
-                    color: Color(0xFF00210A),
+                    color: Color(0xFF0055B3),
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
@@ -3303,14 +4212,10 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                   child: OutlinedButton.icon(
                     onPressed: () {
                       Navigator.pop(context);
-                      _moveMap(_markerToLatLng(marker), 19);
+                      _viewRoute(marker);
                     },
                     icon: const Icon(Icons.alt_route_rounded),
-                    label: Text(
-                      _entranceXPercent == null || _entranceYPercent == null
-                          ? 'Focus'
-                          : 'Route',
-                    ),
+                    label: const Text('View Route'),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -3466,9 +4371,67 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
     );
   }
 
+  LatLng? get _routeEntrance {
+    if (_entranceXPercent != null && _entranceYPercent != null) {
+      return _entranceLatLng;
+    }
+    for (final feature in _mapFeatures) {
+      if (mapFeatureType(feature) != 'entrance') continue;
+      final points = wktPoints(feature['geometry_wkt']?.toString() ?? '');
+      if (points.isNotEmpty) return points.first;
+    }
+    return null;
+  }
+
+  void _viewRoute(Map<String, dynamic> marker) {
+    if (_routeEntrance == null) {
+      setState(() {
+        _selectedMarker = marker;
+        _showNavigationRoute = false;
+        _routePreviewPoints = const [];
+      });
+      _snack('Set a cemetery entrance before viewing a route.', error: true);
+      return;
+    }
+    final points = _routeFromEntranceToLot(marker);
+    if (points.length < 2) {
+      setState(() {
+        _selectedMarker = marker;
+        _showNavigationRoute = false;
+        _routePreviewPoints = const [];
+      });
+      _snack(
+        'No connected route found. Add walkways or connect route nodes between the entrance and this lot.',
+        error: true,
+      );
+      return;
+    }
+    setState(() {
+      _selectedMarker = marker;
+      _showNavigationRoute = true;
+      _routePreviewPoints = List<LatLng>.unmodifiable(points);
+    });
+    if (_mapReady) {
+      _mapController.fitCamera(
+        CameraFit.bounds(
+          bounds: LatLngBounds.fromPoints(points),
+          padding: const EdgeInsets.all(60),
+          maxZoom: 20,
+        ),
+      );
+      _currentCenter = _mapController.camera.center;
+      _currentZoom = _mapController.camera.zoom;
+    }
+    var metres = 0.0;
+    for (var i = 1; i < points.length; i++) {
+      metres += _coordinateDistanceMeters(points[i - 1], points[i]);
+    }
+    _snack('Entrance-to-lot route: ${metres.round()} metres.');
+  }
+
   List<LatLng> _routeFromEntranceToLot(Map<String, dynamic> marker) {
-    if (_entranceXPercent == null || _entranceYPercent == null) return [];
-    final start = _entranceLatLng;
+    final start = _routeEntrance;
+    if (start == null) return [];
     final end = _markerToLatLng(marker);
 
     final qgisRoute = shortestRouteThroughPathways(
@@ -3478,18 +4441,18 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
     );
     if (qgisRoute.isNotEmpty) return qgisRoute;
 
-    if (_pathNodes.isEmpty) return [start, end];
+    if (_pathNodes.isEmpty) return [];
 
     final startNode = _nearestNodeTo(start);
     final endNode = _nearestNodeTo(end);
-    if (startNode == null || endNode == null) return [start, end];
+    if (startNode == null || endNode == null) return [];
 
     final nodePath = _shortestNodePath(
       startNode['node_id'] as int,
       endNode['node_id'] as int,
     );
     if (nodePath.isEmpty) {
-      return [start, _nodeToLatLng(startNode), _nodeToLatLng(endNode), end];
+      return [];
     }
     return [
       start,
@@ -3702,6 +4665,8 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
   double _degreesToRadians(double degrees) => degrees * pi / 180;
 
   String get _modeLabel => switch (_mode) {
+    _MapMode.assignBlock => 'Assign Block',
+    _MapMode.labelRow => 'Label Row',
     _MapMode.select => 'Active Edit',
     _MapMode.plotLot => 'Plot Lot',
     _MapMode.addNode => 'Add Node',
@@ -4052,7 +5017,7 @@ class _LotOwnerAssignmentDialogState extends State<_LotOwnerAssignmentDialog> {
                 if (email != null && email.isNotEmpty) email,
               ].join(' - '),
               style: const TextStyle(
-                color: Color(0xFF00210A),
+                color: Color(0xFF0055B3),
                 fontWeight: FontWeight.w600,
               ),
             ),

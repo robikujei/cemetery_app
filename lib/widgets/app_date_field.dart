@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../core/app_colors.dart';
+
 class AppDateField extends StatelessWidget {
   const AppDateField({
     super.key,
@@ -74,7 +76,7 @@ class AppDateField extends StatelessWidget {
         decoration ??
         InputDecoration(
           labelText: label,
-          prefixIcon: Icon(icon, color: const Color(0xFF335538)),
+          prefixIcon: Icon(icon, color: AppColors.brandDark),
         );
 
     return TextFormField(

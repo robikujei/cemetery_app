@@ -972,7 +972,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
 
   List<Widget> _buildLegendItems() {
     final colors = [
-      Colors.green,
+      AppColors.brand,
       Colors.blue,
       Colors.orange,
       Colors.red,
@@ -1015,7 +1015,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
 
   List<PieChartSectionData> _buildPieSections() {
     final colors = [
-      Colors.green,
+      AppColors.brand,
       Colors.blue,
       Colors.orange,
       Colors.red,

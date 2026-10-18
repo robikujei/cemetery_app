@@ -81,7 +81,7 @@ class _AdminAuditTrailScreenState extends ConsumerState<AdminAuditTrailScreen> {
 
   Color _getActionColor(String action) {
     if (action == 'CREATE') {
-      return Colors.green;
+      return AppColors.brand;
     } else if (action == 'UPDATE') {
       return Colors.blue;
     } else if (action == 'DELETE') {

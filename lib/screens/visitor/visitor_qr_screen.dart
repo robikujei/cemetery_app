@@ -184,7 +184,7 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
       final result = await ImageGallerySaver.saveImage(
         byteData.buffer.asUint8List(),
         quality: 100,
-        name: 'eternal_rest_qr_${DateTime.now().millisecondsSinceEpoch}',
+        name: 'eternal_garden_qr_${DateTime.now().millisecondsSinceEpoch}',
       );
 
       final success = result['isSuccess'] == true || result['filePath'] != null;
@@ -254,7 +254,7 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
             Icon(Icons.church, color: _C.primaryContainer, size: 20),
             SizedBox(width: 8),
             Text(
-              'Eternal Rest',
+              'Eternal Garden',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
@@ -344,7 +344,7 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Welcome to Eternal Rest Cemetery & Gardens.',
+                  'Welcome to Eternal Garden Cemetery & Gardens.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
@@ -365,7 +365,7 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
                       border: Border.all(color: _C.outlineVariant),
                       boxShadow: const [
                         BoxShadow(
-                          color: Color(0x0F335538),
+                          color: Color(0x0F0066CC),
                           blurRadius: 12,
                           offset: Offset(0, 4),
                         ),
@@ -374,7 +374,7 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
                     clipBehavior: Clip.antiAlias,
                     child: Stack(
                       children: [
-                        // Decorative green circle accent (top-right)
+                        // Decorative brand circle accent (top-right)
                         Positioned(
                           top: -64,
                           right: -64,

@@ -119,7 +119,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Data refreshed!'),
-        backgroundColor: Colors.green,
+        backgroundColor: AppColors.brand,
         duration: Duration(seconds: 1),
       ),
     );
@@ -528,7 +528,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Profile updated!'),
-          backgroundColor: Colors.green,
+          backgroundColor: AppColors.brand,
         ),
       );
 
