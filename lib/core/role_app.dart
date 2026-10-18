@@ -32,8 +32,25 @@ class RoleApp extends StatelessWidget {
               if (state.matchedLocation == '/login' || state.matchedLocation == '/register') return null;
               final user = Supabase.instance.client.auth.currentUser;
               if (user == null) return '/login';
-              final profile = await Supabase.instance.client.from('users').select('role').eq('user_id', user.id).maybeSingle();
-              return profile?['role'] == role ? null : '/login';
+              try {
+                final client = Supabase.instance.client;
+                var profile = await client
+                    .from('users')
+                    .select('role')
+                    .eq('user_id', user.id)
+                    .maybeSingle();
+                if (profile == null && user.email != null) {
+                  profile = await client
+                      .from('users')
+                      .select('role')
+                      .eq('email', user.email!.trim().toLowerCase())
+                      .maybeSingle();
+                }
+                final actualRole = profile?['role']?.toString().trim().toLowerCase();
+                return actualRole == role.trim().toLowerCase() ? null : '/login';
+              } catch (_) {
+                return '/login';
+              }
             },
             routes: [
               GoRoute(path: '/login', builder: (_, __) => LoginScreen(requiredRole: role, portalName: portalName)),

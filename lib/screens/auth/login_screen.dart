@@ -87,15 +87,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         password: _passwordCtrl.text,
       );
       if (response.user != null) {
-        final userData = await Supabase.instance.client
-            .from('users')
-            .select('name, role')
-            .eq('email', _emailCtrl.text.trim().toLowerCase())
-            .single();
-        if (widget.requiredRole != null && userData['role'] != widget.requiredRole) {
+        final userData = await _loadUserProfile(response.user!);
+        if (userData == null) {
           await Supabase.instance.client.auth.signOut();
           _showErrorSnackBar(
-            'This account is for ${_roleName(userData['role'])}. Use the ${widget.portalName ?? 'correct'} login page.',
+            'Your account is valid, but its portal profile is missing. Contact an administrator.',
+          );
+          return;
+        }
+
+        final actualRole = userData['role']?.toString().trim().toLowerCase();
+        final requiredRole = widget.requiredRole?.trim().toLowerCase();
+        if (requiredRole != null && actualRole != requiredRole) {
+          await Supabase.instance.client.auth.signOut();
+          _showErrorSnackBar(
+            'This account is for ${_roleName(actualRole)}. Use the ${widget.portalName ?? 'correct'} login page.',
           );
           return;
         }
@@ -103,16 +109,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           action: 'LOGIN',
           entityType: 'user',
           entityId: response.user!.id,
-          details: 'User ${userData['name']} (${userData['role']}) logged in',
+          details: 'User ${userData['name']} ($actualRole) logged in',
         );
         final appUser = AppUser(
           id: response.user!.id,
           displayName:
               userData['name'] ?? _emailCtrl.text.trim().split('@').first,
-          role: _mapRoleToEnum(userData['role']),
+          role: _mapRoleToEnum(actualRole),
         );
         ref.read(sessionProvider.notifier).state = appUser;
-        if (mounted) _navigateByRole(userData['role']);
+        if (mounted) _navigateByRole(actualRole);
       } else {
         _showErrorSnackBar('Invalid email or password. Please try again.');
       }
@@ -121,6 +127,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  /// Older profiles can retain a legacy user_id after their Supabase Auth
+  /// account is recreated. Prefer the Auth ID, then fall back to the verified
+  /// email so those accounts can still reach the correct portal.
+  Future<Map<String, dynamic>?> _loadUserProfile(User authUser) async {
+    final client = Supabase.instance.client;
+    final byId = await client
+        .from('users')
+        .select('name, role, email')
+        .eq('user_id', authUser.id)
+        .maybeSingle();
+    if (byId != null) return Map<String, dynamic>.from(byId);
+
+    final email = authUser.email?.trim().toLowerCase();
+    if (email == null || email.isEmpty) return null;
+    final byEmail = await client
+        .from('users')
+        .select('name, role, email')
+        .eq('email', email)
+        .maybeSingle();
+    return byEmail == null ? null : Map<String, dynamic>.from(byEmail);
   }
 
   String _roleName(String? role) => switch (role) {
