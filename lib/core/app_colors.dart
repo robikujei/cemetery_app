@@ -18,4 +18,23 @@ abstract final class AppColors {
   static const borderSubtle = Color(0xFFE5E5EA);
   static const secondary = Color(0xFF48486A);
   static const secondaryLight = Color(0xFFF0EFF8);
+
+  // Dark surfaces keep the same blue brand while providing enough contrast
+  // for low-light use and OLED displays.
+  static const darkBackground = Color(0xFF0F1115);
+  static const darkSurface = Color(0xFF171A21);
+  static const darkSurfaceLow = Color(0xFF13161C);
+  static const darkSurfaceHigh = Color(0xFF20242C);
+  static const darkSurfaceHighest = Color(0xFF2A303A);
+  static const darkBrand = Color(0xFF66B2FF);
+  static const darkBrandPressed = Color(0xFF9DCEFF);
+  static const darkBrandContainer = Color(0xFF153B61);
+  static const darkOnBrand = Color(0xFF00284D);
+  static const darkText = Color(0xFFF5F7FA);
+  static const darkTextSecondary = Color(0xFFB9C0CB);
+  static const darkTextMuted = Color(0xFF929AA7);
+  static const darkBorder = Color(0xFF3A424F);
+  static const darkBorderSubtle = Color(0xFF2A303A);
+  static const darkSecondary = Color(0xFFC4C5E8);
+  static const darkSecondaryLight = Color(0xFF27283F);
 }

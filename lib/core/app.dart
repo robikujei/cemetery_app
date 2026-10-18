@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'router.dart';  // ← This now has 'router'
+import 'router.dart'; // ← This now has 'router'
 import 'theme.dart';
 
 class CemeteryApp extends StatelessWidget {
@@ -12,7 +12,9 @@ class CemeteryApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Cemetery Grave Finder',
       theme: AppTheme.light(),
-      routerConfig: router,  // ← Changed from 'appRouter' to 'router'
+      darkTheme: AppTheme.dark(),
+      themeMode: ThemeMode.system,
+      routerConfig: router, // ← Changed from 'appRouter' to 'router'
     );
   }
 }
