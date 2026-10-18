@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../providers/session_providers.dart';
 import '../../models/app_user.dart';
+import '../../widgets/theme_mode_switch_tile.dart';
 
 class VisitorProfileScreen extends ConsumerStatefulWidget {
   const VisitorProfileScreen({super.key});
@@ -307,7 +308,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Profile photo updated!'),
-        backgroundColor: AppColors.brand,
+          backgroundColor: AppColors.brand,
         ),
       );
     } catch (e) {
@@ -349,7 +350,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Profile photo removed!'),
-        backgroundColor: AppColors.brand,
+          backgroundColor: AppColors.brand,
         ),
       );
     } catch (e) {
@@ -907,6 +908,8 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
               subtitle: 'Update your login password',
               onTap: _showChangePasswordDialog,
             ),
+            const Divider(height: 1, color: AppColors.surfaceLow),
+            const ThemeModeSwitchTile(),
           ],
         ),
       ),

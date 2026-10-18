@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
+import '../providers/theme_provider.dart';
 import 'theme.dart';
 
 class RoleApp extends StatelessWidget {
@@ -29,12 +30,40 @@ class RoleApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ProviderScope(
-    child: MaterialApp.router(
+    child: _RoleMaterialApp(
+      role: role,
+      path: path,
+      home: home,
+      bypassAuth: bypassAuth,
+      portalName: portalName,
+    ),
+  );
+}
+
+class _RoleMaterialApp extends ConsumerWidget {
+  const _RoleMaterialApp({
+    required this.role,
+    required this.path,
+    required this.home,
+    required this.bypassAuth,
+    required this.portalName,
+  });
+
+  final String role;
+  final String path;
+  final Widget home;
+  final bool bypassAuth;
+  final String portalName;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeProvider);
+    return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: 'Cemetery Grave Finder',
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
-      themeMode: ThemeMode.system,
+      themeMode: themeMode,
       routerConfig: GoRouter(
         initialLocation: path,
         redirect: (context, state) async {
@@ -82,6 +111,6 @@ class RoleApp extends StatelessWidget {
           GoRoute(path: path, builder: (_, __) => home),
         ],
       ),
-    ),
-  );
+    );
+  }
 }

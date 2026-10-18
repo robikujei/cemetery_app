@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/app_user.dart';
 import '../../providers/session_providers.dart';
 import '../../services/audit_service.dart';
+import '../../widgets/theme_mode_switch_tile.dart';
 
 class AdminProfileScreen extends ConsumerStatefulWidget {
   const AdminProfileScreen({super.key});
@@ -210,6 +211,8 @@ class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 24),
+                _card('Appearance', const ThemeModeSwitchTile()),
                 if (_busy) ...[
                   const SizedBox(height: 16),
                   const LinearProgressIndicator(),
