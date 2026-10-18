@@ -1,10 +1,22 @@
-import '../../core/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/app_colors.dart';
+import '../../core/surface_style.dart';
 import '../../utils/lot_formatters.dart';
+
+class _HistoryPalette {
+  static const background = AppColors.background;
+  static const ink = AppColors.text;
+  static const muted = AppColors.textMuted;
+  static const primary = AppColors.brand;
+  static const primarySoft = AppColors.brandLight;
+  static const blueSoft = AppColors.secondaryLight;
+  static const outline = AppColors.border;
+  static const white = AppColors.surface;
+}
 
 class VisitorHistoryScreen extends ConsumerStatefulWidget {
   const VisitorHistoryScreen({super.key});
@@ -23,6 +35,12 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
 
   String _selectedFilter = 'Recent';
   final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -172,25 +190,49 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-
+      backgroundColor: _HistoryPalette.background,
       appBar: AppBar(
+        leading: IconButton(
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: const Icon(Icons.arrow_back_rounded),
+          tooltip: 'Back',
+        ),
         elevation: 0,
-        backgroundColor: Colors.white.withOpacity(0.92),
+        backgroundColor: _HistoryPalette.background,
         surfaceTintColor: Colors.transparent,
-        title: const Text(
-          'Visit History',
-          style: TextStyle(
-            color: AppColors.brandDark,
-            fontWeight: FontWeight.bold,
-            fontSize: 22,
-          ),
+        titleSpacing: 0,
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Visit history',
+              style: TextStyle(
+                color: _HistoryPalette.ink,
+                fontWeight: FontWeight.w700,
+                fontSize: 20,
+                letterSpacing: -0.2,
+              ),
+            ),
+            Text(
+              'Your quiet moments of remembrance',
+              style: TextStyle(
+                color: _HistoryPalette.muted,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
         actions: [
           IconButton(
             onPressed: _loadVisitHistory,
-            icon: const Icon(Icons.refresh_rounded, color: AppColors.brandDark),
+            icon: const Icon(
+              Icons.refresh_rounded,
+              color: _HistoryPalette.primary,
+            ),
+            tooltip: 'Refresh history',
           ),
+          const SizedBox(width: 8),
         ],
       ),
 
@@ -214,29 +256,105 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
   }
 
   Widget _buildHeader() {
-    return const Padding(
-      padding: EdgeInsets.fromLTRB(24, 24, 24, 10),
-      child: Text(
-        "A quiet record of the paths you've walked and the memories you've honored.",
-        style: TextStyle(fontSize: 15, height: 1.5, color: AppColors.textMuted),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: SurfaceStyle.panel(
+          color: _HistoryPalette.primary,
+          radius: 26,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(17),
+              ),
+              child: const Icon(
+                Icons.history_rounded,
+                color: Colors.white,
+                size: 26,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${_visitHistory.length} ${_visitHistory.length == 1 ? 'visit' : 'visits'} recorded',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 18,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'A gentle record of the people and places you have honored.',
+                    style: TextStyle(
+                      color: Color(0xFFD9E8D9),
+                      height: 1.35,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildSearchBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: TextField(
         controller: _searchController,
         onChanged: (_) => _applyFilters(),
         decoration: InputDecoration(
           hintText: 'Search by deceased name...',
-          prefixIcon: const Icon(Icons.search_rounded),
+          hintStyle: const TextStyle(
+            color: _HistoryPalette.muted,
+            fontSize: 14,
+          ),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: _HistoryPalette.muted,
+          ),
+          suffixIcon: _searchController.text.isEmpty
+              ? null
+              : IconButton(
+                  onPressed: () {
+                    _searchController.clear();
+                    _applyFilters();
+                  },
+                  icon: const Icon(Icons.close_rounded),
+                  color: _HistoryPalette.muted,
+                  tooltip: 'Clear search',
+                ),
           filled: true,
-          fillColor: Colors.white,
+          fillColor: _HistoryPalette.white,
+          contentPadding: const EdgeInsets.symmetric(vertical: 17),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(18),
             borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(18),
+            borderSide: const BorderSide(color: _HistoryPalette.outline),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(18),
+            borderSide: const BorderSide(
+              color: _HistoryPalette.primary,
+              width: 1.5,
+            ),
           ),
         ),
       ),
@@ -247,49 +365,49 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
     final filters = ['Recent', 'By Date', 'By Name'];
 
     return SizedBox(
-      height: 70,
+      height: 68,
       child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
         scrollDirection: Axis.horizontal,
         itemCount: filters.length,
         itemBuilder: (context, index) {
           final filter = filters[index];
           final selected = _selectedFilter == filter;
 
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedFilter = filter;
-              });
-              _applyFilters();
-            },
-            child: Container(
-              margin: const EdgeInsets.only(right: 10),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-              decoration: BoxDecoration(
-                color: selected ? AppColors.brand : AppColors.surfaceHigh,
-                borderRadius: BorderRadius.circular(20),
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              selected: selected,
+              onSelected: (_) {
+                setState(() => _selectedFilter = filter);
+                _applyFilters();
+              },
+              avatar: Icon(
+                filter == 'Recent'
+                    ? Icons.history_rounded
+                    : filter == 'By Date'
+                    ? Icons.calendar_today_rounded
+                    : Icons.person_outline_rounded,
+                size: 17,
+                color: selected ? Colors.white : _HistoryPalette.primary,
               ),
-              child: Row(
-                children: [
-                  Icon(
-                    filter == 'Recent'
-                        ? Icons.history
-                        : filter == 'By Date'
-                        ? Icons.calendar_month
-                        : Icons.person,
-                    size: 18,
-                    color: selected ? Colors.white : AppColors.textSecondary,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    filter,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: selected ? Colors.white : AppColors.textSecondary,
-                    ),
-                  ),
-                ],
+              label: Text(filter),
+              labelStyle: TextStyle(
+                color: selected ? Colors.white : _HistoryPalette.ink,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+              showCheckmark: false,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              backgroundColor: _HistoryPalette.white,
+              selectedColor: _HistoryPalette.primary,
+              side: BorderSide(
+                color: selected
+                    ? _HistoryPalette.primary
+                    : _HistoryPalette.outline,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
               ),
             ),
           );
@@ -303,8 +421,11 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
 
     return RefreshIndicator(
       onRefresh: _loadVisitHistory,
+      color: _HistoryPalette.primary,
+      backgroundColor: _HistoryPalette.white,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 120),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
         children: groupedHistory.entries.map((entry) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -315,9 +436,9 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                   entry.key.toUpperCase(),
                   style: const TextStyle(
                     fontSize: 12,
-                    letterSpacing: 1.5,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textMuted,
+                    letterSpacing: 1.2,
+                    fontWeight: FontWeight.w700,
+                    color: _HistoryPalette.muted,
                   ),
                 ),
               ),
@@ -337,64 +458,123 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                 final formattedTime = _formatTime(timeIn);
 
                 return Container(
-                  margin: const EdgeInsets.only(bottom: 18),
-                  padding: const EdgeInsets.all(20),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.78),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white.withOpacity(0.35)),
+                    color: _HistoryPalette.white,
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(color: _HistoryPalette.outline),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x0D335538),
+                        blurRadius: 16,
+                        offset: Offset(0, 6),
+                      ),
+                    ],
                   ),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
-                        width: 54,
-                        height: 54,
+                        width: 52,
+                        height: 52,
                         decoration: BoxDecoration(
-                          color: AppColors.secondaryLight,
-                          borderRadius: BorderRadius.circular(20),
+                          color: _HistoryPalette.blueSoft,
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        child: const Icon(Icons.church_rounded),
+                        child: const Icon(
+                          Icons.church_rounded,
+                          color: _HistoryPalette.primary,
+                          size: 24,
+                        ),
                       ),
-
-                      const SizedBox(width: 16),
-
+                      const SizedBox(width: 14),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
                                   child: Text(
                                     deceasedName,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
+                                      color: _HistoryPalette.ink,
+                                      fontSize: 16,
+                                      height: 1.2,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: -0.1,
                                     ),
                                   ),
                                 ),
+                                const SizedBox(width: 8),
                                 Text(
                                   formattedTime,
-                                  style: const TextStyle(fontSize: 12),
+                                  style: const TextStyle(
+                                    color: _HistoryPalette.muted,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ],
                             ),
-
-                            const SizedBox(height: 6),
-
-                            Text(
-                              '$blockLabel - Lot $lotNumber',
-                              style: const TextStyle(fontSize: 14),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.place_outlined,
+                                  size: 15,
+                                  color: _HistoryPalette.muted,
+                                ),
+                                const SizedBox(width: 5),
+                                Expanded(
+                                  child: Text(
+                                    '$blockLabel · Lot $lotNumber',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: _HistoryPalette.muted,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-
-                            const SizedBox(height: 10),
-
-                            Text(
-                              formattedDate,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.brandDark,
-                              ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 9,
+                                    vertical: 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _HistoryPalette.primarySoft,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    formattedDate,
+                                    style: const TextStyle(
+                                      color: _HistoryPalette.primary,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                if (visit['method'] != null) ...[
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    visit['method'].toString(),
+                                    style: const TextStyle(
+                                      color: _HistoryPalette.muted,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ],
                         ),
@@ -402,7 +582,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                     ],
                   ),
                 );
-              }).toList(),
+              }),
             ],
           );
         }).toList(),
@@ -411,10 +591,86 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
   }
 
   Widget _buildEmptyWidget() {
-    return const Center(child: Text('No visit history yet'));
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 76,
+              height: 76,
+              decoration: BoxDecoration(
+                color: _HistoryPalette.primarySoft,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: const Icon(
+                Icons.auto_stories_outlined,
+                color: _HistoryPalette.primary,
+                size: 34,
+              ),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'No visits yet',
+              style: TextStyle(
+                color: _HistoryPalette.ink,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Your completed cemetery visits will appear here.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: _HistoryPalette.muted, fontSize: 13),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildErrorWidget() {
-    return Center(child: Text(_errorMessage ?? 'Error'));
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.cloud_off_rounded,
+              color: _HistoryPalette.muted,
+              size: 42,
+            ),
+            const SizedBox(height: 14),
+            Text(
+              'We could not load your visits',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: _HistoryPalette.ink,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _errorMessage ?? 'Please try again.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: _HistoryPalette.muted,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 18),
+            FilledButton.icon(
+              onPressed: _loadVisitHistory,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Try again'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
