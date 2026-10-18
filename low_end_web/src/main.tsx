@@ -16,7 +16,7 @@ function MapView({ lots, selected, onSelect }: { lots: Lot[]; selected: Lot | nu
   const polygons = useRef<L.LayerGroup>();
   useEffect(() => {
     if (!host.current) return;
-    map.current = L.map(host.current, { center, zoom: 19, zoomControl: false, preferCanvas: true });
+    map.current = L.map(host.current, { center, zoom: 17, zoomControl: false, preferCanvas: true });
     L.control.zoom({ position: 'bottomright' }).addTo(map.current);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxNativeZoom: 19, maxZoom: 22 }).addTo(map.current);
     markers.current = L.layerGroup().addTo(map.current);
@@ -27,23 +27,24 @@ function MapView({ lots, selected, onSelect }: { lots: Lot[]; selected: Lot | nu
     if (!map.current || !markers.current || !polygons.current) return;
     markers.current.clearLayers();
     polygons.current.clearLayers();
-    const bounds = map.current.getBounds().pad(0.35);
+    const allPoints: L.LatLngExpression[] = [];
     for (const lot of lots) {
       // Production can replace this point conversion with the configured map spans.
       const point: L.LatLngExpression = [center[0] + (50 - lot.y_percent) * 0.000036, center[1] + (lot.x_percent - 50) * 0.000046];
       const rings = geoRings(lot.polygon_geo);
       for (const ring of rings) {
+        allPoints.push(...ring);
         const polygon = L.polygon(ring, { color: selected?.lot_id === lot.lot_id ? '#174a27' : '#4d7658', weight: 1, fillColor: lot.status === 'Occupied' ? '#6e9f78' : '#b8d1bd', fillOpacity: selected?.lot_id === lot.lot_id ? 0.75 : 0.45 });
         polygon.on('click', () => onSelect(lot));
         polygon.bindTooltip(`Lot ${lot.lot_number ?? lot.lot_id}`, { direction: 'top' });
         polygon.addTo(polygons.current);
       }
-      if (!bounds.contains(point)) continue;
       const marker = L.circleMarker(point, { radius: selected?.lot_id === lot.lot_id ? 8 : 5, color: lot.status === 'Occupied' ? '#2f6f43' : '#7c8a7d', fillOpacity: 0.8 });
       marker.on('click', () => onSelect(lot));
       marker.bindTooltip(`Lot ${lot.lot_number ?? lot.lot_id}`, { direction: 'top' });
       marker.addTo(markers.current);
     }
+    if (allPoints.length > 2) map.current.fitBounds(L.latLngBounds(allPoints), { padding: [24, 24], maxZoom: 19, animate: false });
   }, [lots, selected]);
   return <div ref={host} class="map" />;
 }
