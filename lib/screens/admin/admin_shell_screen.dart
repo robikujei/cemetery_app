@@ -1,5 +1,6 @@
 import '../../widgets/lazy_screen_stack.dart';
 import '../../widgets/logout_dialog.dart';
+import '../../widgets/brand_logo.dart';
 import '../../core/surface_style.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,9 +12,9 @@ import 'admin_lots_screen.dart';
 import 'admin_map_manager_screen.dart';
 import 'admin_reports_screen.dart';
 import 'admin_profile_screen.dart';
-import '../payment_requests_screen.dart';
 import 'admin_visitor_logs_screen.dart';
 import 'admin_user_management_screen.dart';
+import 'admin_interment_planner_screen.dart';
 
 class AdminShellScreen extends ConsumerStatefulWidget {
   const AdminShellScreen({super.key});
@@ -132,9 +133,9 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
                     color: colors.primaryContainer,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Icon(
-                    Icons.apartment_rounded,
-                    color: colors.onPrimaryContainer,
+                  child: const Padding(
+                    padding: EdgeInsets.all(6),
+                    child: BrandLogo(height: 36),
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -187,16 +188,22 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
                   onTap: () => _go(1),
                 ),
                 _NavTile(
+                  selected: _selected == 3,
+                  icon: Icons.grid_view_rounded,
+                  label: 'Lots',
+                  onTap: () => _go(3),
+                ),
+                _NavTile(
                   selected: _selected == 2,
                   icon: Icons.people_outline,
                   label: 'Burial Records',
                   onTap: () => _go(2),
                 ),
                 _NavTile(
-                  selected: _selected == 3,
-                  icon: Icons.grid_view_rounded,
-                  label: 'Lots',
-                  onTap: () => _go(3),
+                  selected: _selected == 10,
+                  icon: Icons.calendar_month_outlined,
+                  label: 'Interment Planner',
+                  onTap: () => _go(10),
                 ),
                 _NavTile(
                   selected: _selected == 4,
@@ -215,12 +222,6 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
                   icon: Icons.history,
                   label: 'Audit Trail',
                   onTap: () => _go(6),
-                ),
-                _NavTile(
-                  selected: _selected == 8,
-                  icon: Icons.payments_outlined,
-                  label: 'Payment Review',
-                  onTap: () => _go(8),
                 ),
                 _NavTile(
                   selected: _selected == 9,
@@ -295,11 +296,9 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
       const AdminReportsScreen(),
       const AdminAuditTrailScreen(),
       AdminUserManagementScreen(onMenuPressed: _toggleNavigation),
-      const PaymentRequestsScreen(admin: true),
-      if (_selected == 9)
-        const AdminProfileScreen()
-      else
-        const SizedBox.shrink(),
+      const SizedBox.shrink(),
+      const AdminProfileScreen(),
+      const AdminIntermentPlannerScreen(),
     ],
   );
 
@@ -323,8 +322,8 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
       5 => 'Reports & Analytics',
       6 => 'Audit Trail',
       7 => 'User Management',
-      8 => 'Payment Review',
       9 => 'Profile Settings',
+      10 => 'Weekly Interment Planner',
       _ => 'Cemetery Admin',
     };
   }

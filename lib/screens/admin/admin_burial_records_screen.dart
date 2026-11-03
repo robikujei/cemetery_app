@@ -40,6 +40,19 @@ class _AdminBurialRecordsScreenState
   List<Map<String, dynamic>> _filteredRecords = [];
   bool _isLoading = true;
   String? _errorMessage;
+  static const int _pageSize = 30;
+  int _currentPage = 0;
+
+  int get _pageCount => _filteredRecords.isEmpty
+      ? 1
+      : (_filteredRecords.length / _pageSize).ceil();
+
+  List<Map<String, dynamic>> get _pagedRecords {
+    final start = _currentPage * _pageSize;
+    if (start >= _filteredRecords.length) return const [];
+    final end = (start + _pageSize).clamp(0, _filteredRecords.length);
+    return _filteredRecords.sublist(start, end);
+  }
 
   // Form controllers for add/edit
   final _applicationDateController = TextEditingController();
@@ -196,6 +209,7 @@ class _AdminBurialRecordsScreenState
       setState(() {
         _burialRecords = enrichedRecords;
         _filteredRecords = List<Map<String, dynamic>>.from(enrichedRecords);
+        _currentPage = 0;
         _informants = informantList;
         _informantsTableAvailable = informantsResult.tableAvailable;
         _isLoading = false;
@@ -489,6 +503,7 @@ class _AdminBurialRecordsScreenState
               religion.contains(normalizedQuery);
         }).toList();
       }
+      _currentPage = 0;
     });
   }
 
@@ -848,7 +863,7 @@ class _AdminBurialRecordsScreenState
                     _textField(
                       controller: _religionController,
                       label: 'Religion',
-                      icon: Icons.church_outlined,
+                      icon: Icons.inventory_2_outlined,
                     ),
                     const SizedBox(height: 18),
                     _sectionTitle('Schedule of Interment'),
@@ -1366,42 +1381,76 @@ class _AdminBurialRecordsScreenState
                         : Column(
                             children: [
                               ...List.generate(
-                                _filteredRecords.length,
+                                _pagedRecords.length,
                                 (index) => Padding(
                                   padding: EdgeInsets.only(
-                                    bottom: index == _filteredRecords.length - 1
+                                    bottom: index == _pagedRecords.length - 1
                                         ? 0
                                         : 16,
                                   ),
-                                  child: _buildRecordCard(
-                                    _filteredRecords[index],
-                                  ),
+                                  child: _buildRecordCard(_pagedRecords[index]),
                                 ),
                               ),
                               const SizedBox(height: 24),
-                              Center(
-                                child: OutlinedButton(
-                                  onPressed: _loadData,
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: AppColors.text,
-                                    side: const BorderSide(
-                                      color: AppColors.border,
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 32,
-                                      vertical: 14,
-                                    ),
-                                    shape: const StadiumBorder(),
-                                  ),
-                                  child: const Text('Load More Records'),
-                                ),
-                              ),
+                              _buildPaginationControls(),
                             ],
                           ),
                   ],
                 ),
               ),
             ),
+    );
+  }
+
+  Widget _buildPaginationControls() {
+    final firstRecord = _filteredRecords.isEmpty
+        ? 0
+        : (_currentPage * _pageSize) + 1;
+    final lastRecord = ((_currentPage + 1) * _pageSize).clamp(
+      0,
+      _filteredRecords.length,
+    );
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Showing $firstRecord–$lastRecord of ${_filteredRecords.length} records',
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Previous page',
+            onPressed: _currentPage == 0
+                ? null
+                : () => setState(() => _currentPage--),
+            icon: const Icon(Icons.chevron_left_rounded),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              'Page ${_currentPage + 1} of $_pageCount',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Next page',
+            onPressed: _currentPage >= _pageCount - 1
+                ? null
+                : () => setState(() => _currentPage++),
+            icon: const Icon(Icons.chevron_right_rounded),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1630,7 +1679,7 @@ class _AdminBurialRecordsScreenState
                           ),
                         if (religion != null && religion.isNotEmpty)
                           _InfoChip(
-                            icon: Icons.church_rounded,
+                            icon: Icons.inventory_2_rounded,
                             label: religion,
                             color: const Color(0xFF5D5685),
                           ),

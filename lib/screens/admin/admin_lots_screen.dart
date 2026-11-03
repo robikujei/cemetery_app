@@ -31,7 +31,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
   String? _errorMessage;
   String _searchQuery = '';
   String _filterStatus = 'All';
-  static const int _pageSize = 100;
+  static const int _pageSize = 30;
   int _currentPage = 0;
 
   int get _pageCount =>
@@ -655,7 +655,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
                       controller: religionController,
                       decoration: _fieldDecoration(
                         labelText: 'Religion',
-                        icon: Icons.church_outlined,
+                        icon: Icons.grid_view_outlined,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -1471,7 +1471,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
               if (deathDate != null && deathDate.isNotEmpty) 'Died $deathDate',
             ].join(' - ');
             return _LotInfoChip(
-              icon: Icons.church_outlined,
+              icon: Icons.grid_view_outlined,
               label: details,
               color: _getStatusColor(status),
             );

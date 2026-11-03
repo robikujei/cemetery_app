@@ -18,6 +18,22 @@ class VisitorMapDataService {
   final Duration requestTimeout;
   final int pageSize;
 
+  /// Public map overlay: only today's active interments and their lot IDs.
+  Future<List<Map<String, dynamic>>> loadTodaySchedules() async {
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day);
+    final end = start.add(const Duration(days: 1));
+    final result = await client
+        .from('interment_schedule')
+        .select('schedule_id,lot_id,deceased_name,scheduled_at')
+        .eq('status', 'scheduled')
+        .gte('scheduled_at', start.toUtc().toIso8601String())
+        .lt('scheduled_at', end.toUtc().toIso8601String())
+        .order('scheduled_at')
+        .timeout(requestTimeout);
+    return List<Map<String, dynamic>>.from(result);
+  }
+
   Future<VisitorMapBaseData> loadBase() async {
     final results = await Future.wait<dynamic>([
       client

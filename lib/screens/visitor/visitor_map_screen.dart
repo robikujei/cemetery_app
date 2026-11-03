@@ -70,6 +70,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
   List<Map<String, dynamic>> _mapFeatures = [];
   final _featureLayers = CachedMapFeatures();
   Map<String, List<Map<String, dynamic>>> _gravesByLotId = {};
+  List<Map<String, dynamic>> _todaySchedules = [];
 
   double? _entranceXPercent;
   double? _entranceYPercent;
@@ -181,6 +182,13 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
     final service = VisitorMapDataService(Supabase.instance.client);
     try {
       final base = await service.loadBase();
+      // Schedules are supplementary: old deployments without the migration
+      // still load the visitor map normally.
+      try {
+        _todaySchedules = await service.loadTodaySchedules();
+      } catch (_) {
+        _todaySchedules = [];
+      }
       if (!current()) return;
       final config = base.config;
       setState(() {
@@ -679,7 +687,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                 null,
               ),
               _buildDetailRow(
-                Icons.church_outlined,
+                Icons.location_on_outlined,
                 'Passed',
                 _formatDate(burial['death_date']),
                 null,
@@ -699,7 +707,12 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                 null,
               ),
             if (graveLabel != null)
-              _buildDetailRow(Icons.church_outlined, 'Grave', graveLabel, null),
+              _buildDetailRow(
+                Icons.location_on_outlined,
+                'Grave',
+                graveLabel,
+                null,
+              ),
             if (isAvailable && burial == null)
               _buildDetailRow(
                 Icons.payments_outlined,
@@ -780,12 +793,29 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
     final shouldGenerate = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: _C.white,
+        backgroundColor: Theme.of(dialogContext).colorScheme.surface,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Generate visit QR?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: _C.primary.withOpacity(.12),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.qr_code_2_rounded, color: _C.primary),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(child: Text('Generate visit QR?')),
+          ],
+        ),
         content: Text(
           'Create a QR code to check in for visiting $deceasedName at Lot $lotNumber.',
+          style: TextStyle(
+            color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
+          ),
         ),
         actions: [
           TextButton(
@@ -799,6 +829,10 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
             style: FilledButton.styleFrom(
               backgroundColor: _C.primary,
               foregroundColor: _C.white,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
           ),
         ],
@@ -1068,8 +1102,6 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                             _buildSearchBar(),
                             _buildLegend(),
                             _buildControls(),
-                            if (_gps.active || _gps.message != null)
-                              _buildGpsStatus(),
                           ],
                         ),
                       ),
@@ -1280,31 +1312,6 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
     );
   }
 
-  Widget _buildGpsStatus() {
-    final fix = _gps.position;
-    final outside =
-        fix != null &&
-        !_cemeteryCameraBounds.contains(LatLng(fix.latitude, fix.longitude));
-    return Positioned(
-      top: 260,
-      left: 24,
-      right: 90,
-      child: _glass(
-        borderRadius: 14,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Text(
-            _gps.message ??
-                '${_gps.stale ? 'Last known position' : 'GPS active'} · accuracy ±${fix!.accuracy.round()} m'
-                    '${outside ? '\nOutside the mapped cemetery area.' : ''}'
-                    '${fix.accuracy > 50 ? '\nApproximate location; it may not identify an individual lot.' : ''}',
-            style: const TextStyle(fontSize: 12, color: _C.onSurface),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _controlButton(IconData icon, VoidCallback onPressed, {Color? color}) {
     return IconButton(
       onPressed: onPressed,
@@ -1483,7 +1490,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
           children: [
             Row(
               children: [
-                _softIcon(Icons.church_outlined, _C.primaryContainer),
+                _softIcon(Icons.location_on_outlined, _C.primaryContainer),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -1659,6 +1666,26 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
         : _routeFromEntranceToLot(_selectedMarker!);
     final features = _featureLayers.resolve(_mapFeatures, publicPreview: true);
     final markers = <Marker>[
+      for (final schedule in _todaySchedules)
+        if (_lotMarkers
+                .where(
+                  (m) => _sameRecordId(_markerLotId(m), schedule['lot_id']),
+                )
+                .firstOrNull
+            case final marker?)
+          Marker(
+            point: _markerToLatLng(marker),
+            width: 42,
+            height: 42,
+            child: Tooltip(
+              message: 'Interment today: ${schedule['deceased_name']}',
+              child: const Icon(
+                Icons.event_available_rounded,
+                color: Colors.deepOrange,
+                size: 34,
+              ),
+            ),
+          ),
       if (_hasRouteStart)
         Marker(
           point: _routeStart,
