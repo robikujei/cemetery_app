@@ -18,6 +18,7 @@ import '../../services/gps_tracker.dart';
 import '../../providers/visitor_nav_providers.dart';
 import '../../utils/lot_formatters.dart';
 import '../../utils/lot_pricing.dart';
+import '../../utils/apartment_crypt.dart';
 import '../../utils/map_bounds_index.dart';
 import '../../utils/map_feature_geometry.dart';
 import 'visitor_qr_with_grave_screen.dart';
@@ -95,6 +96,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
   bool _centerOnNextFix = false;
   bool _navigating = false;
   bool _followGps = false;
+  bool _cryptArrivalShown = false;
   Object? _lastRouteKey;
   List<LatLng> _lastRoute = const [];
 
@@ -145,6 +147,340 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
       _centerOnNextFix = false;
       WidgetsBinding.instance.addPostFrameCallback((_) => _recenterGps());
     }
+    _maybeShowCryptArrivalGrid();
+  }
+
+  void _maybeShowCryptArrivalGrid() {
+    if (_cryptArrivalShown || !_navigating || _gps.stale) return;
+    final fix = _gps.position;
+    final marker = _selectedMarker;
+    final grave = _selectedGrave;
+    if (fix == null || marker == null || grave == null || fix.accuracy > 15) {
+      return;
+    }
+    final rawLot = marker['cemetery_lot'];
+    if (rawLot is! Map) return;
+    final lot = Map<String, dynamic>.from(rawLot);
+    if (!isApartmentCryptLot(lot)) return;
+    final parsed = parseApartmentCryptLabel(_graveLabel(grave));
+    if (parsed == null) return;
+    final distance = const Distance()(
+      LatLng(fix.latitude, fix.longitude),
+      _markerToLatLng(marker),
+    );
+    if (distance > 3) return;
+
+    _cryptArrivalShown = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _showCryptArrivalGrid(
+        lot: lot,
+        grave: grave,
+        wing: parsed.wing,
+        slot: parsed.slot,
+      );
+    });
+  }
+
+  Future<void> _showCryptArrivalGrid({
+    required Map<String, dynamic> lot,
+    required Map<String, dynamic> grave,
+    required String wing,
+    required int slot,
+  }) async {
+    final deceased = _graveTitle(grave);
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('${lotText(lot, 'lot_label')} - Wing $wing'),
+        content: SizedBox(
+          width: 760,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$deceased is in ${apartmentCryptSlotCode(wing, slot)}. '
+                'The highlighted face is your destination.',
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 245,
+                child: InteractiveViewer(
+                  minScale: 0.7,
+                  maxScale: 3,
+                  constrained: false,
+                  alignment: Alignment.topLeft,
+                  boundaryMargin: const EdgeInsets.all(40),
+                  child: SizedBox(
+                    width: 1280,
+                    height: 300,
+                    child: GridView.builder(
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 20,
+                            crossAxisSpacing: 4,
+                            mainAxisSpacing: 4,
+                            childAspectRatio: 1.25,
+                          ),
+                      itemCount: 100,
+                      itemBuilder: (context, index) {
+                        final row = index ~/ 20;
+                        final column = index % 20;
+                        final rowStart = row * 20;
+                        final face = row.isEven
+                            ? rowStart + (20 - column)
+                            : rowStart + column + 1;
+                        final selected = face == slot;
+                        return Container(
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? _C.secondary
+                                : _C.surfaceContainerHigh,
+                            borderRadius: BorderRadius.circular(5),
+                            border: Border.all(
+                              color: selected ? _C.primary : _C.outlineVariant,
+                              width: selected ? 3 : 1,
+                            ),
+                            boxShadow: selected
+                                ? const [
+                                    BoxShadow(
+                                      color: Color(0x55000000),
+                                      blurRadius: 8,
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Text(
+                            apartmentCryptSlotCode(wing, face),
+                            style: TextStyle(
+                              color: selected ? _C.white : _C.onSurface,
+                              fontSize: 9,
+                              fontWeight: selected
+                                  ? FontWeight.w800
+                                  : FontWeight.w500,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(dialogContext),
+            icon: const Icon(Icons.check_circle_outline_rounded),
+            label: const Text('I found it'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showVisitorCryptGrid(
+    Map<String, dynamic> marker, {
+    Map<String, dynamic>? initialGrave,
+  }) async {
+    final rawLot = marker['cemetery_lot'];
+    if (rawLot is! Map) return;
+    final lot = Map<String, dynamic>.from(rawLot);
+    final graves = _gravesForMarker(marker);
+    final gravesByCode = <String, Map<String, dynamic>>{};
+    for (final grave in graves) {
+      final parsed = parseApartmentCryptLabel(_graveLabel(grave));
+      if (parsed != null) {
+        gravesByCode[apartmentCryptSlotCode(parsed.wing, parsed.slot)] = grave;
+      }
+    }
+
+    final initialFace = parseApartmentCryptLabel(_graveLabel(initialGrave));
+    var wing = initialFace?.wing ?? 'A';
+    final highlightedCode = initialFace == null
+        ? null
+        : apartmentCryptSlotCode(initialFace.wing, initialFace.slot);
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          titlePadding: const EdgeInsets.fromLTRB(24, 22, 16, 0),
+          title: Row(
+            children: [
+              const Icon(Icons.apartment_rounded, color: _C.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  lotText(lot, 'lot_label').isEmpty
+                      ? 'Apartment Crypt'
+                      : lotText(lot, 'lot_label'),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Close',
+                onPressed: () => Navigator.pop(dialogContext),
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 820,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Select a crypt face to view its occupant and route details.',
+                  style: TextStyle(color: _C.onSurfaceVariant),
+                ),
+                const SizedBox(height: 14),
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(value: 'A', label: Text('Wing A')),
+                    ButtonSegment(value: 'B', label: Text('Wing B')),
+                  ],
+                  selected: {wing},
+                  onSelectionChanged: (value) =>
+                      setDialogState(() => wing = value.first),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  height: 265,
+                  child: InteractiveViewer(
+                    minScale: 0.65,
+                    maxScale: 3,
+                    constrained: false,
+                    alignment: Alignment.topLeft,
+                    boundaryMargin: const EdgeInsets.all(48),
+                    child: SizedBox(
+                      width: 1280,
+                      height: 320,
+                      child: GridView.builder(
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 20,
+                              crossAxisSpacing: 5,
+                              mainAxisSpacing: 5,
+                              childAspectRatio: 1.22,
+                            ),
+                        itemCount: 100,
+                        itemBuilder: (context, index) {
+                          final row = index ~/ 20;
+                          final column = index % 20;
+                          final rowStart = row * 20;
+                          final slot = row.isEven
+                              ? rowStart + (20 - column)
+                              : rowStart + column + 1;
+                          final code = apartmentCryptSlotCode(wing, slot);
+                          final grave = gravesByCode[code];
+                          final burial = _burialForGrave(grave);
+                          final deceased = burial?['name_of_deceased']
+                              ?.toString()
+                              .trim();
+                          final occupied =
+                              deceased != null && deceased.isNotEmpty;
+                          final selected = code == highlightedCode;
+                          final label = occupied
+                              ? _deceasedInitials(deceased)
+                              : code;
+                          final tooltip = occupied
+                              ? '$deceased - $code'
+                              : '$code - ${_graveStatus(grave) ?? 'Available'}';
+
+                          return Tooltip(
+                            message: tooltip,
+                            child: Material(
+                              color: selected
+                                  ? _C.secondary
+                                  : occupied
+                                  ? const Color(0xFFF4D7D3)
+                                  : _C.surfaceContainerHigh,
+                              borderRadius: BorderRadius.circular(5),
+                              child: InkWell(
+                                onTap: grave == null
+                                    ? null
+                                    : () {
+                                        setState(() {
+                                          _selectedMarker = marker;
+                                          _selectedGrave = grave;
+                                          _selectedLotId = lot['lot_id'];
+                                          _selectedLotNumber = lotReference(
+                                            lot,
+                                          );
+                                        });
+                                        Navigator.pop(dialogContext);
+                                        WidgetsBinding.instance
+                                            .addPostFrameCallback((_) {
+                                              if (mounted) {
+                                                _showLotDetails(
+                                                  marker,
+                                                  grave: grave,
+                                                );
+                                              }
+                                            });
+                                      },
+                                borderRadius: BorderRadius.circular(5),
+                                child: Container(
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(5),
+                                    border: Border.all(
+                                      color: selected
+                                          ? _C.primary
+                                          : _C.outlineVariant,
+                                      width: selected ? 3 : 1,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    label,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: selected ? _C.white : _C.onSurface,
+                                      fontSize: occupied ? 10 : 8,
+                                      fontWeight: occupied || selected
+                                          ? FontWeight.w800
+                                          : FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'The top row starts at the right and continues in a serpentine pattern.',
+                  style: TextStyle(fontSize: 12, color: _C.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _deceasedInitials(String name) {
+    final words = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .toList();
+    if (words.isEmpty) return '?';
+    if (words.length == 1) return words.first[0].toUpperCase();
+    return '${words.first[0]}${words.last[0]}'.toUpperCase();
   }
 
   void _recenterGps() {
@@ -441,10 +777,18 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
       _selectedLotId = lot['lot_id'];
       _selectedLotNumber = lotReference(lot);
       _showNavigationRoute = showRoute;
+      _cryptArrivalShown = false;
     });
 
     if (showSheet) {
-      _showLotDetails(marker);
+      final lotMap = lot is Map
+          ? Map<String, dynamic>.from(lot)
+          : <String, dynamic>{};
+      if (isApartmentCryptLot(lotMap)) {
+        unawaited(_showVisitorCryptGrid(marker, initialGrave: grave));
+      } else {
+        _showLotDetails(marker, grave: grave);
+      }
     }
   }
 
@@ -457,6 +801,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
       _navigating = true;
       _followGps = true;
       _centerOnNextFix = false;
+      _cryptArrivalShown = false;
     });
     unawaited(_gps.start());
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -487,6 +832,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
       _followGps = false;
       _centerOnNextFix = false;
       _showNavigationRoute = false;
+      _cryptArrivalShown = false;
     });
     _gps.stop();
   }
@@ -512,8 +858,37 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
       (marker) => marker != null && _markerLotId(marker).toString() == lotId,
       orElse: () => null,
     );
-    if (marker != null) _selectMarker(marker, showSheet: showSheet);
+    if (marker == null) return;
+    final rawLot = marker['cemetery_lot'];
+    final lot = rawLot is Map
+        ? Map<String, dynamic>.from(rawLot)
+        : <String, dynamic>{};
+    // Polygon taps normally only select a lot so visitors can keep browsing
+    // the map. A scheduled interment is an exception: the orange polygon is
+    // itself the schedule indicator, so reveal its plan immediately.
+    _selectMarker(
+      marker,
+      showSheet:
+          showSheet || isApartmentCryptLot(lot) || _hasScheduleForLotId(lotId),
+    );
   }
+
+  void _selectMarkerFromMap(Map<String, dynamic> marker) {
+    final rawLot = marker['cemetery_lot'];
+    final lot = rawLot is Map
+        ? Map<String, dynamic>.from(rawLot)
+        : <String, dynamic>{};
+    _selectMarker(
+      marker,
+      showSheet:
+          isApartmentCryptLot(lot) ||
+          _hasScheduleForLotId(_markerLotId(marker)),
+    );
+  }
+
+  bool _hasScheduleForLotId(dynamic lotId) => _todaySchedules.any(
+    (schedule) => _sameRecordId(schedule['lot_id'], lotId),
+  );
 
   void _clearSelection() {
     if (_navigating) _stopNavigation();
@@ -585,6 +960,13 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
     final graveLabel = _graveLabel(grave);
     final lotNumber = lotReference(lot, fallback: _selectedLotNumber ?? '--');
     final meta = lotMeta(lot);
+    Map<String, dynamic>? schedule;
+    for (final entry in _todaySchedules) {
+      if (_sameRecordId(entry['lot_id'], lot['lot_id'])) {
+        schedule = entry;
+        break;
+      }
+    }
     final title =
         burial?['name_of_deceased']?.toString().trim().isNotEmpty == true
         ? burial!['name_of_deceased'].toString()
@@ -699,6 +1081,50 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
               status,
               statusColor,
             ),
+            if (schedule != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFE2C5),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE67E22)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(
+                          Icons.event_rounded,
+                          color: Color(0xFF9A4A00),
+                          size: 18,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Interment scheduled today',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF743600),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text('Deceased: ${schedule['deceased_name'] ?? '--'}'),
+                    Text(
+                      'Time: ${_formatScheduleTime(schedule['scheduled_at'])}',
+                    ),
+                    if (schedule['notes']?.toString().trim().isNotEmpty == true)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text('Notes: ${schedule['notes']}'),
+                      ),
+                  ],
+                ),
+              ),
+            ],
             if (meta.isNotEmpty)
               _buildDetailRow(
                 Icons.grid_view_rounded,
@@ -713,7 +1139,10 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                 graveLabel,
                 null,
               ),
-            if (isAvailable && burial == null)
+            // A scheduled interment is not a sales opportunity.  Keep fixed
+            // prices on genuinely available lots only, never in the active
+            // interment details panel.
+            if (isAvailable && burial == null && schedule == null)
               _buildDetailRow(
                 Icons.payments_outlined,
                 'Fixed Prices',
@@ -1000,6 +1429,14 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
     return DateFormat('MMM d, y').format(parsed);
   }
 
+  String _formatScheduleTime(dynamic value) {
+    final raw = value?.toString();
+    final parsed = raw == null ? null : DateTime.tryParse(raw)?.toLocal();
+    return parsed == null
+        ? '--'
+        : DateFormat('EEE, MMM d · h:mm a').format(parsed);
+  }
+
   double? _routeDistanceMeters(List<LatLng> points) {
     if (points.length < 2) return null;
     var distance = 0.0;
@@ -1171,14 +1608,15 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
   }
 
   Widget _buildSearchBar() {
+    final compact = MediaQuery.sizeOf(context).width < 600;
     return Positioned(
-      top: 16,
-      left: 24,
-      right: 86,
+      top: compact ? 10 : 16,
+      left: compact ? 12 : 24,
+      right: compact ? 62 : 86,
       child: _glass(
-        borderRadius: 18,
+        borderRadius: compact ? 14 : 18,
         child: SizedBox(
-          height: 52,
+          height: compact ? 44 : 52,
           child: Row(
             children: [
               const SizedBox(width: 16),
@@ -1214,13 +1652,17 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
   }
 
   Widget _buildLegend() {
+    final compact = MediaQuery.sizeOf(context).width < 600;
     return Positioned(
-      top: 86,
-      left: 24,
+      top: compact ? 64 : 86,
+      left: compact ? 12 : 24,
       child: _glass(
-        borderRadius: 18,
-        child: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        borderRadius: compact ? 14 : 18,
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 10 : 16,
+            vertical: compact ? 8 : 14,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1229,19 +1671,19 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                 borderColor: lotStatusAvailableStroke,
                 label: 'Available',
               ),
-              SizedBox(height: 12),
+              SizedBox(height: compact ? 6 : 12),
               _LegendItem(
                 color: lotStatusReservedFill,
                 borderColor: lotStatusReservedStroke,
                 label: 'Owner assigned',
               ),
-              SizedBox(height: 12),
+              SizedBox(height: compact ? 6 : 12),
               _LegendItem(
                 color: lotStatusOccupiedFill,
                 borderColor: lotStatusOccupiedStroke,
                 label: 'Occupied',
               ),
-              SizedBox(height: 12),
+              SizedBox(height: compact ? 6 : 12),
               _LegendItem(color: _C.tertiary, label: 'Popular'),
             ],
           ),
@@ -1251,33 +1693,47 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
   }
 
   Widget _buildControls() {
+    final compact = MediaQuery.sizeOf(context).width < 600;
     return Positioned(
-      top: 16,
-      right: 24,
+      top: compact ? 10 : 16,
+      right: compact ? 8 : 24,
       child: Column(
         children: [
           _glass(
-            borderRadius: 18,
+            borderRadius: compact ? 14 : 18,
             child: Column(
               children: [
-                _controlButton(Icons.add_rounded, () => _zoomBy(0.2)),
-                Container(height: 1, width: 32, color: _C.surfaceContainerHigh),
-                _controlButton(Icons.remove_rounded, () => _zoomBy(-0.2)),
+                _controlButton(
+                  Icons.add_rounded,
+                  () => _zoomBy(0.2),
+                  compact: compact,
+                ),
+                Container(
+                  height: 1,
+                  width: compact ? 24 : 32,
+                  color: _C.surfaceContainerHigh,
+                ),
+                _controlButton(
+                  Icons.remove_rounded,
+                  () => _zoomBy(-0.2),
+                  compact: compact,
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: compact ? 8 : 14),
           _glass(
-            borderRadius: 18,
+            borderRadius: compact ? 14 : 18,
             child: _controlButton(
               Icons.home_rounded,
               _resetView,
               color: _C.primary,
+              compact: compact,
             ),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: compact ? 8 : 14),
           _glass(
-            borderRadius: 18,
+            borderRadius: compact ? 14 : 18,
             child: Column(
               children: [
                 IconButton(
@@ -1285,9 +1741,9 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                       ? 'Recenter on my location'
                       : 'Start GPS tracking',
                   onPressed: _startOrCenterGps,
-                  constraints: const BoxConstraints.tightFor(
-                    width: 50,
-                    height: 50,
+                  constraints: BoxConstraints.tightFor(
+                    width: compact ? 40 : 50,
+                    height: compact ? 40 : 50,
                   ),
                   icon: Icon(
                     Icons.my_location_rounded,
@@ -1298,9 +1754,9 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                   IconButton(
                     tooltip: 'Stop GPS tracking',
                     onPressed: () => _gps.stop(),
-                    constraints: const BoxConstraints.tightFor(
-                      width: 50,
-                      height: 50,
+                    constraints: BoxConstraints.tightFor(
+                      width: compact ? 40 : 50,
+                      height: compact ? 40 : 50,
                     ),
                     icon: const Icon(Icons.location_disabled_outlined),
                   ),
@@ -1312,10 +1768,18 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
     );
   }
 
-  Widget _controlButton(IconData icon, VoidCallback onPressed, {Color? color}) {
+  Widget _controlButton(
+    IconData icon,
+    VoidCallback onPressed, {
+    Color? color,
+    bool compact = false,
+  }) {
     return IconButton(
       onPressed: onPressed,
-      constraints: const BoxConstraints.tightFor(width: 50, height: 50),
+      constraints: BoxConstraints.tightFor(
+        width: compact ? 40 : 50,
+        height: compact ? 40 : 50,
+      ),
       icon: Icon(icon, color: color ?? _C.onSurfaceVariant),
     );
   }
@@ -1457,6 +1921,12 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
   Widget _buildGraveChooserCard() {
     final marker = _selectedMarker;
     if (marker == null) return const SizedBox.shrink();
+
+    final rawLot = marker['cemetery_lot'];
+    final cryptLot = rawLot is Map
+        ? Map<String, dynamic>.from(rawLot)
+        : <String, dynamic>{};
+    if (isApartmentCryptLot(cryptLot)) return const SizedBox.shrink();
 
     final bottomInset = MediaQuery.of(context).padding.bottom;
     final lot = marker['cemetery_lot'] ?? {};
@@ -1665,27 +2135,11 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
         ? <LatLng>[]
         : _routeFromEntranceToLot(_selectedMarker!);
     final features = _featureLayers.resolve(_mapFeatures, publicPreview: true);
+    final scheduledLotIds = _todaySchedules
+        .map((schedule) => schedule['lot_id']?.toString())
+        .whereType<String>()
+        .toSet();
     final markers = <Marker>[
-      for (final schedule in _todaySchedules)
-        if (_lotMarkers
-                .where(
-                  (m) => _sameRecordId(_markerLotId(m), schedule['lot_id']),
-                )
-                .firstOrNull
-            case final marker?)
-          Marker(
-            point: _markerToLatLng(marker),
-            width: 42,
-            height: 42,
-            child: Tooltip(
-              message: 'Interment today: ${schedule['deceased_name']}',
-              child: const Icon(
-                Icons.event_available_rounded,
-                color: Colors.deepOrange,
-                size: 34,
-              ),
-            ),
-          ),
       if (_hasRouteStart)
         Marker(
           point: _routeStart,
@@ -1706,14 +2160,14 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
           width: isSelected ? 64 : 44,
           height: isSelected ? 76 : 44,
           child: isSelected
-              ? _SelectedLeafletPin(onTap: () => _selectMarker(marker))
+              ? _SelectedLeafletPin(onTap: () => _selectMarkerFromMap(marker))
               : _MapPin(
                   fillColor: lotStatusFillColor(status),
                   borderColor: lotStatusStrokeColor(status),
                   iconColor: lotStatusForegroundColor(status),
                   icon: _statusIcon(status),
                   selected: false,
-                  onTap: () => _selectMarker(marker),
+                  onTap: () => _selectMarkerFromMap(marker),
                 ),
         );
       }),
@@ -1771,6 +2225,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
             key: _lotLayerKey,
             markers: _lotMarkers,
             selectedLotId: _selectedLotId,
+            scheduledLotIds: scheduledLotIds,
             hitNotifier: _lotPolygonHitNotifier,
             enableHitTesting: false,
             viewportPaddingFactor: 0.20,

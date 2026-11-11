@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/map_feature_service.dart';
 import '../payment_requests_screen.dart';
@@ -320,21 +321,36 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Contact the admin',
+                    'Visit the cemetery office',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       color: _onSurface,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    'Phone: $_adminPhone',
-                    style: const TextStyle(color: _onSurfaceVariant),
+                  const Text(
+                    'Please visit the cemetery office at the cemetery location to inquire about this lot and its availability.',
+                    style: TextStyle(color: _onSurfaceVariant, height: 1.35),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Email: $_adminEmail',
-                    style: const TextStyle(color: _onSurfaceVariant),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final opened = await launchUrl(
+                        Uri.parse(
+                          'https://web.facebook.com/profile.php?id=61565571013325',
+                        ),
+                        mode: LaunchMode.externalApplication,
+                      );
+                      if (!opened && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Unable to open the Facebook page.'),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.facebook_rounded),
+                    label: const Text('Visit our Facebook page'),
                   ),
                 ],
               ),

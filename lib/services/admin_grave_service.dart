@@ -85,6 +85,19 @@ class AdminGraveService {
     return Map<String, dynamic>.from(inserted);
   }
 
+  static Future<Map<String, dynamic>> updateGraveLabel({
+    required int graveId,
+    required String graveLabel,
+  }) async {
+    final updated = await Supabase.instance.client
+        .from('graves')
+        .update({'grave_label': graveLabel.trim()})
+        .eq('grave_id', graveId)
+        .select('grave_id, lot_id, grave_label, status, burial_id, notes')
+        .single();
+    return Map<String, dynamic>.from(updated);
+  }
+
   static Future<Map<String, dynamic>> createBurialAndGrave({
     required int lotId,
     required String graveLabel,

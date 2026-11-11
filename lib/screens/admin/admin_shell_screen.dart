@@ -15,6 +15,7 @@ import 'admin_profile_screen.dart';
 import 'admin_visitor_logs_screen.dart';
 import 'admin_user_management_screen.dart';
 import 'admin_interment_planner_screen.dart';
+import 'admin_apartment_crypt_grid_screen.dart';
 
 class AdminShellScreen extends ConsumerStatefulWidget {
   const AdminShellScreen({super.key});
@@ -27,6 +28,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   int _selected = 0;
   int _mapRefreshToken = 0;
+  Map<String, dynamic>? _selectedApartmentCrypt;
   final _mapSaveProgress = ValueNotifier<String?>(null);
 
   @override
@@ -188,6 +190,12 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
                   onTap: () => _go(1),
                 ),
                 _NavTile(
+                  selected: _selected == 11,
+                  icon: Icons.apartment_rounded,
+                  label: 'Apartment Crypts',
+                  onTap: () => _go(11),
+                ),
+                _NavTile(
                   selected: _selected == 3,
                   icon: Icons.grid_view_rounded,
                   label: 'Lots',
@@ -283,6 +291,13 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
             ).showSnackBar(SnackBar(content: Text(message)));
           }
         },
+        onApartmentCryptSelected: (lot) {
+          if (!mounted) return;
+          setState(() {
+            _selectedApartmentCrypt = Map<String, dynamic>.from(lot);
+            _selected = 11;
+          });
+        },
       ),
       AdminBurialRecordsScreen(
         onMenuPressed: _toggleNavigation,
@@ -299,6 +314,10 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
       const SizedBox.shrink(),
       const AdminProfileScreen(),
       const AdminIntermentPlannerScreen(),
+      AdminApartmentCryptGridScreen(
+        apartmentCrypt: _selectedApartmentCrypt,
+        onBackToMap: () => _go(1),
+      ),
     ],
   );
 
@@ -324,6 +343,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
       7 => 'User Management',
       9 => 'Profile Settings',
       10 => 'Weekly Interment Planner',
+      11 => 'Apartment-Type Crypt Grid',
       _ => 'Cemetery Admin',
     };
   }

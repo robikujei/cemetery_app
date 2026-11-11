@@ -9,8 +9,13 @@ class SurfaceStyle {
   }) => BoxDecoration(
     color: color,
     borderRadius: BorderRadius.circular(radius),
-    // Derive the border from the surface itself so panels remain readable in
-    // both themes instead of carrying the light palette into dark mode.
-    border: Border.all(color: color.withValues(alpha: 0.12), width: 0.5),
+    border: Border.all(color: color.withValues(alpha: 0.18), width: 1),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: 0.08),
+        blurRadius: 24,
+        offset: const Offset(0, 8),
+      ),
+    ],
   );
 }

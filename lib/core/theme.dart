@@ -89,7 +89,7 @@ class AppTheme {
 
   static ThemeData _build(_ThemeColors colors, Brightness brightness) {
     const controlShape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.all(Radius.circular(12)),
+      borderRadius: BorderRadius.all(Radius.circular(16)),
     );
     const panelShape = RoundedRectangleBorder(
       borderRadius: BorderRadius.all(Radius.circular(20)),
@@ -129,15 +129,15 @@ class AppTheme {
       ],
     );
     final primaryButton = ButtonStyle(
-      minimumSize: const WidgetStatePropertyAll(Size(64, 44)),
+      minimumSize: const WidgetStatePropertyAll(Size(64, 48)),
       padding: const WidgetStatePropertyAll(
-        EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        EdgeInsets.symmetric(horizontal: 22, vertical: 14),
       ),
       shape: const WidgetStatePropertyAll(controlShape),
       textStyle: const WidgetStatePropertyAll(
         TextStyle(
           fontFamily: '.SF Pro Text',
-          fontSize: 14,
+          fontSize: 15,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -156,7 +156,7 @@ class AppTheme {
     );
     OutlineInputBorder inputBorder(Color color, [double width = 1]) =>
         OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(color: color, width: width),
         );
 
@@ -231,10 +231,10 @@ class AppTheme {
       filledButtonTheme: FilledButtonThemeData(style: primaryButton),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size(64, 44),
-          foregroundColor: colors.text,
+          minimumSize: const Size(64, 48),
+          foregroundColor: colors.primary,
           backgroundColor: colors.surface,
-          side: BorderSide(color: colors.border),
+          side: BorderSide(color: colors.primary.withValues(alpha: 0.45)),
           shape: controlShape,
           textStyle: const TextStyle(
             fontFamily: '.SF Pro Text',
@@ -258,9 +258,15 @@ class AppTheme {
       dialogTheme: DialogThemeData(
         backgroundColor: colors.surface,
         surfaceTintColor: Colors.transparent,
-        shape: panelShape,
-        elevation: 16,
-        shadowColor: Colors.black38,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(24)),
+        ),
+        elevation: 0,
+        shadowColor: brightness == Brightness.dark
+            ? Colors.black54
+            : const Color(0x24000000),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         titleTextStyle: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w600,
@@ -276,8 +282,11 @@ class AppTheme {
       popupMenuTheme: PopupMenuThemeData(
         color: colors.surface,
         surfaceTintColor: Colors.transparent,
-        shape: panelShape,
-        elevation: 4,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(16)),
+        ),
+        elevation: 8,
+        menuPadding: const EdgeInsets.symmetric(vertical: 8),
       ),
       dividerTheme: DividerThemeData(
         space: 24,
@@ -304,14 +313,19 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: colors.surface,
+        fillColor: colors.surfaceLow,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 14,
+          horizontal: 18,
+          vertical: 16,
         ),
         hintStyle: TextStyle(color: colors.textMuted, fontSize: 14),
-        border: inputBorder(colors.border),
-        enabledBorder: inputBorder(colors.border),
+        labelStyle: TextStyle(color: colors.textSecondary, fontSize: 14),
+        floatingLabelStyle: TextStyle(
+          color: colors.primary,
+          fontWeight: FontWeight.w600,
+        ),
+        border: inputBorder(colors.borderSubtle),
+        enabledBorder: inputBorder(colors.borderSubtle),
         focusedBorder: inputBorder(colors.primary, 2),
         errorBorder: inputBorder(scheme.error),
         focusedErrorBorder: inputBorder(scheme.error, 2),

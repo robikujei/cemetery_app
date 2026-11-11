@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../utils/map_bounds_index.dart';
 import '../utils/map_feature_geometry.dart';
+import '../utils/apartment_crypt.dart';
 
 /// Owns camera-dependent lot rendering so pans never rebuild the map screen.
 class ViewportLotLayer extends StatefulWidget {
@@ -15,6 +16,7 @@ class ViewportLotLayer extends StatefulWidget {
     required this.markers,
     required this.hitNotifier,
     this.selectedLotId,
+    this.scheduledLotIds = const {},
     this.detailZoom = 18.75,
     this.enableHitTesting = true,
     this.viewportPaddingFactor = 0.35,
@@ -23,6 +25,8 @@ class ViewportLotLayer extends StatefulWidget {
   final List<Map<String, dynamic>> markers;
   final LayerHitNotifier<String> hitNotifier;
   final Object? selectedLotId;
+  /// Lots with an active interment today are shown in orange on the visitor map.
+  final Set<String> scheduledLotIds;
   final double detailZoom;
 
   /// Keep flutter_map's per-pointer polygon hit testing enabled for callers
@@ -61,6 +65,9 @@ class ViewportLotLayerState extends State<ViewportLotLayer> {
     if (widget.selectedLotId?.toString() !=
             oldWidget.selectedLotId?.toString() ||
         widget.hitNotifier != oldWidget.hitNotifier) {
+      _layer = null;
+    }
+    if (!setEquals(widget.scheduledLotIds, oldWidget.scheduledLotIds)) {
       _layer = null;
     }
   }
@@ -154,6 +161,7 @@ class ViewportLotLayerState extends State<ViewportLotLayer> {
           camera: camera,
           entries: _visible ?? const <_LotRing>[],
           selectedLotId: widget.selectedLotId,
+          scheduledLotIds: widget.scheduledLotIds,
           lowDetail: detail == 1,
         ),
         size: camera.size,
@@ -172,6 +180,16 @@ class ViewportLotLayerState extends State<ViewportLotLayer> {
             selectedLotId: widget.selectedLotId,
             includeHitValues: widget.enableHitTesting,
             lowDetail: detail == 1,
+            fillColorOverride: widget.scheduledLotIds.contains(entry.lot.id)
+                ? const ui.Color(0xFFE67E22)
+                : entry.lot.isApartmentCrypt
+                ? const ui.Color(0xF2FFFFFF)
+                : null,
+            strokeColorOverride: widget.scheduledLotIds.contains(entry.lot.id)
+                ? const ui.Color(0xFF9A4A00)
+                : entry.lot.isApartmentCrypt
+                ? const ui.Color(0xFF173D2A)
+                : null,
           ),
       ],
     );
@@ -186,12 +204,14 @@ class _BatchedLotPainter extends CustomPainter {
     required this.camera,
     required this.entries,
     required this.selectedLotId,
+    required this.scheduledLotIds,
     required this.lowDetail,
   });
 
   final MapCamera camera;
   final List<_LotRing> entries;
   final Object? selectedLotId;
+  final Set<String> scheduledLotIds;
   final bool lowDetail;
 
   @override
@@ -203,14 +223,23 @@ class _BatchedLotPainter extends CustomPainter {
       final selected =
           selectedLotId != null && entry.lot.id == selectedLotId.toString();
       final status = entry.lot.status;
-      final fill = lotStatusFillColor(status).withValues(
-        alpha: _isAvailableStatusForPaint(status)
-            ? (selected ? 0.90 : 0.72)
-            : (selected ? 0.54 : 0.36),
-      );
-      final stroke = lotStatusStrokeColor(
-        status,
-      ).withValues(alpha: selected ? 0.96 : 0.78);
+      final scheduled = scheduledLotIds.contains(entry.lot.id);
+      final fill = scheduled
+          ? const ui.Color(0xFFE67E22).withValues(alpha: selected ? 0.92 : 0.72)
+          : entry.lot.isApartmentCrypt
+          ? const ui.Color(0xF2FFFFFF)
+          : lotStatusFillColor(status).withValues(
+              alpha: _isAvailableStatusForPaint(status)
+                  ? (selected ? 0.90 : 0.72)
+                  : (selected ? 0.54 : 0.36),
+            );
+      final stroke = scheduled
+          ? const ui.Color(0xFF9A4A00).withValues(alpha: selected ? 0.98 : 0.84)
+          : entry.lot.isApartmentCrypt
+          ? const ui.Color(0xFF173D2A)
+          : lotStatusStrokeColor(
+              status,
+            ).withValues(alpha: selected ? 0.96 : 0.78);
       final width = selected ? 2.5 : (lowDetail ? 0.35 : 1.1);
       final key = _LotPaintKey(fill, stroke, width);
       final group = groups.putIfAbsent(key, _LotPathGroup.new);
@@ -249,6 +278,7 @@ class _BatchedLotPainter extends CustomPainter {
       camera != oldDelegate.camera ||
       !identical(entries, oldDelegate.entries) ||
       selectedLotId?.toString() != oldDelegate.selectedLotId?.toString() ||
+      !setEquals(scheduledLotIds, oldDelegate.scheduledLotIds) ||
       lowDetail != oldDelegate.lowDetail;
 }
 
@@ -285,10 +315,13 @@ class _LotSnapshot {
     status = lot is Map
         ? lot['status']?.toString() ?? 'Available'
         : 'Available';
+    isApartmentCrypt =
+        lot is Map && isApartmentCryptLot(Map<String, dynamic>.from(lot));
   }
   late final Object? geometry;
   late final String? id;
   late final String status;
+  late final bool isApartmentCrypt;
 
   bool matches(Map<String, dynamic> marker) {
     final lot = marker['cemetery_lot'];
@@ -297,10 +330,13 @@ class _LotSnapshot {
     final otherStatus = lot is Map
         ? lot['status']?.toString() ?? 'Available'
         : 'Available';
+    final otherIsApartmentCrypt =
+        lot is Map && isApartmentCryptLot(Map<String, dynamic>.from(lot));
     // Geometry values are immutable snapshots from Supabase; edits replace them.
     return identical(geometry, otherGeometry) &&
         id == otherId &&
-        status == otherStatus;
+        status == otherStatus &&
+        isApartmentCrypt == otherIsApartmentCrypt;
   }
 }
 

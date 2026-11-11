@@ -5,9 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 const _themeModePreferenceKey = 'cemetery_theme_mode';
 
 /// Keeps the appearance choice consistent across all role portals on a device.
-/// New users follow the device setting until they choose an override.
+/// New users start in light mode until they choose an override.
 class ThemeModeNotifier extends StateNotifier<ThemeMode> {
-  ThemeModeNotifier() : super(ThemeMode.system) {
+  ThemeModeNotifier() : super(ThemeMode.light) {
     _restore();
   }
 
@@ -18,11 +18,11 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
       final mode = switch (saved) {
         'light' => ThemeMode.light,
         'dark' => ThemeMode.dark,
-        _ => ThemeMode.system,
+        _ => ThemeMode.light,
       };
       if (mounted) state = mode;
     } catch (_) {
-      // The app can still use the system theme if local storage is unavailable.
+      // The app can still use its light default if local storage is unavailable.
     }
   }
 

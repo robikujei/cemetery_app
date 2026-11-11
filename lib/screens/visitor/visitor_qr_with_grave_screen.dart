@@ -10,6 +10,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
 
+import '../../widgets/brand_logo.dart';
+
 class VisitorQrWithGraveScreen extends ConsumerStatefulWidget {
   const VisitorQrWithGraveScreen({
     super.key,
@@ -170,34 +172,12 @@ class _VisitorQrWithGraveScreenState
           onPressed: () => Navigator.pop(context),
         ),
         titleSpacing: 4,
-        title: Row(
-          children: [
-            Icon(Icons.church, color: _colors(context).primary, size: 20),
-            SizedBox(width: 8),
-            Text(
-              'Eternal Garden',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: _colors(context).primary,
-                letterSpacing: -0.3,
-              ),
-            ),
-          ],
-        ),
+        title: const BrandLogo(height: 42),
         actions: [
           IconButton(
             icon: Icon(Icons.refresh, color: _colors(context).primary),
             onPressed: _loadUserData,
           ),
-          IconButton(
-            icon: Icon(
-              Icons.notifications_outlined,
-              color: _colors(context).primary,
-            ),
-            onPressed: () {},
-          ),
-          const SizedBox(width: 8),
         ],
       ),
       body: _isLoading
@@ -279,28 +259,69 @@ class _VisitorQrWithGraveScreenState
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
         child: Column(
           children: [
-            // Welcome Section
-            Column(
-              children: [
-                Text(
-                  'Visitor Pass',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w400,
-                    color: _colors(context).primary,
-                  ),
+            Container(
+              width: double.infinity,
+              constraints: const BoxConstraints(maxWidth: 500),
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    _colors(context).primary,
+                    _colors(context).primary.withOpacity(.72),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                SizedBox(height: 8),
-                Text(
-                  'Welcome to Eternal Garden Cemetery & Gardens.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: _colors(context).onSurfaceVariant,
-                    letterSpacing: 0.3,
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: _colors(context).primary.withOpacity(.20),
+                    blurRadius: 24,
+                    offset: const Offset(0, 10),
                   ),
-                ),
-              ],
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(.16),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(
+                      Icons.qr_code_2_rounded,
+                      color: _colors(context).onPrimary,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Visitor Pass',
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w700,
+                            color: _colors(context).onPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Ready to scan at the cemetery entrance.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: _colors(context).onPrimary.withOpacity(.82),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
 
             const SizedBox(height: 24),
@@ -311,14 +332,14 @@ class _VisitorQrWithGraveScreenState
               constraints: const BoxConstraints(maxWidth: 500),
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: _colors(context).surfaceContainerLowest,
-                borderRadius: BorderRadius.circular(20),
+                color: _colors(context).surface,
+                borderRadius: BorderRadius.circular(28),
                 border: Border.all(color: _colors(context).outlineVariant),
                 boxShadow: const [
                   BoxShadow(
-                    color: Color(0x140066CC),
-                    blurRadius: 12,
-                    offset: Offset(0, 4),
+                    color: Color(0x1A002B5C),
+                    blurRadius: 28,
+                    offset: Offset(0, 12),
                   ),
                 ],
               ),
@@ -355,13 +376,13 @@ class _VisitorQrWithGraveScreenState
                               width: 64,
                               height: 64,
                               decoration: BoxDecoration(
-                                color: _colors(context).secondaryContainer,
-                                shape: BoxShape.circle,
+                                color: _colors(context).primaryContainer,
+                                borderRadius: BorderRadius.circular(20),
                               ),
                               child: Icon(
                                 Icons.person,
                                 size: 34,
-                                color: _colors(context).secondary,
+                                color: _colors(context).primary,
                               ),
                             ),
 
@@ -404,11 +425,13 @@ class _VisitorQrWithGraveScreenState
                             child: Container(
                               padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
-                                color: _colors(context).surface,
-                                borderRadius: BorderRadius.circular(20),
+                                color: _colors(context).surfaceContainerLow,
+                                borderRadius: BorderRadius.circular(24),
                                 border: Border.all(
-                                  color: _colors(context).primaryContainer,
-                                  width: 4,
+                                  color: _colors(
+                                    context,
+                                  ).primary.withOpacity(.24),
+                                  width: 2,
                                 ),
                               ),
                               child: QrImageView(
@@ -472,7 +495,7 @@ class _VisitorQrWithGraveScreenState
                         padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
                           color: _colors(context).surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(18),
                         ),
                         child: Column(
                           children: [
@@ -507,25 +530,36 @@ class _VisitorQrWithGraveScreenState
             const SizedBox(height: 24),
 
             // Save Button
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: _saveQrCode,
-                style: FilledButton.styleFrom(
-                  backgroundColor: _colors(context).primary,
-                  foregroundColor: _colors(context).onPrimary,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  textStyle: TextStyle(
-                    fontFamily: '.SF Pro Text',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    _colors(context).primary,
+                    _colors(context).primary.withOpacity(.72),
+                  ],
                 ),
-                icon: Icon(Icons.download_rounded),
-                label: Text('Save to Device'),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _saveQrCode,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    foregroundColor: _colors(context).onPrimary,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    textStyle: TextStyle(
+                      fontFamily: '.SF Pro Text',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  icon: Icon(Icons.download_rounded),
+                  label: Text('Save to Device'),
+                ),
               ),
             ),
 
@@ -541,7 +575,7 @@ class _VisitorQrWithGraveScreenState
                   side: BorderSide(color: _colors(context).outlineVariant),
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(18),
                   ),
                   textStyle: TextStyle(
                     fontFamily: '.SF Pro Text',

@@ -22,6 +22,7 @@ import '../../utils/lot_row_selection.dart';
 import '../../services/supabase_pagination_service.dart';
 import '../../utils/lot_formatters.dart';
 import '../../utils/lot_pricing.dart';
+import '../../utils/apartment_crypt.dart';
 import '../../utils/map_feature_geometry.dart';
 import '../../widgets/app_date_field.dart';
 import '../../widgets/lot_drag_selection.dart';
@@ -61,6 +62,7 @@ enum _MapMode {
   setEntrance,
   labelRow,
   assignBlock,
+  assignEstatePhase,
 }
 
 class AdminMapManagerScreen extends ConsumerStatefulWidget {
@@ -71,6 +73,8 @@ class AdminMapManagerScreen extends ConsumerStatefulWidget {
     this.isActive = true,
     this.onBatchProgress,
     this.onBatchFinished,
+    this.onApartmentCryptSelected,
+    this.lotPicker = false,
   });
 
   final VoidCallback? onMenuPressed;
@@ -78,6 +82,9 @@ class AdminMapManagerScreen extends ConsumerStatefulWidget {
   final bool isActive;
   final ValueChanged<String?>? onBatchProgress;
   final ValueChanged<String>? onBatchFinished;
+  final ValueChanged<Map<String, dynamic>>? onApartmentCryptSelected;
+  /// Opens the familiar map as a picker and returns the selected lot.
+  final bool lotPicker;
 
   @override
   ConsumerState<AdminMapManagerScreen> createState() =>
@@ -110,8 +117,11 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
   bool _dragSelect = true;
   bool _removeArea = false;
   bool get _isBatchMode =>
-      _mode == _MapMode.labelRow || _mode == _MapMode.assignBlock;
+      _mode == _MapMode.labelRow ||
+      _mode == _MapMode.assignBlock ||
+      _mode == _MapMode.assignEstatePhase;
   final List<Map<String, dynamic>> _batchMarkers = [];
+  String? _selectedFamilyEstatePhase;
   bool _batchSaving = false;
   bool _batchMinimized = false;
   bool _stopBatchRequested = false;
@@ -1175,30 +1185,35 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
       _snack('This marker is missing lot details.', error: true);
       return;
     }
+    if (isApartmentCryptLot(lot)) {
+      await _editApartmentCryptLabel(lot);
+      return;
+    }
 
+    final editingFamilyEstate = isFamilyEstateLot(lot);
+    var estatePhase = familyEstatePhase(lot);
+    if (editingFamilyEstate && estatePhase.isEmpty) estatePhase = '1';
     final blockNumberController = TextEditingController(
-      text: lot['block_number']?.toString() ?? '',
+      text: editingFamilyEstate
+          ? 'Family Estate Phase $estatePhase'
+          : lot['block_number']?.toString() ?? '',
     );
     final lotNumberController = TextEditingController(
       text: lotText(lot, 'lot_number'),
     );
+    final savedLotLabel = lotText(lot, 'lot_label');
     final lotLabelController = TextEditingController(
-      text: _defaultLotLabel(
-        blockNumber: blockNumberController.text.trim(),
-        lotNumber: lotNumberController.text.trim(),
-      ),
+      text: savedLotLabel.isEmpty
+          ? _defaultLotLabel(
+              blockNumber: blockNumberController.text.trim(),
+              lotNumber: lotNumberController.text.trim(),
+            )
+          : savedLotLabel,
     );
-    void updateLotLabel() {
-      lotLabelController.text = _defaultLotLabel(
-        blockNumber: blockNumberController.text.trim(),
-        lotNumber: lotNumberController.text.trim(),
-      );
-    }
-
-    blockNumberController.addListener(updateLotLabel);
-    lotNumberController.addListener(updateLotLabel);
     final lotClassTypeController = TextEditingController(
-      text: lotText(lot, 'lot_class_type'),
+      text: editingFamilyEstate
+          ? 'Family Estate'
+          : lotText(lot, 'lot_class_type'),
     );
     final initialPricing = lotPriceForType(lotText(lot, 'lot_class_type'));
     String selectedPricingType = lot['pricing_type']?.toString() == 'at_need'
@@ -1230,7 +1245,8 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
             borderRadius: BorderRadius.circular(20),
           ),
           title: _mapDialogTitle(
-            'Edit Lot ${lotReference(lot, fallback: '')}'.trim(),
+            '${editingFamilyEstate ? 'Edit Family Estate' : 'Edit Lot'} ${lotReference(lot, fallback: '')}'
+                .trim(),
             Icons.edit_location_alt_outlined,
           ),
           content: SizedBox(
@@ -1239,57 +1255,108 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(
-                    controller: blockNumberController,
-                    decoration: _mapFieldDecoration(
-                      labelText: 'Block',
-                      icon: Icons.grid_view_rounded,
+                  if (editingFamilyEstate) ...[
+                    DropdownButtonFormField<String>(
+                      initialValue: estatePhase,
+                      decoration: _mapFieldDecoration(
+                        labelText: 'Family Estate Phase',
+                        icon: Icons.account_tree_outlined,
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: '1', child: Text('Phase 1')),
+                        DropdownMenuItem(value: '2', child: Text('Phase 2')),
+                      ],
+                      onChanged: (value) => setDialogState(() {
+                        estatePhase = value!;
+                        blockNumberController.text =
+                            'Family Estate Phase $estatePhase';
+                      }),
                     ),
-                  ),
-                  const SizedBox(height: 12),
+                    const SizedBox(height: 12),
+                  ] else ...[
+                    TextField(
+                      controller: blockNumberController,
+                      decoration: _mapFieldDecoration(
+                        labelText: 'Block',
+                        icon: Icons.grid_view_rounded,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   TextField(
                     controller: lotNumberController,
                     decoration: _mapFieldDecoration(
-                      labelText: 'Lot Number',
+                      labelText: editingFamilyEstate
+                          ? 'Estate / Plot Number'
+                          : 'Lot Number',
                       icon: Icons.numbers_rounded,
                     ),
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: lotLabelController,
-                    readOnly: true,
                     decoration: _mapFieldDecoration(
-                      labelText: 'Lot Label',
+                      labelText: editingFamilyEstate
+                          ? 'Family Estate Label'
+                          : 'Lot Label',
                       icon: Icons.label_outline_rounded,
                     ),
                   ),
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: initialPricing?.type,
-                    decoration: _mapFieldDecoration(
-                      labelText: 'Lot Class / Type',
-                      icon: Icons.category_outlined,
+                  if (isApartmentCryptLot(lot))
+                    InputDecorator(
+                      decoration: _mapFieldDecoration(
+                        labelText: 'Lot Class / Type',
+                        icon: Icons.apartment_rounded,
+                      ),
+                      child: const Text('Apartment Crypt'),
+                    )
+                  else if (editingFamilyEstate)
+                    InputDecorator(
+                      decoration: _mapFieldDecoration(
+                        labelText: 'Lot Class / Type',
+                        icon: Icons.family_restroom_rounded,
+                      ),
+                      child: const Text('Family Estate'),
+                    )
+                  else
+                    DropdownButtonFormField<String>(
+                      initialValue: initialPricing?.type,
+                      decoration: _mapFieldDecoration(
+                        labelText: 'Lot Class / Type',
+                        icon: Icons.category_outlined,
+                      ),
+                      items: lotPriceCatalog
+                          .map(
+                            (entry) => DropdownMenuItem(
+                              value: entry.type,
+                              child: Text(entry.type),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        final pricing = lotPriceForType(value);
+                        setDialogState(() {
+                          lotClassTypeController.text = value ?? '';
+                          final price = selectedPricingType == 'at_need'
+                              ? pricing?.atNeed
+                              : pricing?.preNeed;
+                          priceController.text =
+                              price?.toStringAsFixed(2) ?? '';
+                        });
+                      },
                     ),
-                    items: lotPriceCatalog
-                        .map(
-                          (entry) => DropdownMenuItem(
-                            value: entry.type,
-                            child: Text(entry.type),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      final pricing = lotPriceForType(value);
-                      setDialogState(() {
-                        lotClassTypeController.text = value ?? '';
-                        final price = selectedPricingType == 'at_need'
-                            ? pricing?.atNeed
-                            : pricing?.preNeed;
-                        priceController.text = price?.toStringAsFixed(2) ?? '';
-                      });
-                    },
-                  ),
                   const SizedBox(height: 12),
+                  if (isApartmentCryptLot(lot)) ...[
+                    InputDecorator(
+                      decoration: _mapFieldDecoration(
+                        labelText: 'Faces',
+                        icon: Icons.flip_rounded,
+                      ),
+                      child: const Text('Front / Back (mirrored crypt grids)'),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   DropdownButtonFormField<String>(
                     initialValue: selectedPricingType,
                     decoration: _mapFieldDecoration(
@@ -1412,7 +1479,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text('Save Lot'),
+              child: Text(editingFamilyEstate ? 'Save Estate' : 'Save Lot'),
             ),
           ],
         ),
@@ -2251,7 +2318,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                       controller: religionController,
                       decoration: _mapFieldDecoration(
                         labelText: 'Religion',
-                        icon: Icons.church_outlined,
+                        icon: Icons.map_outlined,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -2444,6 +2511,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
       return;
     }
     setState(() {
+      _selectedFamilyEstatePhase = null;
       _selectedMarker = marker;
       _lastClickedLot = marker;
       _selectedNode = null;
@@ -2451,6 +2519,182 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
       _showNavigationRoute = false;
       _routePreviewPoints = const [];
     });
+    final rawLot = marker['cemetery_lot'];
+    if (rawLot is Map<String, dynamic> && isApartmentCryptLot(rawLot)) {
+      _editApartmentCryptLabel(
+        Map<String, dynamic>.from(rawLot.cast<String, dynamic>()),
+      );
+    }
+  }
+
+  void _selectFamilyEstatePhase(String phase) {
+    final selected = _lotMarkers
+        .where((marker) {
+          final rawLot = marker['cemetery_lot'];
+          if (rawLot is! Map) return false;
+          final lot = Map<String, dynamic>.from(rawLot);
+          return isFamilyEstateLot(lot) && familyEstatePhase(lot) == phase;
+        })
+        .map((marker) {
+          return {
+            ...marker,
+            'cemetery_lot': Map<String, dynamic>.from(
+              marker['cemetery_lot'] as Map,
+            ),
+          };
+        })
+        .toList();
+    if (selected.isEmpty) {
+      _snack(
+        'No Family Estate plots are assigned to Phase $phase yet.',
+        error: true,
+      );
+      return;
+    }
+    setState(() {
+      _batchMarkers
+        ..clear()
+        ..addAll(selected);
+      _selectedFamilyEstatePhase = phase;
+    });
+    _snack('${selected.length} Family Estate plots selected for Phase $phase.');
+  }
+
+  Future<void> _assignFamilyEstatePhase(Map<String, dynamic> marker) async {
+    final lot = Map<String, dynamic>.from(marker['cemetery_lot'] ?? {});
+    final lotId = lot['lot_id'];
+    if (lotId == null) {
+      _snack('This estate is missing lot details.', error: true);
+      return;
+    }
+
+    final phase = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Assign Family Estate Phase'),
+        content: Text(
+          'Choose the phase for ${lotReference(lot, fallback: 'this estate')}.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          OutlinedButton(
+            onPressed: () => Navigator.pop(dialogContext, '1'),
+            child: const Text('Phase 1'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, '2'),
+            child: const Text('Phase 2'),
+          ),
+        ],
+      ),
+    );
+    if (phase == null) return;
+
+    setState(() => _isSaving = true);
+    try {
+      final updatedLot = await Supabase.instance.client
+          .from('cemetery_lot')
+          .update({
+            'block_number': 'Family Estate Phase $phase',
+            'lot_class_type': 'Family Estate',
+          })
+          .eq('lot_id', lotId)
+          .select(_lotColumnsSelect)
+          .single();
+      _mergeLotIntoMarker(Map<String, dynamic>.from(updatedLot));
+      _snack('Estate assigned to Phase $phase.');
+    } catch (e) {
+      _snack('Unable to assign estate phase: $e', error: true);
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _assignSelectedEstatesToPhase(String phase) async {
+    if (_batchMarkers.isEmpty) return;
+    final selected = List<Map<String, dynamic>>.from(_batchMarkers);
+    setState(() => _isSaving = true);
+    try {
+      final updatedLots = <Map<String, dynamic>>[];
+      for (final marker in selected) {
+        final lotId = _markerLotId(marker);
+        if (lotId == null) continue;
+        final updated = await Supabase.instance.client
+            .from('cemetery_lot')
+            .update({
+              'block_number': 'Family Estate Phase $phase',
+              'lot_class_type': 'Family Estate',
+            })
+            .eq('lot_id', lotId)
+            .select(_lotColumnsSelect)
+            .single();
+        updatedLots.add(Map<String, dynamic>.from(updated));
+      }
+      for (final lot in updatedLots) {
+        _mergeLotIntoMarker(lot);
+      }
+      if (!mounted) return;
+      setState(() {
+        _batchMarkers.clear();
+        _mode = _MapMode.select;
+      });
+      _snack('${updatedLots.length} estates assigned to Phase $phase.');
+    } catch (e) {
+      _snack('Unable to assign estate phase: $e', error: true);
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _editApartmentCryptLabel(Map<String, dynamic> lot) async {
+    final controller = TextEditingController(text: lotText(lot, 'lot_label'));
+    final action = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Label ${lotReference(lot, fallback: 'Apartment Crypt')}'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 120,
+          decoration: const InputDecoration(
+            labelText: 'Apartment crypt label',
+            hintText: 'Example: Apartment Crypt 0066',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, 'cancel'),
+            child: const Text('Cancel'),
+          ),
+          OutlinedButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, 'grid'),
+            icon: const Icon(Icons.grid_view_rounded),
+            label: const Text('Open crypt grid'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, 'save'),
+            child: const Text('Save label'),
+          ),
+        ],
+      ),
+    );
+    final label = controller.text.trim();
+    controller.dispose();
+    if (!mounted) return;
+    if (action == 'grid') {
+      widget.onApartmentCryptSelected?.call(lot);
+      return;
+    }
+    if (action != 'save' || label.isEmpty) return;
+    await Supabase.instance.client
+        .from('cemetery_lot')
+        .update({'lot_label': label})
+        .eq('lot_id', lot['lot_id']);
+    final lotId = int.tryParse(lot['lot_id']?.toString() ?? '');
+    if (lotId != null) await _refreshLotMarker(lotId);
   }
 
   void _selectMarkerByLotId(String lotId) {
@@ -2718,11 +2962,16 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
   void _selectBlockArea(Rect area) {
     if (!_mapReady || _batchSaving) return;
     final camera = _mapController.camera;
-    final candidates = _lotMarkers.where(
-      (marker) =>
-          marker['cemetery_lot'] is Map &&
-          area.contains(camera.latLngToScreenOffset(_markerToLatLng(marker))),
-    );
+    final candidates = _lotMarkers.where((marker) {
+      if (marker['cemetery_lot'] is! Map ||
+          !area.contains(camera.latLngToScreenOffset(_markerToLatLng(marker)))) {
+        return false;
+      }
+      if (_mode != _MapMode.assignEstatePhase) return true;
+      return isFamilyEstateLot(
+        Map<String, dynamic>.from(marker['cemetery_lot'] as Map),
+      );
+    });
     setState(() {
       final ids = _batchMarkers
           .map((marker) => _markerLotId(marker).toString())
@@ -2809,6 +3058,73 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                     FilledButton(
                       onPressed: _batchMarkers.isEmpty ? null : _reviewBatch,
                       child: const Text('Review block'),
+                    ),
+                    TextButton(
+                      onPressed: () => setState(() {
+                        _batchMarkers.clear();
+                        _mode = _MapMode.select;
+                      }),
+                      child: const Text('Exit'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Widget _buildEstatePhasePanel() => Positioned(
+    left: 12,
+    right: 12,
+    bottom: 12,
+    child: Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 720, maxHeight: 230),
+        child: _panel(
+          radius: 18,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Assign Family Estate Phase · ${_batchMarkers.length} estates selected',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Drag a box around Family Estate plots. Only estates inside the box are selected.',
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    FilterChip(
+                      label: const Text('Drag select'),
+                      selected: _dragSelect,
+                      onSelected: (value) =>
+                          setState(() => _dragSelect = value),
+                    ),
+                    TextButton(
+                      onPressed: () => setState(() => _batchMarkers.clear()),
+                      child: const Text('Clear'),
+                    ),
+                    OutlinedButton(
+                      onPressed: _batchMarkers.isEmpty
+                          ? null
+                          : () => _assignSelectedEstatesToPhase('1'),
+                      child: const Text('Assign Phase 1'),
+                    ),
+                    FilledButton(
+                      onPressed: _batchMarkers.isEmpty
+                          ? null
+                          : () => _assignSelectedEstatesToPhase('2'),
+                      child: const Text('Assign Phase 2'),
                     ),
                     TextButton(
                       onPressed: () => setState(() {
@@ -3182,7 +3498,8 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
             : Stack(
                 children: [
                   Positioned.fill(child: _buildMap()),
-                  if (_mode == _MapMode.assignBlock &&
+                  if ((_mode == _MapMode.assignBlock ||
+                          _mode == _MapMode.assignEstatePhase) &&
                       _dragSelect &&
                       !_batchSaving)
                     Positioned.fill(
@@ -3193,6 +3510,8 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                   if (!_batchSaving) ...[
                     if (_mode == _MapMode.assignBlock)
                       _buildBlockPanel()
+                    else if (_mode == _MapMode.assignEstatePhase)
+                      _buildEstatePhasePanel()
                     else if (_mode == _MapMode.labelRow)
                       _buildBatchPanel()
                     else
@@ -3314,7 +3633,8 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
             ),
           ),
           features.overlayPolylines,
-          if (_isBatchMode && _batchMarkers.isNotEmpty)
+          if ((_isBatchMode || _selectedFamilyEstatePhase != null) &&
+              _batchMarkers.isNotEmpty)
             IgnorePointer(
               child: PolygonLayer<String>(
                 polygons: [
@@ -3566,6 +3886,20 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                     }),
                   ),
                   _ActionButton(
+                    icon: Icons.family_restroom_rounded,
+                    label: 'Assign Estate Phase',
+                    onTap: () => setState(() {
+                      _batchMarkers.clear();
+                      _selectedMarker = null;
+                      _selectedNode = null;
+                      _showNavigationRoute = false;
+                      _routePreviewPoints = const [];
+                      _dragSelect = true;
+                      _removeArea = false;
+                      _mode = _MapMode.assignEstatePhase;
+                    }),
+                  ),
+                  _ActionButton(
                     icon: Icons.format_list_numbered,
                     label: 'Label Row',
                     onTap: () => setState(() {
@@ -3813,7 +4147,13 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
 
   Widget _buildActivePlotPanel() {
     final marker = _selectedMarker;
-    final lot = marker?['cemetery_lot'] ?? {};
+    final rawLot = marker?['cemetery_lot'];
+    final lot = rawLot is Map
+        ? Map<String, dynamic>.from(rawLot)
+        : <String, dynamic>{};
+    final isCrypt = marker != null && isApartmentCryptLot(lot);
+    final isFamilyEstate = marker != null && isFamilyEstateLot(lot);
+    final estatePhase = familyEstatePhase(lot);
     final lotNumber = lotReference(lot, fallback: '--');
     final meta = lotMeta(lot);
     final status = lot['status']?.toString() ?? 'No selection';
@@ -3837,10 +4177,14 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: const [
+                    children: [
                       Text(
-                        'PLOT SELECTION',
-                        style: TextStyle(
+                        isCrypt
+                            ? 'APARTMENT CRYPT'
+                            : isFamilyEstate
+                            ? 'FAMILY ESTATE'
+                            : 'PLOT SELECTION',
+                        style: const TextStyle(
                           color: Color(0xCCFFFFFF),
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -3856,7 +4200,15 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    marker == null ? 'No Plot Selected' : 'Lot $lotNumber',
+                    marker == null
+                        ? 'No Plot Selected'
+                        : isCrypt
+                        ? lotText(lot, 'lot_label').isEmpty
+                              ? 'Apartment Crypt $lotNumber'
+                              : lotText(lot, 'lot_label')
+                        : isFamilyEstate
+                        ? 'Estate ${lotText(lot, 'lot_number')}'
+                        : 'Lot $lotNumber',
                     style: const TextStyle(
                       color: _C.white,
                       fontSize: 22,
@@ -3866,6 +4218,10 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                   Text(
                     marker == null
                         ? 'Tap a marker on the map'
+                        : isCrypt
+                        ? 'Block ${lotText(lot, 'block_number')} - Apartment Crypt'
+                        : isFamilyEstate
+                        ? 'Phase ${estatePhase.isEmpty ? '--' : estatePhase} · Family Estate'
                         : meta.isEmpty
                         ? 'Marker ID: ${marker['marker_id']}'
                         : meta,
@@ -3879,45 +4235,114 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
               child: Column(
                 children: [
                   _infoRow('Status', status, badge: marker != null),
-                  if (meta.isNotEmpty) ...[
+                  if (isCrypt) ...[
+                    const SizedBox(height: 10),
+                    _infoRow('Lot Number', lotText(lot, 'lot_number')),
+                    const SizedBox(height: 10),
+                    _infoRow('Structure', '100 faces per wing'),
+                  ] else if (isFamilyEstate) ...[
+                    const SizedBox(height: 10),
+                    _infoRow(
+                      'Phase',
+                      estatePhase.isEmpty
+                          ? 'Not assigned'
+                          : 'Phase $estatePhase',
+                    ),
+                    const SizedBox(height: 10),
+                    _infoRow('Estate Number', lotText(lot, 'lot_number')),
+                    const SizedBox(height: 10),
+                    _infoRow('Estate Label', lotReference(lot)),
+                  ] else if (meta.isNotEmpty) ...[
                     const SizedBox(height: 10),
                     _infoRow('Map Details', meta),
                   ],
-                  const SizedBox(height: 10),
-                  _infoRow('Price', price == '--' ? price : 'PHP $price'),
-                  const SizedBox(height: 10),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Owner: $assignedOwner',
-                      style: const TextStyle(
-                        color: _C.onSurfaceVariant,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        height: 1.3,
+                  if (!isCrypt) ...[
+                    const SizedBox(height: 10),
+                    _infoRow('Price', price == '--' ? price : 'PHP $price'),
+                    const SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Owner: $assignedOwner',
+                        style: const TextStyle(
+                          color: _C.onSurfaceVariant,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          height: 1.3,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Deceased: $assignedDeceased',
-                      style: const TextStyle(
-                        color: _C.onSurfaceVariant,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        height: 1.3,
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Deceased: $assignedDeceased',
+                        style: const TextStyle(
+                          color: _C.onSurfaceVariant,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          height: 1.3,
+                        ),
                       ),
                     ),
-                  ),
+                  ],
+                  if (isFamilyEstate) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: estatePhase.isEmpty
+                            ? () => _assignFamilyEstatePhase(marker)
+                            : () => _selectFamilyEstatePhase(estatePhase),
+                        icon: Icon(
+                          estatePhase.isEmpty
+                              ? Icons.edit_calendar_rounded
+                              : Icons.select_all_rounded,
+                          size: 16,
+                        ),
+                        label: Text(
+                          estatePhase.isEmpty
+                              ? 'Assign Estate Phase'
+                              : 'Select Entire Phase $estatePhase',
+                        ),
+                      ),
+                    ),
+                  ],
                   const Divider(height: 24),
+                  if (widget.lotPicker) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: marker == null
+                            ? null
+                            : () => Navigator.of(context).pop(
+                                Map<String, dynamic>.from(lot),
+                              ),
+                        icon: const Icon(Icons.check_circle_rounded, size: 16),
+                        label: const Text('Use This Lot'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _C.secondary,
+                          foregroundColor: _C.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
                       onPressed: marker == null ? null : () => _editLot(marker),
                       icon: const Icon(Icons.edit_rounded, size: 16),
-                      label: const Text('Edit Details'),
+                      label: Text(
+                        isCrypt
+                            ? 'Edit Crypt Label'
+                            : isFamilyEstate
+                            ? 'Edit Estate Details'
+                            : 'Edit Details',
+                      ),
                       style: FilledButton.styleFrom(
                         backgroundColor: _C.primaryContainer,
                         foregroundColor: _C.white,
@@ -3927,66 +4352,99 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: marker == null
-                          ? null
-                          : () => _showAssignOwnerDialog(marker),
-                      icon: const Icon(Icons.assignment_ind_rounded, size: 16),
-                      label: const Text('Assign Owner'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: _C.primary,
-                        foregroundColor: _C.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                  if (isCrypt) ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () =>
+                            widget.onApartmentCryptSelected?.call(lot),
+                        icon: const Icon(Icons.grid_view_rounded, size: 16),
+                        label: const Text('Open Crypt Grid'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _C.secondary,
+                          foregroundColor: _C.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: marker == null
-                          ? null
-                          : () => _showAssignBurialDialog(marker),
-                      icon: const Icon(
-                        Icons.person_pin_circle_rounded,
-                        size: 16,
-                      ),
-                      label: const Text('Assign Deceased'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: _C.primary,
-                        foregroundColor: _C.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                  ] else ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: marker == null
+                            ? null
+                            : () => _showAssignOwnerDialog(marker),
+                        icon: const Icon(
+                          Icons.assignment_ind_rounded,
+                          size: 16,
+                        ),
+                        label: Text(
+                          isFamilyEstate ? 'Assign Purchaser' : 'Assign Owner',
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _C.primary,
+                          foregroundColor: _C.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: marker == null
-                          ? null
-                          : () => _showAddGraveDialog(marker),
-                      icon: const Icon(
-                        Icons.add_location_alt_rounded,
-                        size: 16,
-                      ),
-                      label: const Text('Add Grave'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: _C.secondary,
-                        foregroundColor: _C.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: marker == null
+                            ? null
+                            : () => _showAssignBurialDialog(marker),
+                        icon: const Icon(
+                          Icons.person_pin_circle_rounded,
+                          size: 16,
+                        ),
+                        label: Text(
+                          isFamilyEstate
+                              ? 'Record Interment'
+                              : 'Assign Deceased',
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _C.primary,
+                          foregroundColor: _C.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
+                  if (!isCrypt) ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: marker == null
+                            ? null
+                            : () => _showAddGraveDialog(marker),
+                        icon: const Icon(
+                          Icons.add_location_alt_rounded,
+                          size: 16,
+                        ),
+                        label: Text(
+                          isFamilyEstate ? 'Add Interment Record' : 'Add Grave',
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _C.secondary,
+                          foregroundColor: _C.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
@@ -4666,6 +5124,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
 
   String get _modeLabel => switch (_mode) {
     _MapMode.assignBlock => 'Assign Block',
+    _MapMode.assignEstatePhase => 'Assign Estate Phase',
     _MapMode.labelRow => 'Label Row',
     _MapMode.select => 'Active Edit',
     _MapMode.plotLot => 'Plot Lot',

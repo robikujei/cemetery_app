@@ -13,10 +13,16 @@ const _lotColumnsSelect =
     'lot_id, lot_number, lot_label, block_number, lot_class_type, price, status, qgis_feature_id, polygon_geo';
 
 class AdminLotsScreen extends ConsumerStatefulWidget {
-  const AdminLotsScreen({super.key, this.onMenuPressed, this.onLogoutPressed});
+  const AdminLotsScreen({
+    super.key,
+    this.onMenuPressed,
+    this.onLogoutPressed,
+    this.initialLot,
+  });
 
   final VoidCallback? onMenuPressed;
   final VoidCallback? onLogoutPressed;
+  final Map<String, dynamic>? initialLot;
 
   @override
   ConsumerState<AdminLotsScreen> createState() => _AdminLotsScreenState();
@@ -162,6 +168,18 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
         _currentPage = 0;
         _isLoading = false;
       });
+      final requestedLotId = widget.initialLot?['lot_id']?.toString();
+      if (requestedLotId != null && mounted) {
+        final requestedLot = lotsWithDetails.firstWhere(
+          (lot) => lot['lot_id']?.toString() == requestedLotId,
+          orElse: () => <String, dynamic>{},
+        );
+        if (requestedLot.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _showEditDialog(requestedLot);
+          });
+        }
+      }
     } catch (e) {
       setState(() {
         _errorMessage = 'Error loading data: $e';

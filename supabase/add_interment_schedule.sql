@@ -1,4 +1,6 @@
 -- Weekly planner entries. Run once in Supabase SQL Editor.
+-- Then run sync_interment_planner_from_burial_records.sql so every form-based
+-- burial record with an interment date/time automatically appears here.
 create table if not exists public.interment_schedule (
   schedule_id bigserial primary key,
   lot_id integer not null references public.cemetery_lot(lot_id) on delete restrict,

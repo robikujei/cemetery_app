@@ -1,11 +1,11 @@
 {
-    "name": "cemetery_app",
-    "short_name": "cemetery_app",
+    "name": "Eternal Garden",
+    "short_name": "Eternal Garden",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FAF7F0",
+    "theme_color": "#164F35",
+    "description": "Eternal Garden cemetery services and grave finder.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

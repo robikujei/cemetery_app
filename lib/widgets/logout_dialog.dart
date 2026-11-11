@@ -61,7 +61,24 @@ class _LogoutDialogState extends State<_LogoutDialog> {
   Widget build(BuildContext context) => PopScope(
     canPop: !_busy,
     child: AlertDialog(
-      title: const Text('Logout'),
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.errorContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.logout_rounded,
+              color: Theme.of(context).colorScheme.onErrorContainer,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Text('Logout'),
+        ],
+      ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -85,9 +102,10 @@ class _LogoutDialogState extends State<_LogoutDialog> {
           onPressed: _busy ? null : () => Navigator.of(context).pop(false),
           child: const Text('Cancel'),
         ),
-        TextButton(
+        FilledButton.icon(
           onPressed: _busy ? null : _logout,
-          child: Text(_busy ? 'Logging out?' : 'Logout'),
+          icon: const Icon(Icons.logout_rounded, size: 18),
+          label: Text(_busy ? 'Logging out?' : 'Logout'),
         ),
       ],
     ),

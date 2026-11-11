@@ -462,7 +462,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Icon(
-                          Icons.church_rounded,
+                          Icons.location_on_rounded,
                           color: _colors(context).primary,
                           size: 24,
                         ),

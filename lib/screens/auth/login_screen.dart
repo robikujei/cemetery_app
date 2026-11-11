@@ -1,29 +1,18 @@
-import '../../core/app_colors.dart';
-import '../../core/surface_style.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/audit_service.dart';
+import '../../services/user_profile_service.dart';
 import '../../models/app_user.dart';
 import '../../providers/session_providers.dart';
+import '../../utils/app_role.dart';
 import '../../utils/sign_in_error_message.dart';
+import '../../widgets/brand_logo.dart';
 
 // ── Design tokens (mirrors the HTML template's Tailwind config) ──────────────
-class _C {
-  static const background = AppColors.background;
-  static const primary = AppColors.brandDark;
-  static const primaryContainer = AppColors.brand;
-  static const onPrimaryContainer = AppColors.onBrand;
-  static const primaryFixed = AppColors.brandLight;
-  static const surfaceContainerHighest = AppColors.surfaceHighest;
-  static const onSurface = AppColors.text;
-  static const onSurfaceVariant = AppColors.textSecondary;
-  static const outline = AppColors.textMuted;
-  static const outlineVariant = AppColors.border;
-  static const error = Color(0xFFBA1A1A);
-}
-
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key, this.requiredRole, this.portalName});
 
@@ -42,6 +31,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isLoading = false;
   String? _emailError;
   String? _passwordError;
+  String? _signInError;
 
   @override
   void dispose() {
@@ -80,28 +70,54 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _signInWithSupabase() async {
     if (!_validateForm()) return;
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _signInError = null;
+    });
     try {
-      final response = await Supabase.instance.client.auth.signInWithPassword(
-        email: _emailCtrl.text.trim().toLowerCase(),
-        password: _passwordCtrl.text,
-      );
+      final response = await Supabase.instance.client.auth
+          .signInWithPassword(
+            email: _emailCtrl.text.trim().toLowerCase(),
+            password: _passwordCtrl.text,
+          )
+          .timeout(const Duration(seconds: 15));
       if (response.user != null) {
-        final userData = await _loadUserProfile(response.user!);
+        final userData = await loadAppUserProfile(
+          Supabase.instance.client,
+          response.user!,
+        );
         if (userData == null) {
           await Supabase.instance.client.auth.signOut();
           _showErrorSnackBar(
-            'Your account is valid, but its portal profile is missing. Contact an administrator.',
+            widget.requiredRole == 'gate_officer'
+                ? 'Your password is correct, but this Gate Officer profile is not linked to the account. Ask an administrator to run the Gate Officer access repair in Supabase.'
+                : 'Your account is valid, but its portal profile is missing. Contact an administrator.',
           );
           return;
         }
 
-        final actualRole = userData['role']?.toString().trim().toLowerCase();
-        final requiredRole = widget.requiredRole?.trim().toLowerCase();
+        final actualRole = normalizeAppRole(userData['role']);
+        final requiredRole = widget.requiredRole == null
+            ? null
+            : normalizeAppRole(widget.requiredRole);
+        if (!isGeoGraveAllowedRole(actualRole)) {
+          await Supabase.instance.client.auth.signOut();
+          _showErrorSnackBar(
+            'This GeoGrave app is available only to visitors, lot owners, and gate officers.',
+          );
+          return;
+        }
+        if (appHomeForRole(actualRole) == null) {
+          await Supabase.instance.client.auth.signOut();
+          _showErrorSnackBar(
+            'This account does not have a valid portal role. Contact an administrator.',
+          );
+          return;
+        }
         if (requiredRole != null && actualRole != requiredRole) {
           await Supabase.instance.client.auth.signOut();
           _showErrorSnackBar(
-            'This account is for ${_roleName(actualRole)}. Use the ${widget.portalName ?? 'correct'} login page.',
+            'This account is for ${appRoleName(actualRole)}. Use the ${widget.portalName ?? 'correct'} login page.',
           );
           return;
         }
@@ -123,55 +139,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _showErrorSnackBar('Invalid email or password. Please try again.');
       }
     } catch (e) {
-      _showErrorSnackBar(signInErrorMessage(e));
+      _showErrorSnackBar(
+        e is TimeoutException
+            ? 'Sign-in timed out. Check the internet connection and try again.'
+            : signInErrorMessage(e),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  /// Older profiles can retain a legacy user_id after their Supabase Auth
-  /// account is recreated. Prefer the Auth ID, then fall back to the verified
-  /// email so those accounts can still reach the correct portal.
-  Future<Map<String, dynamic>?> _loadUserProfile(User authUser) async {
-    final client = Supabase.instance.client;
-    final byId = await client
-        .from('users')
-        .select('name, role, email')
-        .eq('user_id', authUser.id)
-        .maybeSingle();
-    if (byId != null) return Map<String, dynamic>.from(byId);
-
-    final email = authUser.email?.trim().toLowerCase();
-    if (email == null || email.isEmpty) return null;
-    final byEmail = await client
-        .from('users')
-        .select('name, role, email')
-        .eq('email', email)
-        .maybeSingle();
-    return byEmail == null ? null : Map<String, dynamic>.from(byEmail);
-  }
-
-  String _roleName(String? role) => switch (role) {
-    'admin' => 'administrators',
-    'gate_officer' => 'gate officers',
-    'lot_owner' => 'lot owners',
-    _ => 'visitors',
-  };
-
   void _navigateByRole(String? role) {
-    switch (role) {
-      case 'admin':
-        context.go('/admin');
-        break;
-      case 'gate_officer':
-        context.go('/gate-officer');
-        break;
-      case 'lot_owner':
-        context.go('/lot-owner');
-        break;
-      default:
-        context.go('/visitor');
-    }
+    final home = appHomeForRole(role);
+    if (home != null) context.go(home);
   }
 
   UserRole _mapRoleToEnum(String? role) {
@@ -189,10 +169,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   void _showErrorSnackBar(String message) {
     if (!mounted) return;
+    setState(() => _signInError = message);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: _C.error,
+        backgroundColor: Theme.of(context).colorScheme.error,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
@@ -211,6 +192,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     Widget? suffix,
     Widget? labelTrailing,
   }) {
+    final scheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -221,11 +203,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             children: [
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                   letterSpacing: 0.1,
-                  color: _C.onSurfaceVariant,
+                  color: scheme.onSurfaceVariant,
                 ),
               ),
               ?labelTrailing,
@@ -239,45 +221,48 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           keyboardType: keyboardType,
           autocorrect: false,
           enableSuggestions: false,
-          style: const TextStyle(fontSize: 14, color: _C.onSurface),
+          style: TextStyle(fontSize: 14, color: scheme.onSurface),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(
-              color: AppColors.textMuted,
-              fontSize: 14,
-            ),
+            hintStyle: TextStyle(color: scheme.onSurfaceVariant, fontSize: 14),
             errorText: errorText,
-            errorStyle: const TextStyle(color: _C.error, fontSize: 12),
-            prefixIcon: Icon(prefixIcon, size: 20, color: _C.outline),
+            errorStyle: TextStyle(color: scheme.error, fontSize: 12),
+            prefixIcon: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: scheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(prefixIcon, size: 19, color: scheme.primary),
+              ),
+            ),
             suffixIcon: suffix,
             filled: true,
-            fillColor: AppColors.surface,
+            fillColor: scheme.surfaceContainerLow,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 18,
             ),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.border),
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: scheme.outline),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.border),
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: scheme.outline),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: _C.primaryContainer,
-                width: 2,
-              ),
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: scheme.primary, width: 2),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: _C.error, width: 1.5),
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: scheme.error, width: 1.5),
             ),
             focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: _C.error, width: 2),
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: scheme.error, width: 2),
             ),
           ),
         ),
@@ -287,8 +272,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: _C.background,
+      backgroundColor: scheme.surfaceContainer,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
@@ -298,50 +284,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: Column(
                 children: [
                   // ── Header ──────────────────────────────────────────────
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: const BoxDecoration(
-                      color: _C.primaryFixed,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.church,
-                      size: 32,
-                      color: _C.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    widget.portalName ?? 'Eternal Garden',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w600,
-                      color: _C.primary,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    widget.requiredRole == null
-                        ? 'A quiet guide for your journey through memories.'
-                        : 'Sign in to the ${widget.portalName ?? 'role'} portal.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      letterSpacing: 0.5,
-                      color: _C.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
+                  const BrandLogo(height: 152),
+                  const SizedBox(height: 24),
 
                   // ── Card ────────────────────────────────────────────────
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(32),
-                    decoration: SurfaceStyle.panel(
-                      color: Colors.white,
-                      radius: 20,
+                    decoration: BoxDecoration(
+                      color: scheme.surface,
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(color: scheme.outlineVariant),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 28,
+                          offset: const Offset(0, 12),
+                        ),
+                      ],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -355,10 +315,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           widget.requiredRole == 'gate_officer'
                               ? 'Scan visitor passes and manage cemetery entry.'
                               : widget.requiredRole == 'admin'
-                                  ? 'Manage cemetery operations and records.'
-                                  : 'Access your visits, maps, and cemetery services.',
-                          style: TextStyle(color: AppColors.textSecondary),
+                              ? 'Manage cemetery operations and records.'
+                              : 'Access your visits, maps, and cemetery services.',
+                          style: TextStyle(color: scheme.onSurfaceVariant),
                         ),
+                        if (_signInError != null) ...[
+                          const SizedBox(height: 16),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: scheme.errorContainer,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  Icons.error_outline_rounded,
+                                  color: scheme.onErrorContainer,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    _signInError!,
+                                    style: TextStyle(
+                                      color: scheme.onErrorContainer,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 24),
                         // Email
                         _buildField(
@@ -379,87 +368,91 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           prefixIcon: Icons.lock_outline_rounded,
                           errorText: _passwordError,
                           obscure: _obscure,
-                          labelTrailing: TextButton(
-                            onPressed: () {
-                              /* TODO: forgot password */
-                            },
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: const Text(
-                              'Forgot password?',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                letterSpacing: 0.5,
-                                color: _C.primary,
-                              ),
-                            ),
-                          ),
                           suffix: IconButton(
                             icon: Icon(
                               _obscure
                                   ? Icons.visibility_outlined
                                   : Icons.visibility_off_outlined,
                               size: 20,
-                              color: _C.outline,
+                              color: scheme.outline,
                             ),
                             onPressed: () =>
                                 setState(() => _obscure = !_obscure),
                           ),
                         ),
-                        const SizedBox(height: 24),
-
-                        // Sign In button
-                        SizedBox(
-                          height: 56,
-                          child: FilledButton.icon(
-                            onPressed: _isLoading ? null : _signInWithSupabase,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: _C.primaryContainer,
-                              foregroundColor: _C.onPrimaryContainer,
-                              disabledBackgroundColor: _C.primaryContainer
-                                  .withValues(alpha: 0.5),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              textStyle: const TextStyle(
-                                fontFamily: '.SF Pro Text',
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                letterSpacing: 0.1,
-                              ),
-                            ),
-                            icon: _isLoading
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: _C.onPrimaryContainer,
-                                    ),
-                                  )
-                                : const Icon(
-                                    Icons.arrow_forward_rounded,
-                                    size: 18,
-                                  ),
-                            iconAlignment: IconAlignment.end,
-                            label: const Text('Sign In'),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () {
+                              /* TODO: forgot password */
+                            },
+                            child: const Text('Forgot password?'),
                           ),
                         ),
+                        const SizedBox(height: 8),
 
+                        // Sign In button
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            gradient: LinearGradient(
+                              colors: [
+                                scheme.primary,
+                                scheme.primary.withValues(alpha: 0.72),
+                              ],
+                            ),
+                          ),
+                          child: SizedBox(
+                            height: 56,
+                            child: FilledButton.icon(
+                              onPressed: _isLoading
+                                  ? null
+                                  : _signInWithSupabase,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                foregroundColor: scheme.onPrimary,
+                                disabledBackgroundColor: Colors.transparent,
+                                disabledForegroundColor: scheme.onPrimary
+                                    .withValues(alpha: 0.5),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                textStyle: const TextStyle(
+                                  fontFamily: '.SF Pro Text',
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 0.1,
+                                ),
+                              ),
+                              icon: _isLoading
+                                  ? SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: scheme.onPrimary,
+                                      ),
+                                    )
+                                  : const Icon(
+                                      Icons.arrow_forward_rounded,
+                                      size: 18,
+                                    ),
+                              iconAlignment: IconAlignment.end,
+                              label: const Text('Sign In'),
+                            ),
+                          ),
+                        ),
                         if (widget.requiredRole == null) ...[
                           const SizedBox(height: 32),
-                          const Divider(color: _C.surfaceContainerHighest),
+                          Divider(color: scheme.outlineVariant),
                           const SizedBox(height: 24),
-                          const Text(
+                          Text(
                             'New to Eternal Garden?',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 14,
-                              color: _C.onSurfaceVariant,
+                              color: scheme.onSurfaceVariant,
                               letterSpacing: 0.25,
                             ),
                           ),
@@ -469,13 +462,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             child: OutlinedButton(
                               onPressed: () => context.go('/register'),
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: _C.primaryContainer,
-                                side: const BorderSide(
-                                  color: _C.primaryContainer,
+                                foregroundColor: scheme.primary,
+                                side: BorderSide(
+                                  color: scheme.primary,
                                   width: 2,
                                 ),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(16),
                                 ),
                                 textStyle: const TextStyle(
                                   fontFamily: '.SF Pro Text',
@@ -500,7 +493,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       TextButton(
                         onPressed: () {},
                         style: TextButton.styleFrom(
-                          foregroundColor: _C.outline,
+                          foregroundColor: scheme.outline,
                           textStyle: const TextStyle(
                             fontFamily: '.SF Pro Text',
                             fontSize: 11,
@@ -512,7 +505,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       TextButton(
                         onPressed: () {},
                         style: TextButton.styleFrom(
-                          foregroundColor: _C.outline,
+                          foregroundColor: scheme.outline,
                           textStyle: const TextStyle(
                             fontFamily: '.SF Pro Text',
                             fontSize: 11,
@@ -523,12 +516,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ],
                   ),
-                  const Text(
+                  Text(
                     'Respecting legacy, protecting privacy.',
                     style: TextStyle(
                       fontSize: 11,
                       letterSpacing: 0.5,
-                      color: _C.outlineVariant,
+                      color: scheme.outlineVariant,
                     ),
                   ),
                 ],

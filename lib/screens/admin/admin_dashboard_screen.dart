@@ -1428,7 +1428,7 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
           supabase: supabase,
           table: 'lot_markers',
           columns:
-              'marker_id, lot_id, x_percent, y_percent, cemetery_lot(lot_id, lot_number, block_number, price, status)',
+              'marker_id, lot_id, x_percent, y_percent, cemetery_lot(lot_id, lot_number, block_number, price, status, polygon_geo)',
           orderColumn: 'marker_id',
         ),
         supabase
@@ -1526,13 +1526,21 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
   }
 
   List<_DbscanPoint> _dbscanPoints() {
-    return _lotMarkers.map((marker) {
-      final lot = marker['cemetery_lot'] ?? {};
-      final x = (marker['x_percent'] as num?)?.toDouble() ?? 0.5;
-      final y = (marker['y_percent'] as num?)?.toDouble() ?? 0.5;
-      final visitCount = (lot['visit_count'] as num?)?.toInt() ?? 0;
-      return _DbscanPoint(marker: marker, x: x, y: y, visitCount: visitCount);
-    }).toList();
+    return _lotMarkers
+        .map((marker) {
+          final lot = marker['cemetery_lot'] ?? {};
+          final x = (marker['x_percent'] as num?)?.toDouble() ?? 0.5;
+          final y = (marker['y_percent'] as num?)?.toDouble() ?? 0.5;
+          final visitCount = (lot['visit_count'] as num?)?.toInt() ?? 0;
+          return _DbscanPoint(
+            marker: marker,
+            x: x,
+            y: y,
+            visitCount: visitCount,
+          );
+        })
+        .where((point) => point.visitCount > 0)
+        .toList();
   }
 
   _DbscanResult _clusterHeatmap() {
@@ -1701,7 +1709,7 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
     }).toList();
   }
 
-  int get _occupiedLots => _lotMarkers.where((marker) {
+  int get _visitedLots => _lotMarkers.where((marker) {
     final lot = marker['cemetery_lot'] ?? {};
     return ((lot['visit_count'] as num?)?.toInt() ?? 0) > 0;
   }).length;
@@ -1764,6 +1772,12 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
                         tileBounds: paddedMapBounds(_cemeteryCameraBounds, 2.0),
                         keepBuffer: 1,
                       ),
+                      PolygonLayer<String>(
+                        polygons: lotPolygonsFromMarkers(
+                          _lotMarkers,
+                          lowDetail: true,
+                        ),
+                      ),
                       CircleLayer(circles: _heatCircles(heatmap)),
                       MarkerLayer(
                         markers: [
@@ -1819,7 +1833,7 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
                 ),
               ),
               child: Text(
-                'Visits $_totalVisits - Hotspots ${heatmap.clusters.length} - Noise ${heatmap.noise.length} - Active lots $_occupiedLots',
+                'Lots ${_lotMarkers.length} - Visited lots $_visitedLots - Visits $_totalVisits - Hotspots ${heatmap.clusters.length} - Noise ${heatmap.noise.length}',
                 style: titleStyle?.copyWith(
                   color: colors.onSurface,
                   fontSize: 14,

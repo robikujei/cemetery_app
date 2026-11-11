@@ -8,6 +8,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../widgets/brand_logo.dart';
+
 // ── Design tokens ────────────────────────────────────────────────────────────
 class VisitorQrScreen extends ConsumerStatefulWidget {
   const VisitorQrScreen({super.key});
@@ -233,32 +235,7 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         titleSpacing: 4,
-        title: Row(
-          children: [
-            Icon(Icons.church, color: _colors(context).primary, size: 20),
-            SizedBox(width: 8),
-            Text(
-              'Eternal Garden',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: _colors(context).primary,
-                letterSpacing: -0.3,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              Icons.notifications_outlined,
-              color: _colors(context).primary,
-              size: 22,
-            ),
-            onPressed: () {},
-          ),
-          const SizedBox(width: 8),
-        ],
+        title: const BrandLogo(height: 42),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Divider(height: 1, thickness: 1, color: Colors.grey.shade100),
@@ -319,23 +296,69 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
                 const SizedBox(height: 24),
 
                 // ── Page title ───────────────────────────────────────
-                Text(
-                  'Visitor Pass',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w400,
-                    color: _colors(context).primary,
-                    letterSpacing: -0.5,
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        _colors(context).primary,
+                        _colors(context).primary.withOpacity(.72),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _colors(context).primary.withOpacity(.20),
+                        blurRadius: 24,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Welcome to Eternal Garden Cemetery & Gardens.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    letterSpacing: 0.5,
-                    color: _colors(context).onSurfaceVariant,
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(.16),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Icon(
+                          Icons.qr_code_2_rounded,
+                          color: _colors(context).onPrimary,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Visitor Pass',
+                              style: TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w700,
+                                color: _colors(context).onPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Ready to scan at the cemetery entrance.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: _colors(
+                                  context,
+                                ).onPrimary.withOpacity(.82),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -347,15 +370,15 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
                     width: double.infinity,
                     decoration: BoxDecoration(
                       color: _colors(context).surface,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(28),
                       border: Border.all(
                         color: _colors(context).outlineVariant,
                       ),
                       boxShadow: const [
                         BoxShadow(
-                          color: Color(0x0F0066CC),
-                          blurRadius: 12,
-                          offset: Offset(0, 4),
+                          color: Color(0x1A002B5C),
+                          blurRadius: 28,
+                          offset: Offset(0, 12),
                         ),
                       ],
                     ),
@@ -387,14 +410,12 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
                                     width: 64,
                                     height: 64,
                                     decoration: BoxDecoration(
-                                      color: _colors(
-                                        context,
-                                      ).secondaryContainer,
-                                      shape: BoxShape.circle,
+                                      color: _colors(context).primaryContainer,
+                                      borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: Icon(
                                       Icons.person_rounded,
-                                      color: _colors(context).secondary,
+                                      color: _colors(context).primary,
                                       size: 32,
                                     ),
                                   ),
@@ -443,12 +464,14 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
                                 Container(
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
-                                    color: _colors(context).surface,
+                                    color: _colors(context).surfaceContainerLow,
                                     border: Border.all(
-                                      color: _colors(context).primaryContainer,
-                                      width: 4,
+                                      color: _colors(
+                                        context,
+                                      ).primary.withOpacity(.24),
+                                      width: 2,
                                     ),
-                                    borderRadius: BorderRadius.circular(20),
+                                    borderRadius: BorderRadius.circular(24),
                                   ),
                                   child: QrImageView(
                                     data: _qrData!,
@@ -550,37 +573,48 @@ class _VisitorQrScreenState extends ConsumerState<VisitorQrScreen> {
                 const SizedBox(height: 20),
 
                 // ── Save to Device button ────────────────────────────
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: FilledButton.icon(
-                    onPressed: _isSaving ? null : _saveQrToDevice,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _colors(context).primary,
-                      foregroundColor: _colors(context).onPrimary,
-                      disabledBackgroundColor: _colors(
-                        context,
-                      ).primary.withOpacity(0.5),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      textStyle: TextStyle(
-                        fontFamily: '.SF Pro Text',
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        _colors(context).primary,
+                        _colors(context).primary.withOpacity(.72),
+                      ],
                     ),
-                    icon: _isSaving
-                        ? SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: _colors(context).onPrimary,
-                            ),
-                          )
-                        : Icon(Icons.download_rounded, size: 20),
-                    label: Text(_isSaving ? 'Saving...' : 'Save to Device'),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: FilledButton.icon(
+                      onPressed: _isSaving ? null : _saveQrToDevice,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        foregroundColor: _colors(context).onPrimary,
+                        disabledBackgroundColor: _colors(
+                          context,
+                        ).primary.withOpacity(0.5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        textStyle: TextStyle(
+                          fontFamily: '.SF Pro Text',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      icon: _isSaving
+                          ? SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: _colors(context).onPrimary,
+                              ),
+                            )
+                          : Icon(Icons.download_rounded, size: 20),
+                      label: Text(_isSaving ? 'Saving...' : 'Save to Device'),
+                    ),
                   ),
                 ),
 

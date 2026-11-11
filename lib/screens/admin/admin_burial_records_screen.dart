@@ -8,6 +8,7 @@ import '../../services/audit_service.dart';
 import '../../utils/lot_formatters.dart';
 import '../../widgets/app_date_field.dart';
 import '../../utils/lot_pricing.dart';
+import 'admin_map_manager_screen.dart';
 
 class AdminBurialRecordsScreen extends ConsumerStatefulWidget {
   const AdminBurialRecordsScreen({
@@ -97,6 +98,7 @@ class _AdminBurialRecordsScreenState
 
   bool _isEditing = false;
   String? _editingId;
+  Map<String, dynamic>? _selectedLot;
 
   @override
   void initState() {
@@ -375,6 +377,18 @@ class _AdminBurialRecordsScreenState
       return false;
     }
 
+    if (!_deathCertificateSubmitted ||
+        !_ownershipCertificateSubmitted ||
+        !_authorityDocumentSubmitted) {
+      _showValidationErrorDialog(
+        'Required Documents Missing',
+        'A burial cannot be recorded until the Death Certificate, '
+            'Certificate of Ownership / Purchase Profile, and '
+            'Authority / Affidavit / Certification checklists are all submitted.',
+      );
+      return false;
+    }
+
     final deathDateStr = _deathDateController.text;
     if (deathDateStr.isEmpty) {
       _showValidationErrorDialog(
@@ -587,6 +601,9 @@ class _AdminBurialRecordsScreenState
     _intermentTimeError = null;
 
     if (record != null) {
+      _selectedLot = record['cemetery_lot'] is Map
+          ? Map<String, dynamic>.from(record['cemetery_lot'])
+          : null;
       final informant = record['informant'] is Map
           ? Map<String, dynamic>.from(record['informant'])
           : <String, dynamic>{};
@@ -633,6 +650,9 @@ class _AdminBurialRecordsScreenState
           record['authority_document_submitted'] == true;
     } else {
       _editingId = null;
+      _selectedLot = widget.initialLot == null
+          ? null
+          : Map<String, dynamic>.from(widget.initialLot!);
       _applicationDateController.text = DateFormat(
         'yyyy-MM-dd',
       ).format(DateTime.now());
@@ -658,9 +678,9 @@ class _AdminBurialRecordsScreenState
       _bldgNoController.clear();
       _nicheNoController.clear();
       _levelController.clear();
-      _lotLocationNoController.text = widget.initialLot == null
+      _lotLocationNoController.text = _selectedLot == null
           ? ''
-          : lotReference(widget.initialLot, fallback: '');
+          : lotReference(_selectedLot, fallback: '');
       _registeredLotOwnerController.clear();
       _registeredOwnerContactController.clear();
       _orNumberController.clear();
@@ -952,31 +972,20 @@ class _AdminBurialRecordsScreenState
                       ),
                     ]),
                     const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.secondaryLight,
-                        borderRadius: BorderRadius.circular(20),
+                    OutlinedButton.icon(
+                      onPressed: () => _pickLotOnMap(setDialogState),
+                      icon: const Icon(Icons.map_rounded),
+                      label: Text(
+                        _selectedLot == null
+                            ? 'Assign Lot on Map'
+                            : 'Change Assigned Lot (${lotReference(_selectedLot)})',
                       ),
-                      child: const Row(
-                        children: [
-                          Icon(
-                            Icons.map_outlined,
-                            size: 18,
-                            color: Color(0xFF2F4A57),
-                          ),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Assign the exact cemetery lot from Map Manager by selecting the lot polygon and choosing Assign Deceased.',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF2F4A57),
-                                height: 1.3,
-                              ),
-                            ),
-                          ),
-                        ],
+                      style: OutlinedButton.styleFrom(
+                        alignment: Alignment.centerLeft,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 14,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -1091,6 +1100,21 @@ class _AdminBurialRecordsScreenState
     }
   }
 
+  Future<void> _pickLotOnMap(StateSetter setDialogState) async {
+    final lot = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(
+        builder: (_) => const AdminMapManagerScreen(lotPicker: true),
+      ),
+    );
+    if (lot == null || !mounted) return;
+    setDialogState(() {
+      _selectedLot = lot;
+      _lotLocationNoController.text = lotReference(lot, fallback: '');
+      final type = lot['lot_class_type']?.toString();
+      if (_burialCategories.contains(type)) _selectedBurialCategory = type;
+    });
+  }
+
   bool get _hasInformantDetails {
     return [
       _informantNameController,
@@ -1190,6 +1214,9 @@ class _AdminBurialRecordsScreenState
       };
       if (!_isEditing && widget.initialLot?['lot_id'] != null) {
         data['lot_id'] = widget.initialLot!['lot_id'];
+      }
+      if (_selectedLot?['lot_id'] != null) {
+        data['lot_id'] = _selectedLot!['lot_id'];
       }
 
       if (_isEditing && _editingId != null) {

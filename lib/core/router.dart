@@ -4,9 +4,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../screens/visitor/visitor_shell_screen.dart' deferred as visitor;
-import '../screens/admin/admin_shell_screen.dart' deferred as admin;
 import '../screens/guard/qr_scanner_screen.dart' deferred as guard;
 import '../screens/lot_owner/lot_owner_home_screen.dart' deferred as owner;
+import '../services/user_profile_service.dart';
+import '../utils/app_role.dart';
 
 String? _cachedRoleUserId;
 String? _cachedHome;
@@ -14,34 +15,36 @@ String? _cachedHome;
 final router = GoRouter(
   initialLocation: '/login',
   redirect: (context, state) async {
-    if (state.matchedLocation == '/login' ||
-        state.matchedLocation == '/register') {
-      return null;
-    }
+    final isPublicRoute =
+        state.matchedLocation == '/login' ||
+        state.matchedLocation == '/register';
     final client = Supabase.instance.client;
     final user = client.auth.currentUser;
-    if (user == null) return '/login';
+    if (user == null) {
+      _cachedRoleUserId = null;
+      _cachedHome = null;
+      return isPublicRoute ? null : '/login';
+    }
     if (_cachedRoleUserId == user.id && _cachedHome != null) {
       return state.matchedLocation == _cachedHome ? null : _cachedHome;
     }
     try {
-      final profile = await client
-          .from('users')
-          .select('role')
-          .eq('user_id', user.id)
-          .maybeSingle();
-      final home = switch (profile?['role']) {
-        'admin' => '/admin',
-        'gate_officer' => '/gate-officer',
-        'lot_owner' => '/lot-owner',
-        'visitor' => '/visitor',
-        _ => '/login',
-      };
+      final profile = await loadAppUserProfile(client, user);
+      final home = appHomeForRole(profile?['role']);
+      if (home == null) {
+        _cachedRoleUserId = null;
+        _cachedHome = null;
+        return '/login';
+      }
       _cachedRoleUserId = user.id;
       _cachedHome = home;
       return state.matchedLocation == home ? null : home;
     } catch (_) {
-      return '/login';
+      _cachedRoleUserId = null;
+      _cachedHome = null;
+      // Keep the public page visible if restoring the profile failed, rather
+      // than trapping a user in a redirect loop while offline.
+      return isPublicRoute ? null : '/login';
     }
   },
   routes: [
@@ -55,13 +58,6 @@ final router = GoRouter(
       builder: (context, state) => DeferredScreen(
         load: visitor.loadLibrary,
         builder: (_) => visitor.VisitorShellScreen(),
-      ),
-    ),
-    GoRoute(
-      path: '/admin',
-      builder: (context, state) => DeferredScreen(
-        load: admin.loadLibrary,
-        builder: (_) => admin.AdminShellScreen(),
       ),
     ),
     GoRoute(

@@ -303,16 +303,20 @@ List<Polygon<String>> lotPolygonsFromRings(
   Object? selectedLotId,
   bool includeHitValues = false,
   bool lowDetail = false,
+  Color? fillColorOverride,
+  Color? strokeColorOverride,
 }) {
   final polygons = <Polygon<String>>[];
   final selected =
       selectedLotId != null && lotId?.toString() == selectedLotId.toString();
-  final stroke = lotStatusStrokeColor(status);
-  final fill = lotStatusFillColor(status).withValues(
-    alpha: _isAvailableStatus(status)
-        ? (selected ? 0.90 : 0.72)
-        : (selected ? 0.54 : 0.36),
-  );
+  final stroke = strokeColorOverride ?? lotStatusStrokeColor(status);
+  final fill =
+      fillColorOverride ??
+      lotStatusFillColor(status).withValues(
+        alpha: _isAvailableStatus(status)
+            ? (selected ? 0.90 : 0.72)
+            : (selected ? 0.54 : 0.36),
+      );
   final hitValue = includeHitValues ? lotId?.toString() : null;
 
   for (final ring in rings) {

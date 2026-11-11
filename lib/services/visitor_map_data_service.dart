@@ -18,20 +18,77 @@ class VisitorMapDataService {
   final Duration requestTimeout;
   final int pageSize;
 
-  /// Public map overlay: only today's active interments and their lot IDs.
+  /// Public map overlay for today's active interments and their lot IDs.
+  ///
+  /// Interments can be scheduled directly in the planner or recorded through
+  /// the Interment Application/Record form.  The latter creates a
+  /// `burial_record`, not an `interment_schedule` row, so both sources must be
+  /// included for the visitor map to remain in sync.
   Future<List<Map<String, dynamic>>> loadTodaySchedules() async {
     final now = DateTime.now();
     final start = DateTime(now.year, now.month, now.day);
     final end = start.add(const Duration(days: 1));
-    final result = await client
+    final dateText = '${start.year.toString().padLeft(4, '0')}-'
+        '${start.month.toString().padLeft(2, '0')}-'
+        '${start.day.toString().padLeft(2, '0')}';
+    final scheduleResult = await client
         .from('interment_schedule')
-        .select('schedule_id,lot_id,deceased_name,scheduled_at')
+        .select('schedule_id,lot_id,deceased_name,scheduled_at,notes')
         .eq('status', 'scheduled')
         .gte('scheduled_at', start.toUtc().toIso8601String())
         .lt('scheduled_at', end.toUtc().toIso8601String())
         .order('scheduled_at')
         .timeout(requestTimeout);
-    return List<Map<String, dynamic>>.from(result);
+    final scheduled = List<Map<String, dynamic>>.from(scheduleResult);
+    final scheduledKeys = scheduled
+        .map(
+          (item) => '${item['lot_id']}|${item['deceased_name']}|'
+              '${item['scheduled_at'].toString().substring(0, 10)}',
+        )
+        .toSet();
+    // Some older projects may grant visitor access only to the schedule table.
+    // Preserve manual planner schedules if that supplemental query is denied.
+    List<Map<String, dynamic>> burials;
+    try {
+      final result = await client
+          .from('burial_record')
+          .select(
+            'burial_id,lot_id,name_of_deceased,interment_date,interment_time',
+          )
+          .eq('interment_date', dateText)
+          .not('lot_id', 'is', null)
+          .timeout(requestTimeout);
+      burials = List<Map<String, dynamic>>.from(result);
+    } catch (_) {
+      return scheduled;
+    }
+    for (final burial in burials) {
+      final date = burial['interment_date']?.toString();
+      final name = burial['name_of_deceased']?.toString();
+      final lotId = burial['lot_id'];
+      if (date == null || name == null || lotId == null) continue;
+      final time = burial['interment_time']?.toString().trim();
+      final at = DateTime.tryParse(
+        time == null || time.isEmpty ? '${date}T00:00:00' : '${date}T$time',
+      );
+      if (at == null) continue;
+      final key = '$lotId|$name|${date.substring(0, 10)}';
+      if (scheduledKeys.contains(key)) continue;
+      scheduled.add({
+        'schedule_id': 'burial-${burial['burial_id']}',
+        'lot_id': lotId,
+        'deceased_name': name,
+        'scheduled_at': at.toUtc().toIso8601String(),
+        'notes': null,
+        'from_burial_record': true,
+      });
+    }
+    scheduled.sort(
+      (a, b) => a['scheduled_at'].toString().compareTo(
+        b['scheduled_at'].toString(),
+      ),
+    );
+    return scheduled;
   }
 
   Future<VisitorMapBaseData> loadBase() async {

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/supabase_pagination_service.dart';
+import '../../widgets/brand_logo.dart';
 import '../../utils/lot_formatters.dart';
 import 'visitor_qr_with_grave_screen.dart';
 import 'visitor_map_screen.dart';
@@ -197,21 +198,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         titleSpacing: 4,
-        title: Row(
-          children: [
-            Icon(Icons.church, color: _colors(context).primary, size: 20),
-            SizedBox(width: 8),
-            Text(
-              'Eternal Garden',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: _colors(context).primary,
-                letterSpacing: -0.3,
-              ),
-            ),
-          ],
-        ),
+        title: const BrandLogo(height: 42),
         actions: [
           IconButton(
             icon: Icon(
@@ -221,15 +208,6 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
             ),
             onPressed: _loadAllGraves,
           ),
-          IconButton(
-            icon: Icon(
-              Icons.notifications_outlined,
-              color: _colors(context).primary,
-              size: 22,
-            ),
-            onPressed: () {},
-          ),
-          const SizedBox(width: 8),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),

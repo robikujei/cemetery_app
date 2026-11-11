@@ -1,4 +1,3 @@
-import '../../core/surface_style.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +8,7 @@ import 'visitor_qr_screen.dart';
 import 'visitor_history_screen.dart';
 import 'visitor_map_screen.dart';
 import '../../providers/visitor_nav_providers.dart';
+import '../../widgets/brand_logo.dart';
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 class VisitorHomeScreen extends ConsumerStatefulWidget {
@@ -142,7 +142,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
   Future<void> _openSearch() async {
     final result = await Navigator.of(
       context,
-    ).push(MaterialPageRoute(builder: (_) => const VisitorSearchScreen()));
+    ).push(_visitorRoute(builder: (_) => const VisitorSearchScreen()));
     if (result != null && result is Map<String, dynamic>) {
       await _addRecentSearch(result);
     }
@@ -150,22 +150,47 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
 
   void _openQrScreen() => Navigator.of(
     context,
-  ).push(MaterialPageRoute(builder: (_) => const VisitorQrScreen()));
+  ).push(_visitorRoute(builder: (_) => const VisitorQrScreen()));
 
   void _openHistoryScreen() => Navigator.of(
     context,
-  ).push(MaterialPageRoute(builder: (_) => const VisitorHistoryScreen()));
+  ).push(_visitorRoute(builder: (_) => const VisitorHistoryScreen()));
 
   void _goToMapTab() => ref.read(visitorNavIndexProvider.notifier).state = 1;
 
   void _navigateToGrave(Map<String, dynamic> search) =>
       Navigator.of(context).push(
-        MaterialPageRoute(
+        _visitorRoute(
           builder: (_) => VisitorMapScreen(
             initialLotId: search['lotId'],
             initialLotNumber: search['lotNumber'],
           ),
         ),
+      );
+
+  PageRoute<T> _visitorRoute<T>({required WidgetBuilder builder}) =>
+      PageRouteBuilder<T>(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            builder(context),
+        transitionDuration: const Duration(milliseconds: 360),
+        reverseTransitionDuration: const Duration(milliseconds: 220),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final curved = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          );
+          return FadeTransition(
+            opacity: curved,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.04),
+                end: Offset.zero,
+              ).animate(curved),
+              child: child,
+            ),
+          );
+        },
       );
 
   // ── Build ────────────────────────────────────────────────────────────────
@@ -182,36 +207,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
         scrolledUnderElevation: 1,
         shadowColor: Colors.black12,
         titleSpacing: 24,
-        title: Row(
-          children: [
-            Icon(Icons.church, color: colors.primary, size: 22),
-            const SizedBox(width: 10),
-            Flexible(
-              child: Text(
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                'Eternal Garden',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: colors.primary,
-                  letterSpacing: -0.3,
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              Icons.notifications_outlined,
-              color: colors.primary,
-              size: 22,
-            ),
-            onPressed: () {},
-          ),
-          const SizedBox(width: 8),
-        ],
+        title: const BrandLogo(height: 48),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Divider(height: 1, thickness: 1, color: colors.outlineVariant),
@@ -230,61 +226,58 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                 const SizedBox(height: 24),
 
                 // ── Welcome Hero ──────────────────────────────────────────
-                Text(
-                  'Your cemetery companion',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.2,
-                    color: colors.primary,
+                TweenAnimationBuilder<double>(
+                  duration: const Duration(milliseconds: 480),
+                  curve: Curves.easeOutCubic,
+                  tween: Tween(begin: 0, end: 1),
+                  builder: (context, value, child) => Opacity(
+                    opacity: value,
+                    child: Transform.translate(
+                      offset: Offset(0, 20 * (1 - value)),
+                      child: child,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Welcome back, $_userName',
-                  style: TextStyle(
-                    fontSize: 34,
-                    fontWeight: FontWeight.w600,
-                    height: 1.25,
-                    color: colors.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // ── Search Bar ────────────────────────────────────────────
-                GestureDetector(
-                  onTap: _openSearch,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 16,
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          colors.primary,
+                          colors.primary.withValues(alpha: 0.72),
+                        ],
+                      ),
                     ),
-                    decoration: SurfaceStyle.panel(
-                      color: colors.surface,
-                      radius: 4,
-                    ),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          Icons.search_rounded,
-                          color: colors.onSurfaceVariant,
-                          size: 22,
+                        Text(
+                          'Welcome back, $_userName',
+                          style: TextStyle(
+                            fontSize: 30,
+                            fontWeight: FontWeight.w600,
+                            height: 1.15,
+                            color: colors.onPrimary,
+                          ),
                         ),
-                        SizedBox(width: 14),
-                        Expanded(
-                          child: Text(
-                            'Search deceased name, lot number, or block',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: colors.onSurfaceVariant,
-                              letterSpacing: 0.1,
-                            ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Find a loved one, explore the grounds, or revisit a saved search.',
+                          style: TextStyle(
+                            fontSize: 14,
+                            height: 1.4,
+                            color: colors.onPrimary.withValues(alpha: 0.8),
                           ),
                         ),
                       ],
                     ),
                   ),
                 ),
+
+                // ── Search Bar ────────────────────────────────────────────
                 const SizedBox(height: 24),
 
                 // ── Quick Actions Bento Grid ───────────────────────────────
@@ -376,7 +369,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
         final colors = Theme.of(context).colorScheme;
         return GridView.count(
           crossAxisCount: constraints.maxWidth >= 720 ? 4 : 2,
-          mainAxisExtent: 100 + MediaQuery.textScalerOf(context).scale(48),
+          mainAxisExtent: 112 + MediaQuery.textScalerOf(context).scale(48),
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
           shrinkWrap: true,
@@ -433,42 +426,52 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
     required Color labelColor,
     required VoidCallback onTap,
   }) {
-    return Material(
-      color: bgColor,
-      elevation: 1,
-      shadowColor: const Color(0x14000000),
-      borderRadius: BorderRadius.circular(20),
-      clipBehavior: Clip.antiAlias,
-      child: Ink(
-        decoration: SurfaceStyle.panel(color: bgColor),
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Icon badge (top-left, matching template)
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: iconBgColor,
-                    borderRadius: BorderRadius.circular(12),
+    return TweenAnimationBuilder<double>(
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutCubic,
+      tween: Tween(begin: 0, end: 1),
+      builder: (context, value, child) => Opacity(
+        opacity: value,
+        child: Transform.scale(scale: 0.96 + (0.04 * value), child: child),
+      ),
+      child: Material(
+        color: bgColor,
+        elevation: 0,
+        borderRadius: BorderRadius.circular(18),
+        clipBehavior: Clip.antiAlias,
+        child: Ink(
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: bgColor.withValues(alpha: 0.14)),
+          ),
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(9),
+                    decoration: BoxDecoration(
+                      color: iconBgColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: iconColor, size: 25),
                   ),
-                  child: Icon(icon, color: iconColor, size: 28),
-                ),
-                // Label (bottom-left, matching template)
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: labelColor,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 0.15,
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: labelColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.1,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

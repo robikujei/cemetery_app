@@ -515,8 +515,8 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'DBSCAN groups nearby burial records. Multiple burials in one lot share its mapped location. '
-                    'Gray points are isolated records; colored points belong to clusters.',
+                    'Each bubble represents one DBSCAN burial cluster. The number is the '
+                    'burial-record count; isolated records are counted below but not drawn.',
                   ),
                   Wrap(
                     spacing: 24,
@@ -606,17 +606,108 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
         'Import geographic lot polygons or QGIS coordinates to display the analysis map.',
       );
     }
-    const colors = [
-      Colors.red,
-      Colors.deepOrange,
-      Colors.purple,
-      Colors.blue,
-      Colors.teal,
-    ];
     final points = _spatial.points;
-    final byLocation = <String, int>{};
-    for (var i = 0; i < points.length; i++) {
-      byLocation[points[i].lotId] = i;
+    final clusterSizes = <int, int>{};
+    for (final label in _spatial.labels) {
+      if (label >= 0) clusterSizes[label] = (clusterSizes[label] ?? 0) + 1;
+    }
+    Color intensityColor(int label) {
+      if (label < 0) return Colors.blueGrey;
+      final size = clusterSizes[label] ?? 1;
+      if (size >= 25) return Colors.red;
+      if (size >= 15) return Colors.deepOrange;
+      if (size >= 8) return Colors.amber.shade700;
+      if (size >= 5) return Colors.lightGreen.shade700;
+      return Colors.lightBlue.shade700;
+    }
+
+    final membersByCluster = <int, List<int>>{};
+    for (var index = 0; index < _spatial.labels.length; index++) {
+      final label = _spatial.labels[index];
+      if (label >= 0) (membersByCluster[label] ??= []).add(index);
+    }
+    final clusterCircles = <CircleMarker>[];
+    final clusterMarkers = <Marker>[];
+    final clusterForLot = <String, int>{};
+    for (var index = 0; index < points.length; index++) {
+      final label = _spatial.labels[index];
+      if (label >= 0) clusterForLot[points[index].lotId] = label;
+    }
+    final lotsById = {
+      for (final lot in _data!.lots) lot['lot_id']?.toString(): lot,
+    };
+    final hotspotPolygons = <Polygon<String>>[];
+    for (final entry in clusterForLot.entries) {
+      final lot = lotsById[entry.key];
+      if (lot == null) continue;
+      final color = intensityColor(entry.value);
+      hotspotPolygons.addAll(
+        lotPolygonsFromRings(
+          geoJsonPolygonRings(lot['polygon_geo']),
+          lotId: entry.key,
+          status: lot['status']?.toString() ?? 'Occupied',
+          fillColorOverride: color.withValues(alpha: 0.56),
+          strokeColorOverride: color,
+        ),
+      );
+    }
+    for (final entry in membersByCluster.entries) {
+      final members = entry.value;
+      final size = members.length;
+      final center = LatLng(
+        members.fold<double>(0, (sum, i) => sum + points[i].lat) / size,
+        members.fold<double>(0, (sum, i) => sum + points[i].lng) / size,
+      );
+      final color = intensityColor(entry.key);
+      clusterCircles.add(
+        CircleMarker(
+          point: center,
+          radius: (18 + size * 0.8).clamp(20, 42).toDouble(),
+          color: color.withValues(alpha: 0.20),
+          borderColor: color.withValues(alpha: 0.75),
+          borderStrokeWidth: 2,
+        ),
+      );
+      clusterMarkers.add(
+        Marker(
+          point: center,
+          width: 42,
+          height: 42,
+          child: Tooltip(
+            message: 'Cluster ${entry.key + 1}: $size burial records',
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _showHotspotDetails(members.first),
+                customBorder: const CircleBorder(),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x33000000),
+                        blurRadius: 5,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$size',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
     }
     return SizedBox(
       height: 420,
@@ -638,26 +729,11 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
             userAgentPackageName: 'cemetery_app',
           ),
-          PolygonLayer(
-            polygons: lotPolygonsFromLots(_data!.lots, lowDetail: true),
-          ),
-          CircleLayer(
-            circles: byLocation.values
-                .map(
-                  (i) => CircleMarker(
-                    point: LatLng(points[i].lat, points[i].lng),
-                    radius: _spatial.labels[i] < 0 ? 3 : 7,
-                    color:
-                        (_spatial.labels[i] < 0
-                                ? Colors.grey
-                                : colors[_spatial.labels[i] % colors.length])
-                            .withValues(alpha: 0.65),
-                    borderColor: Colors.white,
-                    borderStrokeWidth: 1,
-                  ),
-                )
-                .toList(),
-          ),
+          // Only render polygons that belong to a cluster. This keeps the
+          // cemetery context without drawing thousands of unrelated lots.
+          PolygonLayer(polygons: hotspotPolygons),
+          CircleLayer(circles: clusterCircles),
+          MarkerLayer(markers: clusterMarkers),
           const RichAttributionWidget(
             attributions: [TextSourceAttribution('OpenStreetMap contributors')],
           ),
@@ -665,6 +741,72 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
       ),
     );
   }
+
+  void _showHotspotDetails(int pointIndex) {
+    if (pointIndex < 0 || pointIndex >= _spatial.points.length) return;
+    final point = _spatial.points[pointIndex];
+    final clusterIndex = _spatial.labels[pointIndex];
+    final memberIndexes = clusterIndex < 0
+        ? [pointIndex]
+        : [
+            for (var i = 0; i < _spatial.labels.length; i++)
+              if (_spatial.labels[i] == clusterIndex) i,
+          ];
+    final blocks = {
+      for (final i in memberIndexes) _spatial.points[i].block,
+    }.where((block) => block.trim().isNotEmpty).toList()..sort();
+
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                clusterIndex < 0
+                    ? 'Isolated burial location'
+                    : 'Hotspot cluster ${clusterIndex + 1}',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 16),
+              _hotspotDetailRow('Burial records', '${memberIndexes.length}'),
+              _hotspotDetailRow(
+                'Blocks',
+                blocks.isEmpty ? 'Not assigned' : blocks.join(', '),
+              ),
+              _hotspotDetailRow('Selected lot', point.lotId),
+              _hotspotDetailRow('Selected block', point.block),
+              _hotspotDetailRow(
+                'Coordinates',
+                '${point.lat.toStringAsFixed(6)}, ${point.lng.toStringAsFixed(6)}',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _hotspotDetailRow(String label, String value) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 112,
+          child: Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+        Expanded(child: Text(value)),
+      ],
+    ),
+  );
 
   Future<void> _export() async {
     setState(() => _exporting = true);

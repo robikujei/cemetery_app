@@ -76,22 +76,7 @@ class GpsTracker extends ChangeNotifier {
           .listen(
             (fix) {
               if (!current()) return;
-              if (!fix.latitude.isFinite ||
-                  !fix.longitude.isFinite ||
-                  fix.latitude.abs() > 90 ||
-                  fix.longitude.abs() > 180 ||
-                  !fix.accuracy.isFinite ||
-                  fix.accuracy < 0) {
-                return;
-              }
-              if (position != null &&
-                  fix.timestamp.isBefore(position!.timestamp)) {
-                return;
-              }
-              _firstFixTimer?.cancel();
-              position = fix;
-              message = null;
-              notifyListeners();
+              _acceptFix(fix);
             },
             onError: (Object error) {
               if (current()) {
@@ -107,6 +92,10 @@ class GpsTracker extends ChangeNotifier {
               }
             },
           );
+      // Android may delay a passive stream until the device has moved. This
+      // initial request wakes the provider immediately, while the stream
+      // remains responsible for subsequent movement updates.
+      unawaited(_requestInitialFix(generation, settings));
       _firstFixTimer = Timer(const Duration(seconds: 30), () {
         if (current() && position == null) {
           stop(
@@ -122,10 +111,44 @@ class GpsTracker extends ChangeNotifier {
       if (current()) {
         stop(
           message:
-              'Could not start GPS. Use the HTTPS link and allow location in your browser or app settings.',
+              'Could not start location. Allow location for GeoGrave in Android Settings, then try again.',
         );
       }
     }
+  }
+
+  Future<void> _requestInitialFix(
+    int generation,
+    LocationSettings settings,
+  ) async {
+    try {
+      final fix = await _platform
+          .getCurrentPosition(locationSettings: settings)
+          .timeout(const Duration(seconds: 20));
+      if (_disposed || generation != _generation) return;
+      _acceptFix(fix);
+    } catch (_) {
+      // The ongoing stream is the fallback. Its error and the first-fix timer
+      // provide the user-facing result if this quick request cannot complete.
+    }
+  }
+
+  void _acceptFix(Position fix) {
+    if (!fix.latitude.isFinite ||
+        !fix.longitude.isFinite ||
+        fix.latitude.abs() > 90 ||
+        fix.longitude.abs() > 180 ||
+        !fix.accuracy.isFinite ||
+        fix.accuracy < 0) {
+      return;
+    }
+    if (position != null && fix.timestamp.isBefore(position!.timestamp)) {
+      return;
+    }
+    _firstFixTimer?.cancel();
+    position = fix;
+    message = null;
+    notifyListeners();
   }
 
   void stop({String? message}) {

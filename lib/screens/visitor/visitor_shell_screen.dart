@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/visitor_nav_providers.dart';
+import '../../widgets/brand_logo.dart';
 import 'visitor_home_screen.dart';
 import 'visitor_map_screen.dart';
 import 'visitor_qr_screen.dart';
@@ -24,73 +25,91 @@ class VisitorShellScreen extends ConsumerWidget {
     ];
     final wide = MediaQuery.sizeOf(context).width >= 840;
     final colors = Theme.of(context).colorScheme;
-    final body = RepaintBoundary(child: screens[index]);
+    final body = AnimatedSwitcher(
+      duration: const Duration(milliseconds: 360),
+      reverseDuration: const Duration(milliseconds: 220),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) {
+        final slide = Tween<Offset>(
+          begin: const Offset(0, 0.035),
+          end: Offset.zero,
+        ).animate(animation);
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(position: slide, child: child),
+        );
+      },
+      child: KeyedSubtree(
+        key: ValueKey(index),
+        child: RepaintBoundary(child: screens[index]),
+      ),
+    );
     return Scaffold(
       // Reserve the navigation area so it cannot cover profile actions.
       body: wide
           ? Row(
               children: [
-                NavigationRail(
-                  extended: true,
-                  minExtendedWidth: 208,
-                  backgroundColor: colors.surfaceContainerLow,
-                  selectedIndex: index,
-                  onDestinationSelected: select,
-                  useIndicator: true,
-                  indicatorColor: colors.primaryContainer,
-                  indicatorShape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  selectedIconTheme: IconThemeData(color: colors.primary),
-                  unselectedIconTheme: IconThemeData(
-                    color: colors.onSurfaceVariant,
-                  ),
-                  selectedLabelTextStyle: TextStyle(
-                    fontFamily: '.SF Pro Text',
-                    color: colors.onPrimaryContainer,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  unselectedLabelTextStyle: TextStyle(
-                    fontFamily: '.SF Pro Text',
-                    color: colors.onSurfaceVariant,
-                  ),
-                  leading: Padding(
-                    padding: EdgeInsets.fromLTRB(16, 20, 16, 28),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.church_outlined, color: colors.primary),
-                        SizedBox(width: 12),
-                        Text(
-                          'Visitor services',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
+                Container(
+                  width: 224,
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    border: Border(
+                      right: BorderSide(color: colors.outlineVariant),
                     ),
                   ),
-                  destinations: const [
-                    NavigationRailDestination(
-                      icon: Icon(CupertinoIcons.house),
-                      selectedIcon: Icon(CupertinoIcons.house_fill),
-                      label: Text('Home'),
+                  child: NavigationRail(
+                    extended: true,
+                    minExtendedWidth: 224,
+                    backgroundColor: Colors.transparent,
+                    selectedIndex: index,
+                    onDestinationSelected: select,
+                    useIndicator: true,
+                    groupAlignment: -0.82,
+                    indicatorColor: colors.primary.withValues(alpha: 0.12),
+                    indicatorShape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    NavigationRailDestination(
-                      icon: Icon(CupertinoIcons.map),
-                      selectedIcon: Icon(CupertinoIcons.map_fill),
-                      label: Text('Cemetery map'),
+                    selectedIconTheme: IconThemeData(color: colors.primary),
+                    unselectedIconTheme: IconThemeData(
+                      color: colors.onSurfaceVariant,
                     ),
-                    NavigationRailDestination(
-                      icon: Icon(CupertinoIcons.qrcode),
-                      label: Text('My QR code'),
+                    selectedLabelTextStyle: TextStyle(
+                      fontFamily: '.SF Pro Text',
+                      color: colors.primary,
+                      fontWeight: FontWeight.w600,
                     ),
-                    NavigationRailDestination(
-                      icon: Icon(CupertinoIcons.person),
-                      selectedIcon: Icon(CupertinoIcons.person_fill),
-                      label: Text('Profile'),
+                    unselectedLabelTextStyle: TextStyle(
+                      fontFamily: '.SF Pro Text',
+                      color: colors.onSurfaceVariant,
                     ),
-                  ],
+                    leading: const Padding(
+                      padding: EdgeInsets.fromLTRB(20, 18, 20, 24),
+                      child: BrandLogo(height: 88),
+                    ),
+                    destinations: const [
+                      NavigationRailDestination(
+                        icon: Icon(CupertinoIcons.house),
+                        selectedIcon: Icon(CupertinoIcons.house_fill),
+                        label: Text('Home'),
+                      ),
+                      NavigationRailDestination(
+                        icon: Icon(CupertinoIcons.map),
+                        selectedIcon: Icon(CupertinoIcons.map_fill),
+                        label: Text('Cemetery map'),
+                      ),
+                      NavigationRailDestination(
+                        icon: Icon(CupertinoIcons.qrcode),
+                        label: Text('My QR code'),
+                      ),
+                      NavigationRailDestination(
+                        icon: Icon(CupertinoIcons.person),
+                        selectedIcon: Icon(CupertinoIcons.person_fill),
+                        label: Text('Profile'),
+                      ),
+                    ],
+                  ),
                 ),
-                const VerticalDivider(width: 1, thickness: 1),
                 Expanded(child: body),
               ],
             )

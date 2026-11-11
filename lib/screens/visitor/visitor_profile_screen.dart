@@ -231,24 +231,65 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
     final choice = await showModalBottomSheet<_PhotoAction>(
       context: context,
       showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Choose from gallery'),
-              onTap: () => Navigator.pop(context, _PhotoAction.gallery),
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline),
-              title: const Text('Remove photo'),
-              onTap: () => Navigator.pop(context, _PhotoAction.remove),
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
+      builder: (context) {
+        final colors = Theme.of(context).colorScheme;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Profile photo',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 14),
+                ListTile(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  tileColor: colors.primary.withOpacity(.08),
+                  leading: Container(
+                    padding: const EdgeInsets.all(9),
+                    decoration: BoxDecoration(
+                      color: colors.primary.withOpacity(.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.photo_library_outlined,
+                      color: colors.primary,
+                    ),
+                  ),
+                  title: const Text('Choose from gallery'),
+                  onTap: () => Navigator.pop(context, _PhotoAction.gallery),
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  leading: Container(
+                    padding: const EdgeInsets.all(9),
+                    decoration: BoxDecoration(
+                      color: colors.error.withOpacity(.10),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.delete_outline, color: colors.error),
+                  ),
+                  title: const Text('Remove photo'),
+                  textColor: colors.error,
+                  onTap: () => Navigator.pop(context, _PhotoAction.remove),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
 
     if (choice == _PhotoAction.gallery) {
@@ -377,20 +418,29 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
     final colors = Theme.of(context).colorScheme;
     return InputDecoration(
       labelText: labelText,
-      prefixIcon: Icon(icon, color: colors.primary),
+      prefixIcon: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Container(
+          decoration: BoxDecoration(
+            color: colors.primary.withOpacity(.10),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: colors.primary, size: 20),
+        ),
+      ),
       filled: true,
-      fillColor: colors.surfaceContainerLowest,
+      fillColor: colors.surfaceContainerLow,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
-        borderSide: BorderSide(color: colors.outline),
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: colors.outlineVariant),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
-        borderSide: BorderSide(color: colors.outline),
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: colors.outlineVariant),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
-        borderSide: BorderSide(color: colors.primary, width: 1.4),
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: colors.primary, width: 2),
       ),
     );
   }
@@ -406,7 +456,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
           backgroundColor: colors.surface,
           surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(28),
           ),
           title: Row(
             children: [
@@ -415,7 +465,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                 height: 42,
                 decoration: BoxDecoration(
                   color: colors.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
                   Icons.badge_outlined,
@@ -450,12 +500,12 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
               ),
               child: const Text('Cancel'),
             ),
-            ElevatedButton(
+            FilledButton(
               onPressed: () {
                 Navigator.pop(context);
                 _updateDisplayName();
               },
-              style: ElevatedButton.styleFrom(
+              style: FilledButton.styleFrom(
                 backgroundColor: colors.primary,
                 foregroundColor: colors.onPrimary,
                 elevation: 0,
@@ -464,7 +514,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                   vertical: 12,
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
               child: const Text('Save'),
@@ -488,7 +538,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
           backgroundColor: colors.surface,
           surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(28),
           ),
           title: Row(
             children: [
@@ -497,7 +547,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                 height: 42,
                 decoration: BoxDecoration(
                   color: colors.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
                   Icons.lock_outline_rounded,
@@ -556,9 +606,9 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
               ),
               child: const Text('Cancel'),
             ),
-            ElevatedButton(
+            FilledButton(
               onPressed: _changePassword,
-              style: ElevatedButton.styleFrom(
+              style: FilledButton.styleFrom(
                 backgroundColor: colors.primary,
                 foregroundColor: colors.onPrimary,
                 elevation: 0,
@@ -567,7 +617,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                   vertical: 12,
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
               child: const Text('Change Password'),
@@ -628,8 +678,6 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
             const SizedBox(height: 24),
             _buildSettingsCard(),
             const SizedBox(height: 24),
-            _buildLogoutButton(),
-            const SizedBox(height: 12),
             Center(
               child: Text(
                 'App Version 1.0.0',
@@ -655,12 +703,6 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       titleSpacing: 0,
       title: Row(
         children: [
-          IconButton(
-            onPressed: () {},
-            icon: Icon(Icons.menu_rounded, color: colors.primary),
-            tooltip: 'Menu',
-          ),
-          const SizedBox(width: 8),
           Flexible(
             child: Text(
               maxLines: 1,
@@ -677,9 +719,9 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       ),
       actions: [
         IconButton(
-          onPressed: () {},
-          icon: Icon(Icons.notifications_outlined, color: colors.primary),
-          tooltip: 'Notifications',
+          onPressed: _logout,
+          icon: Icon(Icons.logout_rounded, color: colors.primary),
+          tooltip: 'Logout',
         ),
         const SizedBox(width: 8),
       ],
@@ -705,13 +747,21 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
             SizedBox(
               width: compact ? constraints.maxWidth : available * 2 / 3,
               child: Container(
+                height: 172,
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: colorScheme.surface,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      colorScheme.primary,
+                      colorScheme.primary.withValues(alpha: 0.72),
+                    ],
+                  ),
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: const [
+                  boxShadow: [
                     BoxShadow(
-                      color: Color(0x0F47626F),
+                      color: colorScheme.primary.withValues(alpha: 0.18),
                       blurRadius: 18,
                       offset: Offset(0, 6),
                     ),
@@ -725,7 +775,9 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                       children: [
                         CircleAvatar(
                           radius: 48,
-                          backgroundColor: colorScheme.primaryContainer,
+                          backgroundColor: colorScheme.onPrimary.withValues(
+                            alpha: 0.16,
+                          ),
                           backgroundImage:
                               _avatarUrl != null && _avatarUrl!.isNotEmpty
                               ? NetworkImage(_avatarUrl!)
@@ -734,7 +786,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                               ? Text(
                                   _initials(displayName),
                                   style: TextStyle(
-                                    color: colorScheme.onPrimaryContainer,
+                                    color: colorScheme.onPrimary,
                                     fontSize: 20,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -752,10 +804,10 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                             child: Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: colorScheme.primary,
+                                color: colorScheme.onPrimary,
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: colorScheme.onPrimary,
+                                  color: colorScheme.primary,
                                   width: 2,
                                 ),
                               ),
@@ -765,13 +817,13 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                                       height: 14,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        color: colorScheme.onPrimary,
+                                        color: colorScheme.primary,
                                       ),
                                     )
                                   : Icon(
-                                      Icons.edit_rounded,
+                                      Icons.camera_alt_rounded,
                                       size: 14,
-                                      color: colorScheme.onPrimary,
+                                      color: colorScheme.primary,
                                     ),
                             ),
                           ),
@@ -787,14 +839,16 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                             displayName,
                             style: textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.w600,
-                              color: colorScheme.onSurface,
+                              color: colorScheme.onPrimary,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             email,
                             style: textTheme.bodyMedium?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
+                              color: colorScheme.onPrimary.withValues(
+                                alpha: 0.8,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 10),
@@ -804,7 +858,9 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                               vertical: 7,
                             ),
                             decoration: BoxDecoration(
-                              color: colorScheme.secondaryContainer,
+                              color: colorScheme.onPrimary.withValues(
+                                alpha: 0.16,
+                              ),
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Row(
@@ -813,14 +869,14 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
                                 Icon(
                                   Icons.verified_rounded,
                                   size: 14,
-                                  color: colorScheme.onSecondaryContainer,
+                                  color: colorScheme.onPrimary,
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
                                   role == 'LOT_OWNER' ? 'Lot Owner' : role,
                                   style: textTheme.labelSmall?.copyWith(
                                     fontWeight: FontWeight.w600,
-                                    color: colorScheme.onSecondaryContainer,
+                                    color: colorScheme.onPrimary,
                                   ),
                                 ),
                               ],
@@ -940,28 +996,6 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
             const ThemeModeSwitchTile(),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildLogoutButton() {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: _logout,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: colorScheme.errorContainer,
-          foregroundColor: colorScheme.onErrorContainer,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-        ),
-        icon: const Icon(Icons.logout_rounded),
-        label: const Text('Logout from Account'),
       ),
     );
   }

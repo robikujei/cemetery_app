@@ -20,6 +20,13 @@ type CreateUserPayload = {
   lotOwnerProfile?: LotOwnerProfilePayload;
 };
 
+const normalizeRole = (value: unknown) => {
+  const role = String(value ?? "").trim().toLowerCase();
+  return ["guard", "gate officer", "gate-officer"].includes(role)
+    ? "gate_officer"
+    : role;
+};
+
 const textOrNull = (value: unknown) => {
   const text = String(value ?? "").trim();
   return text.length > 0 ? text : null;
@@ -164,13 +171,20 @@ Deno.serve(async (req) => {
   const name = (body.name ?? "").trim();
   const email = (body.email ?? "").trim().toLowerCase();
   const phone = (body.phone ?? "").trim();
-  const role = (body.role ?? "").trim().toLowerCase();
+  const role = normalizeRole(body.role);
   const password = (body.password ?? "").trim();
   const lotOwnerProfile = normalizeLotOwnerProfile(body.lotOwnerProfile);
 
   if (!name || !email || !role || !password) {
     return Response.json(
       { error: "Name, email, role, and password are required" },
+      { status: 400, headers: corsHeaders },
+    );
+  }
+
+  if (!["admin", "gate_officer", "lot_owner", "visitor"].includes(role)) {
+    return Response.json(
+      { error: "Unsupported user role" },
       { status: 400, headers: corsHeaders },
     );
   }
@@ -184,6 +198,27 @@ Deno.serve(async (req) => {
       { status: 400, headers: corsHeaders },
     );
   }
+
+  // A profile can outlive a deleted/recreated Auth account. Remember it so
+  // the newly created account can be relinked instead of failing on email.
+  const { data: existingProfiles, error: existingProfileError } =
+    await adminClient
+      .from("users")
+      .select("user_id")
+      .ilike("email", email)
+      .limit(1);
+
+  if (existingProfileError) {
+    return Response.json(
+      {
+        error:
+          `Unable to check the existing profile: ${existingProfileError.message}`,
+      },
+      { status: 500, headers: corsHeaders },
+    );
+  }
+
+  const existingProfile = existingProfiles?.[0] ?? null;
 
   const { data: createdUser, error: createError } = await adminClient.auth.admin
     .createUser({
@@ -206,27 +241,38 @@ Deno.serve(async (req) => {
 
   const authUser = createdUser.user;
 
-  const { error: profileError } = await adminClient.from("users").upsert(
-    {
-      user_id: authUser.id,
-      name,
-      email,
-      phone: phone || null,
-      role,
-      password: "managed_by_auth",
-      ...(role === "lot_owner" ? lotOwnerProfile : {}),
-    },
-    {
+  const profilePayload = {
+    user_id: authUser.id,
+    name,
+    email,
+    phone: phone || null,
+    role,
+    password: "managed_by_auth",
+    ...(role === "lot_owner" ? lotOwnerProfile : {}),
+  };
+
+  const { error: profileError } = existingProfile
+    ? await adminClient
+      .from("users")
+      .update(profilePayload)
+      .eq("user_id", existingProfile.user_id)
+    : await adminClient.from("users").upsert(profilePayload, {
       onConflict: "user_id",
-    },
-  );
+    });
 
   if (profileError) {
+    // Do not leave an Auth-only account that can sign in but can never route
+    // to a portal. The administrator can safely retry after fixing the error.
+    const { error: cleanupError } = await adminClient.auth.admin.deleteUser(
+      authUser.id,
+    );
     return Response.json(
       {
         error:
-          `Auth user created, but profile sync failed: ${profileError.message}`,
-        user_id: authUser.id,
+          cleanupError
+            ? `Profile sync failed: ${profileError.message}. Auth cleanup also failed: ${cleanupError.message}`
+            : `Profile sync failed and the incomplete Auth account was removed: ${profileError.message}`,
+        user_id: cleanupError ? authUser.id : null,
       },
       { status: 500, headers: corsHeaders },
     );

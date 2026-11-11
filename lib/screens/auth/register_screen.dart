@@ -1,5 +1,6 @@
 import '../../core/app_colors.dart';
 import '../../core/surface_style.dart';
+import '../../widgets/brand_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -183,20 +184,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               constraints: const BoxConstraints(maxWidth: 520),
               child: Column(
                 children: [
-                  Container(
-                    width: 76,
-                    height: 76,
-                    decoration: const BoxDecoration(
-                      color: _C.primaryFixed,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.person_add_alt_rounded,
-                      size: 34,
-                      color: _C.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
+                  const BrandLogo(height: 124),
+                  const SizedBox(height: 10),
                   const Text(
                     'Create Account',
                     textAlign: TextAlign.center,
