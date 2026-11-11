@@ -65,7 +65,7 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       final userData = await supabase
           .from('users')
           .select('*')
-          .eq('email', user.email!)
+          .eq('user_id', user.id)
           .maybeSingle();
 
       if (userData != null) {
@@ -317,8 +317,13 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       if (user == null) throw Exception('Not logged in');
 
       final bytes = await image.readAsBytes();
-      final filePath =
-          '${user.id}/${DateTime.now().millisecondsSinceEpoch}.jpg';
+      if (bytes.isEmpty) throw Exception('The selected image is empty.');
+      if (bytes.length > 5 * 1024 * 1024) {
+        throw Exception('Choose a photo smaller than 5 MB.');
+      }
+      // A stable path keeps one image per visitor. The version query below
+      // refreshes the displayed avatar after an overwrite.
+      final filePath = '${user.id}/profile.jpg';
 
       await supabase.storage
           .from(_avatarBucket)
@@ -334,17 +339,24 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       final publicUrl = supabase.storage
           .from(_avatarBucket)
           .getPublicUrl(filePath);
+      final versionedUrl =
+          '$publicUrl?v=${DateTime.now().millisecondsSinceEpoch}';
 
-      await supabase
+      final updatedProfile = await supabase
           .from('users')
-          .update({'avatar_url': publicUrl})
-          .eq('email', user.email!);
+          .update({'avatar_url': versionedUrl})
+          .eq('user_id', user.id)
+          .select('avatar_url')
+          .maybeSingle();
+      if (updatedProfile == null) {
+        throw Exception('Your visitor profile could not be updated.');
+      }
 
       if (!mounted) return;
       setState(() {
-        _avatarUrl = publicUrl;
+        _avatarUrl = versionedUrl;
         if (_userData != null) {
-          _userData!['avatar_url'] = publicUrl;
+          _userData!['avatar_url'] = versionedUrl;
         }
       });
 
@@ -377,10 +389,15 @@ class _VisitorProfileScreenState extends ConsumerState<VisitorProfileScreen> {
       final user = supabase.auth.currentUser;
       if (user == null) throw Exception('Not logged in');
 
-      await supabase
+      final updatedProfile = await supabase
           .from('users')
           .update({'avatar_url': null})
-          .eq('email', user.email!);
+          .eq('user_id', user.id)
+          .select('user_id')
+          .maybeSingle();
+      if (updatedProfile == null) {
+        throw Exception('Your visitor profile could not be updated.');
+      }
 
       if (!mounted) return;
       setState(() {
