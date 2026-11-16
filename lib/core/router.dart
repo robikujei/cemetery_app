@@ -13,7 +13,6 @@ String? _cachedRoleUserId;
 String? _cachedHome;
 
 final router = GoRouter(
-  initialLocation: '/login',
   redirect: (context, state) async {
     final isPublicRoute =
         state.matchedLocation == '/login' ||
