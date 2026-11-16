@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../services/audit_service.dart';
 import '../../services/user_profile_service.dart';
 import '../../models/app_user.dart';
@@ -25,6 +27,10 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
+  static final Uri _androidDownloadUri = Uri.parse(
+    'https://github.com/robikujei/cemetery_app/releases/latest/download/GeoGrave.apk',
+  );
+
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _obscure = true;
@@ -97,13 +103,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         }
 
         final actualRole = normalizeAppRole(userData['role']);
-        final requiredRole = widget.requiredRole == null
-            ? null
-            : normalizeAppRole(widget.requiredRole);
         if (!isGeoGraveAllowedRole(actualRole)) {
           await Supabase.instance.client.auth.signOut();
           _showErrorSnackBar(
-            'This GeoGrave app is available only to visitors, lot owners, and gate officers.',
+            'This account does not have a supported GeoGrave role.',
           );
           return;
         }
@@ -111,13 +114,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           await Supabase.instance.client.auth.signOut();
           _showErrorSnackBar(
             'This account does not have a valid portal role. Contact an administrator.',
-          );
-          return;
-        }
-        if (requiredRole != null && actualRole != requiredRole) {
-          await Supabase.instance.client.auth.signOut();
-          _showErrorSnackBar(
-            'This account is for ${appRoleName(actualRole)}. Use the ${widget.portalName ?? 'correct'} login page.',
           );
           return;
         }
@@ -178,6 +174,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
+  }
+
+  Future<void> _downloadAndroidApp() async {
+    final launched = await launchUrl(
+      _androidDownloadUri,
+      webOnlyWindowName: '_self',
+    );
+    if (!launched) {
+      _showErrorSnackBar('Unable to start the app download. Please try again.');
+    }
   }
 
   // ── Reusable styled text field ─────────────────────────────────────────────
@@ -383,9 +389,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
-                            onPressed: () {
-                              /* TODO: forgot password */
-                            },
+                            onPressed: () => context.push(
+                              '/forgot-password',
+                              extra: _emailCtrl.text.trim(),
+                            ),
                             child: const Text('Forgot password?'),
                           ),
                         ),
@@ -443,7 +450,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ),
                         ),
-                        if (widget.requiredRole == null) ...[
+                        if (kIsWeb) ...[
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            height: 52,
+                            child: OutlinedButton.icon(
+                              onPressed: _downloadAndroidApp,
+                              icon: const Icon(Icons.android_rounded),
+                              label: const Text('Download the App'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: scheme.primary,
+                                side: BorderSide(color: scheme.primary),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                        if (widget.requiredRole == null ||
+                            normalizeAppRole(widget.requiredRole) ==
+                                'visitor') ...[
                           const SizedBox(height: 32),
                           Divider(color: scheme.outlineVariant),
                           const SizedBox(height: 24),

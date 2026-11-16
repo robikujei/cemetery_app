@@ -11,16 +11,17 @@ String normalizeAppRole(Object? value) {
   };
 }
 
-/// Roles permitted in the GeoGrave field-access Android build.
+/// Roles permitted in the shared GeoGrave application.
 ///
 /// Use an allow list so a newly added privileged role cannot access the app
 /// until it has been explicitly approved.
 bool isGeoGraveAllowedRole(Object? value) => switch (normalizeAppRole(value)) {
-  'visitor' || 'lot_owner' || 'gate_officer' => true,
+  'admin' || 'visitor' || 'lot_owner' || 'gate_officer' => true,
   _ => false,
 };
 
 String? appHomeForRole(Object? value) => switch (normalizeAppRole(value)) {
+  'admin' => '/admin',
   'gate_officer' => '/gate-officer',
   'lot_owner' => '/lot-owner',
   'visitor' => '/visitor',

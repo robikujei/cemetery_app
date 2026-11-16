@@ -219,7 +219,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         _buildField(
                           controller: _nameCtrl,
                           label: 'Full Name',
-                          hint: 'Jane Doe',
+                          hint: 'Full Name',
                           prefixIcon: Icons.person_outline_rounded,
                           errorText: _nameError,
                           keyboardType: TextInputType.name,

@@ -9,18 +9,18 @@ void main() {
     }
   });
 
-  test('only GeoGrave-permitted roles resolve to a portal home', () {
-    expect(appHomeForRole('admin'), isNull);
+  test('all supported roles resolve to their portal home', () {
+    expect(appHomeForRole('admin'), '/admin');
     expect(appHomeForRole('lot_owner'), '/lot-owner');
     expect(appHomeForRole('visitor'), '/visitor');
     expect(appHomeForRole('gate_officer'), '/gate-officer');
   });
 
-  test('GeoGrave rejects admin and unknown roles', () {
+  test('GeoGrave accepts supported roles and rejects unknown roles', () {
     expect(isGeoGraveAllowedRole('visitor'), isTrue);
     expect(isGeoGraveAllowedRole('lot_owner'), isTrue);
     expect(isGeoGraveAllowedRole('gate_officer'), isTrue);
-    expect(isGeoGraveAllowedRole('admin'), isFalse);
+    expect(isGeoGraveAllowedRole('admin'), isTrue);
     expect(isGeoGraveAllowedRole('unknown'), isFalse);
   });
 

@@ -5,9 +5,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
+import '../screens/admin/admin_shell_screen.dart' deferred as admin;
+import '../screens/guard/qr_scanner_screen.dart' deferred as guard;
+import '../screens/lot_owner/lot_owner_home_screen.dart' deferred as owner;
+import '../screens/visitor/visitor_shell_screen.dart' deferred as visitor;
 import '../providers/theme_provider.dart';
 import '../services/user_profile_service.dart';
 import '../utils/app_role.dart';
+import '../widgets/deferred_screen.dart';
 import 'theme.dart';
 
 class RoleApp extends StatelessWidget {
@@ -74,30 +79,58 @@ class _RoleMaterialApp extends ConsumerWidget {
             return null;
           }
           if (bypassAuth) return null;
-          final user = Supabase.instance.client.auth.currentUser;
-          if (user == null) return '/login';
+          final auth = Supabase.instance.client.auth;
+          final session = auth.currentSession;
+          final user = auth.currentUser;
+          if (session == null || session.isExpired || user == null) {
+            return '/login';
+          }
           try {
             final client = Supabase.instance.client;
             final profile = await loadAppUserProfile(client, user);
-            final actualRole = normalizeAppRole(profile?['role']);
-            return actualRole == normalizeAppRole(role) ? null : '/login';
+            final home = appHomeForRole(profile?['role']);
+            if (home == null) return '/login';
+            return state.matchedLocation == home ? null : home;
           } catch (_) {
             return '/login';
           }
         },
         routes: [
-          GoRoute(
-            path: '/login',
-            builder: (_, _) =>
-                LoginScreen(requiredRole: role, portalName: portalName),
-          ),
+          GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
           GoRoute(
             path: '/register',
             builder: (_, _) => role == 'visitor'
                 ? const RegisterScreen()
                 : LoginScreen(requiredRole: role, portalName: portalName),
           ),
-          GoRoute(path: path, builder: (_, _) => home),
+          GoRoute(
+            path: '/visitor',
+            builder: (_, _) => DeferredScreen(
+              load: visitor.loadLibrary,
+              builder: (_) => visitor.VisitorShellScreen(),
+            ),
+          ),
+          GoRoute(
+            path: '/admin',
+            builder: (_, _) => DeferredScreen(
+              load: admin.loadLibrary,
+              builder: (_) => admin.AdminShellScreen(),
+            ),
+          ),
+          GoRoute(
+            path: '/gate-officer',
+            builder: (_, _) => DeferredScreen(
+              load: guard.loadLibrary,
+              builder: (_) => guard.QrScannerScreen(),
+            ),
+          ),
+          GoRoute(
+            path: '/lot-owner',
+            builder: (_, _) => DeferredScreen(
+              load: owner.loadLibrary,
+              builder: (_) => owner.LotOwnerHomeScreen(),
+            ),
+          ),
         ],
       ),
     );
