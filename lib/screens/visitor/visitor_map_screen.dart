@@ -729,7 +729,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
 
   void _selectInitialLot() {
     final marker = _lotMarkers.firstWhere(
-      (m) => m['cemetery_lot']?['lot_id'] == widget.initialLotId,
+      (m) => _sameRecordId(_markerLotId(m), widget.initialLotId),
       orElse: () => {},
     );
 
