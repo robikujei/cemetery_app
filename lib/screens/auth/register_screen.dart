@@ -1,3 +1,5 @@
+import '../../core/surface_style.dart';
+import '../../widgets/brand_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,12 +8,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../providers/auth_provider.dart';
 
 class _C {
-  static const background = Color(0xFFFBF9F6);
-  static const primary = Color(0xFF335538);
-  static const primaryContainer = Color(0xFF4B6E4F);
-  static const primaryFixed = Color(0xFFC5EDC6);
-  static const surfaceContainerLow = Color(0xFFF5F3F0);
-  static const surfaceContainerHighest = Color(0xFFE4E2DF);
+  static const background = Color(0xFFFFFBF3);
+  static const primary = Color(0xFF123D27);
+  static const primaryContainer = Color(0xFF1F5737);
+  static const primaryFixed = Color(0xFFFFE6A1);
+  static const surfaceContainerLow = Color(0xFFFFF8EA);
   static const onSurface = Color(0xFF1B1C1A);
   static const onSurfaceVariant = Color(0xFF424841);
   static const error = Color(0xFFBA1A1A);
@@ -183,20 +184,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               constraints: const BoxConstraints(maxWidth: 520),
               child: Column(
                 children: [
-                  Container(
-                    width: 76,
-                    height: 76,
-                    decoration: const BoxDecoration(
-                      color: _C.primaryFixed,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.person_add_alt_rounded,
-                      size: 34,
-                      color: _C.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
+                  const BrandLogo(height: 124),
+                  const SizedBox(height: 10),
                   const Text(
                     'Create Account',
                     textAlign: TextAlign.center,
@@ -208,7 +197,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Join Eternal Rest to manage visits and keep family records connected.',
+                    'Join Eternal Garden to manage visits and keep family records connected.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 15,
@@ -220,17 +209,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
+                    decoration: SurfaceStyle.panel(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: _C.surfaceContainerHighest),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x0F335538),
-                          blurRadius: 24,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
+                      radius: 24,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -238,7 +219,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         _buildField(
                           controller: _nameCtrl,
                           label: 'Full Name',
-                          hint: 'Jane Doe',
+                          hint: 'Full Name',
                           prefixIcon: Icons.person_outline_rounded,
                           errorText: _nameError,
                           keyboardType: TextInputType.name,

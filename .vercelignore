@@ -1,0 +1,6 @@
+# Upload only the locally compiled website and deployment configuration.
+/*
+!/build
+/build/*
+!/build/web
+!/vercel.json

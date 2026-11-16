@@ -1,3 +1,5 @@
+import '../../core/surface_style.dart';
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,7 +29,6 @@ class _C {
   static const onSurface = Color(0xFF1B1C1A);
   static const onSurfaceVariant = Color(0xFF424841);
   static const outline = Color(0xFF727971);
-  static const outlineVariant = Color(0xFFC2C8BF);
   static const white = Color(0xFFFFFFFF);
 }
 
@@ -41,12 +42,28 @@ class VisitorHomeScreen extends ConsumerStatefulWidget {
 class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
   String _userName = 'Visitor';
   List<Map<String, dynamic>> _recentSearches = [];
+  StreamSubscription<AuthState>? _authSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadUserName();
     _loadRecentSearches();
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((
+      authState,
+    ) {
+      if (authState.event == AuthChangeEvent.signedOut) {
+        if (mounted) setState(() => _recentSearches = []);
+      } else if (authState.session != null) {
+        _loadRecentSearches();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadUserName() async {
@@ -71,17 +88,16 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId != null) {
-        final json = prefs.getString('recent_searches_$userId');
-        if (json != null) {
-          final List<dynamic> decoded = jsonDecode(json);
-          setState(() {
-            _recentSearches = decoded
-                .map((i) => Map<String, dynamic>.from(i))
-                .toList();
-          });
-        }
-      }
+      final json = userId == null
+          ? null
+          : prefs.getString('recent_searches_$userId');
+      final List<dynamic> decoded = json == null ? [] : jsonDecode(json);
+      if (!mounted) return;
+      setState(() {
+        _recentSearches = decoded
+            .map((i) => Map<String, dynamic>.from(i))
+            .toList();
+      });
     } catch (e) {
       debugPrint('Error loading recent searches: $e');
     }
@@ -205,7 +221,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
             const Icon(Icons.church, color: _C.primaryContainer, size: 22),
             const SizedBox(width: 10),
             Text(
-              'Eternal Rest',
+              'Eternal Garden',
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
@@ -269,17 +285,9 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                   horizontal: 20,
                   vertical: 16,
                 ),
-                decoration: BoxDecoration(
+                decoration: SurfaceStyle.panel(
                   color: _C.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(40),
-                  border: Border.all(color: _C.outlineVariant.withOpacity(0.3)),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x0A000000),
-                      blurRadius: 4,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
+                  radius: 40,
                 ),
                 child: Row(
                   children: const [
@@ -438,36 +446,41 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
   }) {
     return Material(
       color: bgColor,
+      elevation: 7,
+      shadowColor: const Color(0x30335538),
       borderRadius: BorderRadius.circular(24),
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Icon badge (top-left, matching template)
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: iconBgColor,
-                  borderRadius: BorderRadius.circular(12),
+      child: Ink(
+        decoration: SurfaceStyle.panel(color: bgColor),
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Icon badge (top-left, matching template)
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: iconBgColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: iconColor, size: 28),
                 ),
-                child: Icon(icon, color: iconColor, size: 28),
-              ),
-              // Label (bottom-left, matching template)
-              Text(
-                label,
-                style: TextStyle(
-                  color: labelColor,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0.15,
+                // Label (bottom-left, matching template)
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: labelColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.15,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'router.dart';  // ← This now has 'router'
+import 'router.dart'; // ← This now has 'router'
 import 'theme.dart';
+import '../utils/app_audience.dart';
 
 class CemeteryApp extends StatelessWidget {
   const CemeteryApp({super.key});
@@ -10,9 +11,9 @@ class CemeteryApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
-      title: 'Cemetery Grave Finder',
+      title: isAdminApp ? 'GeoGrave Admin' : 'GeoGrave',
       theme: AppTheme.light(),
-      routerConfig: router,  // ← Changed from 'appRouter' to 'router'
+      routerConfig: router, // ← Changed from 'appRouter' to 'router'
     );
   }
 }

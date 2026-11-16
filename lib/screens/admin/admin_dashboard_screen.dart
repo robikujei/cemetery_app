@@ -1,3 +1,4 @@
+import '../../core/surface_style.dart';
 import 'dart:async';
 import 'dart:math';
 
@@ -26,7 +27,6 @@ const _secondary = Color(0xFF47626F);
 const _tertiary = Color(0xFF5A4B3F);
 const _onSurface = Color(0xFF1B1C1A);
 const _onSurfaceVariant = Color(0xFF424841);
-const _outlineVariant = Color(0xFFC2C8BF);
 
 class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({
@@ -1026,9 +1026,9 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         if (activities.isEmpty)
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
+            decoration: SurfaceStyle.panel(
               color: _surfaceContainerLow,
-              borderRadius: BorderRadius.circular(18),
+              radius: 18,
             ),
             child: Column(
               children: [
@@ -1060,9 +1060,9 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
               padding: const EdgeInsets.only(bottom: 12),
               child: Container(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
+                decoration: SurfaceStyle.panel(
                   color: _surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(18),
+                  radius: 18,
                 ),
                 child: Row(
                   children: [
@@ -1159,18 +1159,7 @@ class _MetricCard extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     return Container(
       padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: _surfaceContainerLow,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _outlineVariant.withValues(alpha: 0.30)),
-        boxShadow: [
-          BoxShadow(
-            color: _primaryContainer.withValues(alpha: 0.06),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
+      decoration: SurfaceStyle.panel(color: _surfaceContainerLow, radius: 24),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1287,18 +1276,7 @@ class AppCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: padding,
-      decoration: BoxDecoration(
-        color: _surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _outlineVariant.withValues(alpha: 0.35)),
-        boxShadow: [
-          BoxShadow(
-            color: _primaryContainer.withValues(alpha: 0.06),
-            blurRadius: 22,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
+      decoration: SurfaceStyle.panel(color: _surface, radius: 20),
       child: child,
     );
   }
@@ -1686,20 +1664,7 @@ class _MapPreviewCardState extends State<_MapPreviewCard> {
 
     return Container(
       height: 400,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(
-          color: const Color(0xFFC2C8BF).withValues(alpha: 0.5),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF4B6E4F).withValues(alpha: 0.08),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
+      decoration: SurfaceStyle.panel(color: Colors.white, radius: 28),
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [

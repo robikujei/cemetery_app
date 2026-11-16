@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import '../../core/surface_style.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,20 +8,22 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/audit_service.dart';
 import '../../models/app_user.dart';
 import '../../providers/session_providers.dart';
+import '../../utils/sign_in_error_message.dart';
+import '../../utils/app_audience.dart';
+import '../../widgets/brand_logo.dart';
 
 // ── Design tokens (mirrors the HTML template's Tailwind config) ──────────────
 class _C {
-  static const background = Color(0xFFFBF9F6);
-  static const primary = Color(0xFF335538);
-  static const primaryContainer = Color(0xFF4B6E4F);
-  static const onPrimaryContainer = Color(0xFFC7EFC8);
-  static const primaryFixed = Color(0xFFC5EDC6);
-  static const surfaceContainerLow = Color(0xFFF5F3F0);
-  static const surfaceContainerHighest = Color(0xFFE4E2DF);
+  static const background = Color(0xFFFFFBF3);
+  static const primary = Color(0xFF123D27);
+  static const primaryContainer = Color(0xFF1F5737);
+  static const onPrimaryContainer = Colors.white;
+  static const surfaceContainerLow = Color(0xFFFFF8EA);
+  static const surfaceContainerHighest = Color(0xFFEBDDBD);
   static const onSurface = Color(0xFF1B1C1A);
   static const onSurfaceVariant = Color(0xFF424841);
-  static const outline = Color(0xFF727971);
-  static const outlineVariant = Color(0xFFC2C8BF);
+  static const outline = Color(0xFF6D735E);
+  static const outlineVariant = Color(0xFFCFC5AD);
   static const error = Color(0xFFBA1A1A);
 }
 
@@ -36,9 +41,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isLoading = false;
   String? _emailError;
   String? _passwordError;
+  StreamSubscription<AuthState>? _authSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((
+      authState,
+    ) {
+      if (authState.event == AuthChangeEvent.passwordRecovery && mounted) {
+        context.go('/update-password');
+      }
+    });
+  }
 
   @override
   void dispose() {
+    _authSubscription?.cancel();
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
@@ -52,24 +71,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   bool _validateForm() {
-    bool isValid = true;
     final email = _emailCtrl.text.trim();
-    if (email.isEmpty) {
-      setState(() => _emailError = 'Please enter your email address');
-      isValid = false;
-    } else if (!_isValidEmail(email)) {
-      setState(() => _emailError = 'Please enter a valid email address');
-      isValid = false;
-    } else {
-      setState(() => _emailError = null);
+    final password = _passwordCtrl.text;
+    final emailError = email.isEmpty
+        ? 'Please enter your email address'
+        : !_isValidEmail(email)
+        ? 'Please enter a valid email address'
+        : null;
+    final passwordError = password.isEmpty
+        ? 'Please enter your password'
+        : null;
+
+    setState(() {
+      _emailError = emailError;
+      _passwordError = passwordError;
+    });
+
+    if (emailError != null || passwordError != null) {
+      final message = email.isEmpty && password.isEmpty
+          ? 'Please enter your email address and password.'
+          : emailError ?? passwordError!;
+      _showErrorSnackBar(message);
+      return false;
     }
-    if (_passwordCtrl.text.isEmpty) {
-      setState(() => _passwordError = 'Please enter your password');
-      isValid = false;
-    } else {
-      setState(() => _passwordError = null);
-    }
-    return isValid;
+    return true;
   }
 
   Future<void> _signInWithSupabase() async {
@@ -86,6 +111,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             .select('name, role')
             .eq('email', _emailCtrl.text.trim().toLowerCase())
             .single();
+        final role = userData['role']?.toString();
+        if (!isRoleAllowedInThisApp(role)) {
+          await Supabase.instance.client.auth.signOut();
+          _showErrorSnackBar(audienceAccessMessage);
+          return;
+        }
         await AuditService.log(
           action: 'LOGIN',
           entityType: 'user',
@@ -96,17 +127,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           id: response.user!.id,
           displayName:
               userData['name'] ?? _emailCtrl.text.trim().split('@').first,
-          role: _mapRoleToEnum(userData['role']),
+          role: _mapRoleToEnum(role),
         );
         ref.read(sessionProvider.notifier).state = appUser;
-        if (mounted) _navigateByRole(userData['role']);
+        if (mounted) _navigateByRole(role);
       } else {
         _showErrorSnackBar('Invalid email or password. Please try again.');
       }
-    } on AuthException catch (e) {
-      _showErrorSnackBar(e.message);
-    } catch (_) {
-      _showErrorSnackBar('An error occurred. Please try again.');
+    } catch (e) {
+      _showErrorSnackBar(signInErrorMessage(e));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -163,7 +192,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     bool obscure = false,
     TextInputType keyboardType = TextInputType.text,
     Widget? suffix,
-    Widget? labelTrailing,
+    ValueChanged<String>? onChanged,
+    ValueChanged<String>? onSubmitted,
+    TextInputAction? textInputAction,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -182,7 +213,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   color: _C.onSurfaceVariant,
                 ),
               ),
-              ?labelTrailing,
             ],
           ),
         ),
@@ -193,6 +223,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           keyboardType: keyboardType,
           autocorrect: false,
           enableSuggestions: false,
+          onChanged: onChanged,
+          onSubmitted: onSubmitted,
+          textInputAction: textInputAction,
           style: const TextStyle(fontSize: 14, color: _C.onSurface),
           decoration: InputDecoration(
             hintText: hint,
@@ -249,22 +282,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: Column(
                 children: [
                   // ── Header ──────────────────────────────────────────────
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: const BoxDecoration(
-                      color: _C.primaryFixed,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.church,
-                      size: 32,
-                      color: _C.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
+                  const BrandLogo(height: 124),
+                  const SizedBox(height: 10),
                   const Text(
-                    'Eternal Rest',
+                    'Eternal Garden',
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.w400,
@@ -288,17 +309,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(32),
-                    decoration: BoxDecoration(
+                    decoration: SurfaceStyle.panel(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: _C.surfaceContainerHighest),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x0F335538),
-                          blurRadius: 24,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
+                      radius: 24,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -311,6 +324,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           prefixIcon: Icons.mail_outline_rounded,
                           errorText: _emailError,
                           keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          onSubmitted: (_) =>
+                              FocusScope.of(context).nextFocus(),
+                          onChanged: (_) {
+                            if (_emailError != null) {
+                              setState(() => _emailError = null);
+                            }
+                          },
                         ),
                         const SizedBox(height: 16),
 
@@ -321,26 +342,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           hint: '••••••••',
                           prefixIcon: Icons.lock_outline_rounded,
                           errorText: _passwordError,
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => _signInWithSupabase(),
+                          onChanged: (_) {
+                            if (_passwordError != null) {
+                              setState(() => _passwordError = null);
+                            }
+                          },
                           obscure: _obscure,
-                          labelTrailing: TextButton(
-                            onPressed: () {
-                              /* TODO: forgot password */
-                            },
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: const Text(
-                              'Forgot password?',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                letterSpacing: 0.5,
-                                color: _C.primary,
-                              ),
-                            ),
-                          ),
                           suffix: IconButton(
                             icon: Icon(
                               _obscure
@@ -351,6 +360,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                             onPressed: () =>
                                 setState(() => _obscure = !_obscure),
+                          ),
+                        ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () => context.push(
+                              '/forgot-password',
+                              extra: _emailCtrl.text.trim(),
+                            ),
+                            style: TextButton.styleFrom(
+                              minimumSize: const Size(48, 48),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
+                              tapTargetSize: MaterialTapTargetSize.padded,
+                            ),
+                            child: const Text('Forgot password?'),
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -392,42 +418,44 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ),
 
-                        // Divider + Create Account
-                        const SizedBox(height: 32),
-                        const Divider(color: _C.surfaceContainerHighest),
-                        const SizedBox(height: 24),
-                        const Text(
-                          'New to Eternal Rest?',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: _C.onSurfaceVariant,
-                            letterSpacing: 0.25,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          height: 56,
-                          child: OutlinedButton(
-                            onPressed: () => context.go('/register'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: _C.primaryContainer,
-                              side: const BorderSide(
-                                color: _C.primaryContainer,
-                                width: 2,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              textStyle: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                letterSpacing: 0.1,
-                              ),
+                        if (!isAdminApp) ...[
+                          // Divider + Create Account
+                          const SizedBox(height: 32),
+                          const Divider(color: _C.surfaceContainerHighest),
+                          const SizedBox(height: 24),
+                          const Text(
+                            'New to Eternal Garden?',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: _C.onSurfaceVariant,
+                              letterSpacing: 0.25,
                             ),
-                            child: const Text('Create Visitor Account'),
                           ),
-                        ),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            height: 56,
+                            child: OutlinedButton(
+                              onPressed: () => context.go('/register'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: _C.primaryContainer,
+                                side: const BorderSide(
+                                  color: _C.primaryContainer,
+                                  width: 2,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                textStyle: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 0.1,
+                                ),
+                              ),
+                              child: const Text('Create Visitor Account'),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),

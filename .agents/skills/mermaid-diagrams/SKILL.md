@@ -1,3 +1,4 @@
+
 ---
 name: mermaid-diagrams
 description: Create and refine Mermaid flowcharts, sequence diagrams, class diagrams, ER diagrams, state diagrams, and timelines for explanations or repository documentation.

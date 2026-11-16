@@ -1,11 +1,11 @@
 {
-    "name": "cemetery_app",
-    "short_name": "cemetery_app",
+    "name": "GeoGrave",
+    "short_name": "GeoGrave",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Eternal Garden grave finder and visitor guide.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

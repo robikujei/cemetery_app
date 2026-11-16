@@ -3,6 +3,7 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -416,6 +417,50 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
   void _resetView() {
     _currentZoom = _initialZoom;
     _mapController.move(_routeStart, _currentZoom);
+  }
+
+  Future<void> _centerOnCurrentLocation() async {
+    if (!await Geolocator.isLocationServiceEnabled()) {
+      _showLocationMessage('Turn on location services to use GPS.');
+      return;
+    }
+
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied) {
+      _showLocationMessage('Location permission was not granted.');
+      return;
+    }
+    if (permission == LocationPermission.deniedForever) {
+      _showLocationMessage(
+        'Location permission is blocked. Enable it in Android settings.',
+      );
+      return;
+    }
+
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      );
+      _currentZoom = 19;
+      _mapController.move(
+        LatLng(position.latitude, position.longitude),
+        _currentZoom,
+      );
+    } catch (_) {
+      _showLocationMessage('Unable to determine your current location.');
+    }
+  }
+
+  void _showLocationMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
   }
 
   void _handleBackPressed() {
@@ -990,7 +1035,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
               const SizedBox(width: 8),
               const Expanded(
                 child: Text(
-                  'Eternal Rest',
+                  'Eternal Garden',
                   style: TextStyle(
                     color: _C.primaryContainer,
                     fontSize: 20,
@@ -1118,7 +1163,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen> {
             borderRadius: 18,
             child: _controlButton(
               Icons.my_location_rounded,
-              _resetView,
+              _centerOnCurrentLocation,
               color: _C.primary,
             ),
           ),

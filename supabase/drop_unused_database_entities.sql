@@ -87,7 +87,7 @@ drop type if exists public."Role" cascade;
 
 commit;
 
--- Block-model cleanup for the current Supabase schema.
+-- Block-model cleanup for the current Supabase schema. 
 -- Run this only after deploying the app version that no longer queries
 -- section:section_id or branch:branch_id. It keeps block_number on cemetery_lot
 -- as the block source of truth.
