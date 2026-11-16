@@ -28,7 +28,8 @@ class VisitorMapDataService {
     final now = DateTime.now();
     final start = DateTime(now.year, now.month, now.day);
     final end = start.add(const Duration(days: 1));
-    final dateText = '${start.year.toString().padLeft(4, '0')}-'
+    final dateText =
+        '${start.year.toString().padLeft(4, '0')}-'
         '${start.month.toString().padLeft(2, '0')}-'
         '${start.day.toString().padLeft(2, '0')}';
     final scheduleResult = await client
@@ -42,7 +43,8 @@ class VisitorMapDataService {
     final scheduled = List<Map<String, dynamic>>.from(scheduleResult);
     final scheduledKeys = scheduled
         .map(
-          (item) => '${item['lot_id']}|${item['deceased_name']}|'
+          (item) =>
+              '${item['lot_id']}|${item['deceased_name']}|'
               '${item['scheduled_at'].toString().substring(0, 10)}',
         )
         .toSet();
@@ -84,9 +86,8 @@ class VisitorMapDataService {
       });
     }
     scheduled.sort(
-      (a, b) => a['scheduled_at'].toString().compareTo(
-        b['scheduled_at'].toString(),
-      ),
+      (a, b) =>
+          a['scheduled_at'].toString().compareTo(b['scheduled_at'].toString()),
     );
     return scheduled;
   }
@@ -140,6 +141,21 @@ class VisitorMapDataService {
     'marker_id',
     isCurrent: isCurrent,
   );
+
+  Future<List<Map<String, dynamic>>> loadBurials({
+    required bool Function() isCurrent,
+  }) async {
+    final burials = <Map<String, dynamic>>[];
+    await for (final page in _pages(
+      'burial_record',
+      'burial_id,name_of_deceased,birth_date,death_date,burial_date,lot_id,lot_location_no',
+      'burial_id',
+      isCurrent: isCurrent,
+    )) {
+      burials.addAll(page);
+    }
+    return burials;
+  }
 
   Future<Map<String, List<Map<String, dynamic>>>> loadGraves({
     required bool Function() isCurrent,

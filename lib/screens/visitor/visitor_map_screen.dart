@@ -526,6 +526,8 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
         _todaySchedules = [];
       }
       if (!current()) return;
+      final burials = await service.loadBurials(isCurrent: current);
+      if (!current()) return;
       final config = base.config;
       setState(() {
         final lat = (config?['center_lat'] as num?)?.toDouble();
@@ -549,7 +551,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
       var lastPublishedCount = 0;
       await for (final page in service.markerPages(isCurrent: current)) {
         if (!current()) return;
-        markers.addAll(_markersWithBurials(page, const []));
+        markers.addAll(_markersWithBurials(page, burials));
         // Publishing every 500-row page rebuilds the polygon index and causes
         // flutter_map to reproject the visible layers repeatedly. Show the
         // first page quickly, then publish larger batches while the remaining
@@ -2362,19 +2364,19 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
     );
     if (qgisRoute.isNotEmpty) return qgisRoute;
 
-    if (_pathNodes.isEmpty) return [];
+    if (_pathNodes.isEmpty) return [start, end];
 
     final startNode = _nearestNodeTo(start);
     final endNode = _nearestNodeTo(end);
-    if (startNode == null || endNode == null) return [];
+    if (startNode == null || endNode == null) return [start, end];
 
     final startId = _asNodeId(startNode['node_id']);
     final endId = _asNodeId(endNode['node_id']);
-    if (startId == null || endId == null) return [];
+    if (startId == null || endId == null) return [start, end];
 
     final nodePath = _shortestNodePath(startId, endId);
     if (nodePath.isEmpty) {
-      return [];
+      return [start, _nodeToLatLng(startNode), _nodeToLatLng(endNode), end];
     }
 
     return [
