@@ -149,15 +149,17 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
     );
   }
 
-  void _getDirections(Map<String, dynamic> burial) {
+  Future<void> _getDirections(Map<String, dynamic> burial) async {
     final lot = burial['cemetery_lot'] ?? {};
-    _saveSearchAndReturn(burial);
-    Navigator.push(
+    await _saveSearch(burial);
+    if (!mounted) return;
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => VisitorMapScreenWithDestination(
           destinationLotId: lot['lot_id'],
           destinationLotNumber: lotReference(lot, fallback: ''),
+          destinationBurial: Map<String, dynamic>.from(burial),
         ),
       ),
     );

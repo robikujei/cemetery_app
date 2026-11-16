@@ -43,8 +43,14 @@ class _C {
 class VisitorMapScreen extends ConsumerStatefulWidget {
   final int? initialLotId;
   final String? initialLotNumber;
+  final Map<String, dynamic>? initialBurial;
 
-  const VisitorMapScreen({super.key, this.initialLotId, this.initialLotNumber});
+  const VisitorMapScreen({
+    super.key,
+    this.initialLotId,
+    this.initialLotNumber,
+    this.initialBurial,
+  });
 
   @override
   ConsumerState<VisitorMapScreen> createState() => _VisitorMapScreenState();
@@ -716,7 +722,12 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
     );
 
     if (marker.isNotEmpty) {
-      _selectMarker(marker, showSheet: true, showRoute: true);
+      _selectMarker(
+        marker,
+        showSheet: true,
+        showRoute: true,
+        grave: _graveFromInitialBurial(),
+      );
     } else {
       setState(() {
         _selectedLotId = widget.initialLotId;
@@ -1377,6 +1388,17 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
     }
     if (burial is Map) return Map<String, dynamic>.from(burial);
     return null;
+  }
+
+  Map<String, dynamic>? _graveFromInitialBurial() {
+    final burial = widget.initialBurial;
+    if (burial == null) return null;
+    return {
+      'grave_label': _lotBurialGraveLabel(burial, fallback: 'Grave'),
+      'status': 'Occupied',
+      'burial_id': burial['burial_id'],
+      'burial': Map<String, dynamic>.from(burial),
+    };
   }
 
   String? _burialId(Map<String, dynamic>? burial) {
@@ -2333,7 +2355,6 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
   }
 
   List<LatLng> _routeFromEntranceToLot(Map<String, dynamic> marker) {
-    if (!_usingNavigationFix && !_hasRouteStart) return [];
     final fix = _gps.position;
     final start = _usingNavigationFix && fix != null
         ? LatLng(fix.latitude, fix.longitude)
@@ -2755,11 +2776,13 @@ class _SelectedLeafletPin extends StatelessWidget {
 class VisitorMapScreenWithDestination extends StatelessWidget {
   final int? destinationLotId;
   final String? destinationLotNumber;
+  final Map<String, dynamic>? destinationBurial;
 
   const VisitorMapScreenWithDestination({
     super.key,
     this.destinationLotId,
     this.destinationLotNumber,
+    this.destinationBurial,
   });
 
   @override
@@ -2767,6 +2790,7 @@ class VisitorMapScreenWithDestination extends StatelessWidget {
     return VisitorMapScreen(
       initialLotId: destinationLotId,
       initialLotNumber: destinationLotNumber,
+      initialBurial: destinationBurial,
     );
   }
 }
