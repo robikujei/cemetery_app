@@ -1,14 +1,14 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'visitor_search_screen.dart';
 import 'visitor_qr_screen.dart';
 import 'visitor_history_screen.dart';
 import 'visitor_map_screen.dart';
 import '../../providers/visitor_nav_providers.dart';
 import '../../widgets/brand_logo.dart';
+import '../../services/visitor_relative_groups_service.dart';
+import '../../services/visitor_recent_search_service.dart';
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 class VisitorHomeScreen extends ConsumerStatefulWidget {
@@ -21,12 +21,71 @@ class VisitorHomeScreen extends ConsumerStatefulWidget {
 class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
   String _userName = 'Visitor';
   List<Map<String, dynamic>> _recentSearches = [];
+  List<String> _relativeGroups = [];
+  Map<String, Map<String, dynamic>> _relativeAssignments = {};
+  String _selectedRecentGroup = 'All';
 
   @override
   void initState() {
     super.initState();
     _loadUserName();
     _loadRecentSearches();
+    _loadRelativeGroups();
+  }
+
+  Future<void> _loadRelativeGroups() async {
+    final groups = await VisitorRelativeGroupsService.loadGroups();
+    final assignments = await VisitorRelativeGroupsService.loadAssignments();
+    if (!mounted) return;
+    setState(() {
+      _relativeGroups = groups;
+      _relativeAssignments = assignments;
+    });
+  }
+
+  Future<void> _createRelativeGroup() async {
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Create a relatives group'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Group name',
+            hintText: 'e.g. My relatives',
+          ),
+          onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pop(dialogContext, controller.text.trim()),
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (name == null || name.isEmpty) return;
+    await VisitorRelativeGroupsService.createGroup(name);
+    await _loadRelativeGroups();
+  }
+
+  Future<void> _toggleRecentFavorite(String name) async {
+    final current = _relativeAssignments[name]?['favorite'] == true;
+    await VisitorRelativeGroupsService.setAssignment(name, favorite: !current);
+    await _loadRelativeGroups();
+  }
+
+  Future<void> _assignRecentGroup(String name, String group) async {
+    await VisitorRelativeGroupsService.setAssignment(name, group: group);
+    await _loadRelativeGroups();
   }
 
   Future<void> _loadUserName() async {
@@ -49,19 +108,9 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
 
   Future<void> _loadRecentSearches() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId != null) {
-        final json = prefs.getString('recent_searches_$userId');
-        if (json != null) {
-          final List<dynamic> decoded = jsonDecode(json);
-          setState(() {
-            _recentSearches = decoded
-                .map((i) => Map<String, dynamic>.from(i))
-                .toList();
-          });
-        }
-      }
+      final searches = await VisitorRecentSearchService.load();
+      if (!mounted) return;
+      setState(() => _recentSearches = searches);
     } catch (e) {
       debugPrint('Error loading recent searches: $e');
     }
@@ -69,10 +118,6 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
 
   Future<void> _addRecentSearch(Map<String, dynamic> searchData) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId == null) return;
-
       final newSearch = {
         'name': searchData['name'] ?? searchData['deceased_name'] ?? 'Unknown',
         'details': _generateSearchDetails(searchData),
@@ -80,22 +125,10 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
         'lotId': searchData['lot_id'],
         'timestamp': DateTime.now().toIso8601String(),
         'type': searchData['type'] ?? 'deceased',
+        'burialId': searchData['burial_id'] ?? searchData['burialId'],
       };
-
-      _recentSearches.removeWhere(
-        (i) =>
-            i['lotNumber'] == newSearch['lotNumber'] ||
-            (i['name'] == newSearch['name'] && i['type'] == newSearch['type']),
-      );
-      _recentSearches.insert(0, newSearch);
-      if (_recentSearches.length > 10) {
-        _recentSearches = _recentSearches.take(10).toList();
-      }
-      setState(() {});
-      await prefs.setString(
-        'recent_searches_$userId',
-        jsonEncode(_recentSearches),
-      );
+      await VisitorRecentSearchService.save(newSearch);
+      await _loadRecentSearches();
     } catch (e) {
       debugPrint('Error saving recent search: $e');
     }
@@ -115,25 +148,20 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
   Future<void> _clearRecentSearches() async {
     final colors = Theme.of(context).colorScheme;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId != null) {
-        await prefs.remove('recent_searches_$userId');
-        setState(() => _recentSearches = []);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Recent searches cleared'),
-              duration: const Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-              backgroundColor: colors.primaryContainer,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          );
-        }
-      }
+      await VisitorRecentSearchService.clear();
+      if (!mounted) return;
+      setState(() => _recentSearches = []);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Recent searches cleared'),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: colors.primaryContainer,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
     } catch (e) {
       debugPrint('Error clearing recent searches: $e');
     }
@@ -196,6 +224,9 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
   // ── Build ────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(recentSearchRevisionProvider, (previous, next) {
+      _loadRecentSearches();
+    });
     final colors = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: colors.surfaceContainer,
@@ -296,23 +327,38 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                         color: colors.onSurface,
                       ),
                     ),
+                    IconButton(
+                      tooltip: 'Create relatives group',
+                      onPressed: _createRelativeGroup,
+                      icon: const Icon(Icons.create_new_folder_outlined),
+                    ),
                     if (_recentSearches.isNotEmpty)
-                      TextButton(
+                      IconButton(
+                        tooltip: 'Clear recent searches',
                         onPressed: _clearRecentSearches,
-                        style: TextButton.styleFrom(
-                          foregroundColor: colors.primary,
-                          padding: EdgeInsets.zero,
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          textStyle: const TextStyle(
-                            fontFamily: '.SF Pro Text',
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        child: const Text('Clear all'),
+                        icon: const Icon(Icons.delete_sweep_outlined),
                       ),
                   ],
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 40,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      ...['All', 'Favorites', ..._relativeGroups].map(
+                        (group) => Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            label: Text(group),
+                            selected: _selectedRecentGroup == group,
+                            onSelected: (_) =>
+                                setState(() => _selectedRecentGroup = group),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
 
@@ -342,16 +388,25 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                     ),
                   )
                 else
-                  ...(_recentSearches.map(
-                    (s) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: _buildRecentItem(
-                        name: s['name'],
-                        details: s['details'],
-                        onTap: () => _navigateToGrave(s),
-                      ),
-                    ),
-                  )),
+                  ...(_recentSearches
+                      .where((search) {
+                        final assignment =
+                            _relativeAssignments[search['name']] ?? {};
+                        if (_selectedRecentGroup == 'All') return true;
+                        if (_selectedRecentGroup == 'Favorites') {
+                          return assignment['favorite'] == true;
+                        }
+                        return assignment['group'] == _selectedRecentGroup;
+                      })
+                      .map(
+                        (s) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _buildRecentItem(
+                            search: s,
+                            onTap: () => _navigateToGrave(s),
+                          ),
+                        ),
+                      )),
 
                 const SizedBox(height: 32),
               ],
@@ -481,10 +536,11 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
 
   // ── Recent Search Item ───────────────────────────────────────────────────
   Widget _buildRecentItem({
-    required String name,
-    required String details,
+    required Map<String, dynamic> search,
     required VoidCallback onTap,
   }) {
+    final name = search['name']?.toString() ?? 'Unknown';
+    final details = search['details']?.toString() ?? '';
     final colors = Theme.of(context).colorScheme;
     return Material(
       color: colors.surface,
@@ -540,10 +596,33 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                   ],
                 ),
               ),
-              Icon(
-                Icons.history_rounded,
-                color: colors.onSurfaceVariant,
-                size: 20,
+              IconButton(
+                onPressed: () => _toggleRecentFavorite(name),
+                icon: Icon(
+                  _relativeAssignments[name]?['favorite'] == true
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                  color: _relativeAssignments[name]?['favorite'] == true
+                      ? colors.error
+                      : colors.onSurfaceVariant,
+                  size: 20,
+                ),
+                tooltip: 'Favorite',
+              ),
+              PopupMenuButton<String>(
+                tooltip: 'Assign to group',
+                onSelected: (group) => _assignRecentGroup(name, group),
+                itemBuilder: (context) => [
+                  const PopupMenuItem(value: '', child: Text('No group')),
+                  ..._relativeGroups.map(
+                    (group) => PopupMenuItem(value: group, child: Text(group)),
+                  ),
+                ],
+                icon: Icon(
+                  Icons.folder_outlined,
+                  color: colors.onSurfaceVariant,
+                  size: 20,
+                ),
               ),
             ],
           ),

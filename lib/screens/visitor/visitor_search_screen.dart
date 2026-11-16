@@ -7,6 +7,8 @@ import '../../widgets/brand_logo.dart';
 import '../../utils/lot_formatters.dart';
 import 'visitor_qr_with_grave_screen.dart';
 import 'visitor_map_screen.dart';
+import '../../providers/visitor_nav_providers.dart';
+import '../../services/visitor_recent_search_service.dart';
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 class VisitorSearchScreen extends ConsumerStatefulWidget {
@@ -68,12 +70,11 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
             )
           ''',
       );
-      allBurials.sort(
-        (a, b) => (a['name_of_deceased'] ?? '')
-            .toString()
-            .toLowerCase()
-            .compareTo((b['name_of_deceased'] ?? '').toString().toLowerCase()),
-      );
+      allBurials.sort((a, b) {
+        final aId = int.tryParse(a['burial_id']?.toString() ?? '') ?? 0;
+        final bId = int.tryParse(b['burial_id']?.toString() ?? '') ?? 0;
+        return bId.compareTo(aId);
+      });
 
       setState(() {
         _allGraves = List<Map<String, dynamic>>.from(allBurials);
@@ -129,7 +130,31 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
     };
   }
 
+  Future<void> _saveSearch(Map<String, dynamic> burial) async {
+    try {
+      final item = _createSearchResultData(burial);
+      final lot = burial['cemetery_lot'] ?? {};
+      final lotNumber = item['lot_number'];
+      final name = item['name'];
+      await VisitorRecentSearchService.save({
+        'name': name,
+        'details': lotBlockLabel(lot, fallback: '').isNotEmpty
+            ? '${lotBlockLabel(lot)} - Lot $lotNumber'
+            : 'Lot $lotNumber',
+        'lotNumber': lotNumber,
+        'lotId': item['lot_id'],
+        'timestamp': DateTime.now().toIso8601String(),
+        'type': 'deceased',
+        'burialId': item['burial_id'],
+      });
+      ref.read(recentSearchRevisionProvider.notifier).state++;
+    } catch (e) {
+      debugPrint('Error saving recent search: $e');
+    }
+  }
+
   void _saveSearchAndReturn(Map<String, dynamic> burial) {
+    _saveSearch(burial);
     Navigator.pop(context, _createSearchResultData(burial));
   }
 
@@ -159,6 +184,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
         builder: (_) => VisitorMapScreenWithDestination(
           destinationLotId: lot['lot_id'],
           destinationLotNumber: lotReference(lot, fallback: ''),
+          destinationBurialId: burial['burial_id'],
           destinationBurial: Map<String, dynamic>.from(burial),
         ),
       ),
@@ -474,12 +500,15 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                grave['name_of_deceased'] ?? 'Unknown',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w500,
-                                  color: _colors(context).onSurface,
+                              InkWell(
+                                onTap: () => _saveSearch(grave),
+                                child: Text(
+                                  grave['name_of_deceased'] ?? 'Unknown',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w500,
+                                    color: _colors(context).onSurface,
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 6),
@@ -621,12 +650,15 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            grave['name_of_deceased'] ?? 'Unknown',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w500,
-                              color: _colors(context).onSurface,
+                          InkWell(
+                            onTap: () => _saveSearch(grave),
+                            child: Text(
+                              grave['name_of_deceased'] ?? 'Unknown',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
+                                color: _colors(context).onSurface,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 6),
@@ -758,6 +790,7 @@ class _VisitorSearchScreenState extends ConsumerState<VisitorSearchScreen> {
     Map<String, dynamic> burial,
     Map<String, dynamic> lot,
   ) {
+    _saveSearch(burial);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

@@ -14,6 +14,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../services/visitor_map_data_service.dart';
+import '../../services/visitor_recent_search_service.dart';
 import '../../services/gps_tracker.dart';
 import '../../providers/visitor_nav_providers.dart';
 import '../../utils/lot_formatters.dart';
@@ -43,12 +44,14 @@ class _C {
 class VisitorMapScreen extends ConsumerStatefulWidget {
   final int? initialLotId;
   final String? initialLotNumber;
+  final int? initialBurialId;
   final Map<String, dynamic>? initialBurial;
 
   const VisitorMapScreen({
     super.key,
     this.initialLotId,
     this.initialLotNumber,
+    this.initialBurialId,
     this.initialBurial,
   });
 
@@ -62,6 +65,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
   static const double _initialZoom = 19;
   static const double _markerLatSpan = 0.0036;
   static const double _markerLngSpan = 0.0046;
+  static const Color _navigationRouteColor = Color(0xFF1976D2);
 
   bool _isLoading = true;
   bool _hasMapData = false;
@@ -95,6 +99,8 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
   String? _selectedLotNumber;
   Map<String, dynamic>? _selectedMarker;
   Map<String, dynamic>? _selectedGrave;
+  List<({Map<String, dynamic> marker, Map<String, dynamic>? grave})>
+  _mapSearchResults = [];
   bool _showNavigationRoute = false;
   double _currentZoom = _initialZoom;
   final GpsTracker _gps = GpsTracker();
@@ -626,7 +632,13 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
     try {
       final graves = await service.loadGraves(isCurrent: isCurrent);
       if (!isCurrent()) return;
-      setState(() => _gravesByLotId = graves);
+      setState(() {
+        _gravesByLotId = graves;
+        _mapSearchResults = _findMapSearchResults(_searchController.text);
+      });
+      if (widget.initialBurialId != null && _selectedMarker != null) {
+        _selectInitialLot();
+      }
     } catch (_) {
       // Grave records are supplementary; the nested burial records in each
       // marker still provide lot details when this background request fails.
@@ -722,12 +734,10 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
     );
 
     if (marker.isNotEmpty) {
-      _selectMarker(
-        marker,
-        showSheet: true,
-        showRoute: true,
-        grave: _graveFromInitialBurial(),
-      );
+      final grave =
+          _graveForBurialId(marker, widget.initialBurialId) ??
+          _graveFromInitialBurial();
+      _selectMarker(marker, showSheet: true, showRoute: true, grave: grave);
     } else {
       setState(() {
         _selectedLotId = widget.initialLotId;
@@ -912,23 +922,19 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
       _selectedLotNumber = null;
       _showNavigationRoute = false;
       _searchController.clear();
+      _mapSearchResults = [];
     });
   }
 
   void _searchLot(String query) {
     final needle = query.trim().toLowerCase();
     if (needle.isEmpty) return;
-
-    final marker = _lotMarkers.cast<Map<String, dynamic>?>().firstWhere((m) {
-      final lot = m?['cemetery_lot'] ?? {};
-      final status = lot['status']?.toString().toLowerCase() ?? '';
-      return lotSearchText(lot).contains(needle) || status.contains(needle);
-    }, orElse: () => null);
-
-    if (marker == null) {
+    final results = _findMapSearchResults(needle);
+    setState(() => _mapSearchResults = results);
+    if (results.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('No lot found for "$query"'),
+          content: Text('No deceased name or lot found for "$query"'),
           behavior: SnackBarBehavior.floating,
           backgroundColor: _C.error,
           shape: RoundedRectangleBorder(
@@ -936,10 +942,90 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
           ),
         ),
       );
-      return;
+    }
+  }
+
+  List<({Map<String, dynamic> marker, Map<String, dynamic>? grave})>
+  _findMapSearchResults(String query) {
+    final needle = query.trim().toLowerCase();
+    if (needle.isEmpty) return [];
+    final results =
+        <({Map<String, dynamic> marker, Map<String, dynamic>? grave})>[];
+    for (final marker in _lotMarkers) {
+      final lot = marker['cemetery_lot'] is Map
+          ? Map<String, dynamic>.from(marker['cemetery_lot'] as Map)
+          : <String, dynamic>{};
+      final lotMatches =
+          lotSearchText(lot).contains(needle) ||
+          (lot['status']?.toString().toLowerCase().contains(needle) ?? false);
+      var matchedBurial = false;
+      for (final grave in _gravesForMarker(marker)) {
+        final burial = _burialForGrave(grave);
+        final name = burial?['name_of_deceased']?.toString().trim() ?? '';
+        if (name.isEmpty || !name.toLowerCase().contains(needle)) continue;
+        matchedBurial = true;
+        results.add((marker: marker, grave: grave));
+      }
+      if (lotMatches && !matchedBurial) {
+        results.add((marker: marker, grave: null));
+      }
     }
 
-    _selectMarker(marker, showSheet: true, showRoute: true);
+    results.sort((a, b) {
+      final aName = a.grave == null ? '' : _graveTitle(a.grave!).toLowerCase();
+      final bName = b.grave == null ? '' : _graveTitle(b.grave!).toLowerCase();
+      final aStarts = aName.startsWith(needle) ? 0 : 1;
+      final bStarts = bName.startsWith(needle) ? 0 : 1;
+      final byMatch = aStarts.compareTo(bStarts);
+      if (byMatch != 0) return byMatch;
+      if (aName.isEmpty && bName.isEmpty) {
+        final aLot = lotReference(a.marker['cemetery_lot']);
+        final bLot = lotReference(b.marker['cemetery_lot']);
+        return aLot.compareTo(bLot);
+      }
+      if (aName.isEmpty) return 1;
+      if (bName.isEmpty) return -1;
+      return aName.compareTo(bName);
+    });
+    return results.take(20).toList();
+  }
+
+  void _selectMapSearchResult(
+    ({Map<String, dynamic> marker, Map<String, dynamic>? grave}) result,
+  ) {
+    final marker = result.marker;
+    final grave = result.grave;
+    final burial = _burialForGrave(grave);
+    if (burial != null) _saveRecentMapSearch(burial, marker['cemetery_lot']);
+    setState(() {
+      _mapSearchResults = [];
+      _searchController.clear();
+    });
+    _selectMarker(marker, showSheet: true, showRoute: true, grave: grave);
+  }
+
+  Future<void> _saveRecentMapSearch(
+    Map<String, dynamic> burial,
+    dynamic lotValue,
+  ) async {
+    try {
+      final lot = lotValue is Map ? Map<String, dynamic>.from(lotValue) : {};
+      final name = burial['name_of_deceased']?.toString() ?? 'Unknown';
+      final lotNumber = lotReference(lot, fallback: '');
+      await VisitorRecentSearchService.save({
+        'name': name,
+        'details':
+            '${lotBlockLabel(lot, fallback: '')}${lotBlockLabel(lot, fallback: '').isNotEmpty ? ' - ' : ''}Lot $lotNumber',
+        'lotNumber': lotNumber,
+        'lotId': lot['lot_id'],
+        'timestamp': DateTime.now().toIso8601String(),
+        'type': 'deceased',
+        'burialId': burial['burial_id'],
+      });
+      ref.read(recentSearchRevisionProvider.notifier).state++;
+    } catch (e) {
+      debugPrint('Error saving recent map search: $e');
+    }
   }
 
   void _zoomBy(double delta) {
@@ -1083,7 +1169,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
               ),
               _buildDetailRow(
                 Icons.location_on_outlined,
-                'Passed',
+                'Died',
                 _formatDate(burial['death_date']),
                 null,
               ),
@@ -1390,6 +1476,20 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
     return null;
   }
 
+  Map<String, dynamic>? _graveForBurialId(
+    Map<String, dynamic> marker,
+    int? burialId,
+  ) {
+    if (burialId == null) return null;
+    final wanted = burialId.toString();
+    for (final grave in _gravesForMarker(marker)) {
+      final directId = grave['burial_id']?.toString();
+      final nestedId = _burialForGrave(grave)?['burial_id']?.toString();
+      if (directId == wanted || nestedId == wanted) return grave;
+    }
+    return null;
+  }
+
   Map<String, dynamic>? _graveFromInitialBurial() {
     final burial = widget.initialBurial;
     if (burial == null) return null;
@@ -1561,6 +1661,8 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                         child: Stack(
                           children: [
                             _buildSearchBar(),
+                            if (_searchController.text.trim().isNotEmpty)
+                              _buildMapSearchResults(),
                             _buildLegend(),
                             _buildControls(),
                           ],
@@ -1649,6 +1751,11 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
               Expanded(
                 child: TextField(
                   controller: _searchController,
+                  onChanged: (query) {
+                    setState(() {
+                      _mapSearchResults = _findMapSearchResults(query);
+                    });
+                  },
                   onSubmitted: _searchLot,
                   textInputAction: TextInputAction.search,
                   style: const TextStyle(fontSize: 14, color: _C.onSurface),
@@ -1659,16 +1766,101 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                     filled: false,
                     isDense: true,
                   ),
+                  onTapOutside: (_) =>
+                      FocusManager.instance.primaryFocus?.unfocus(),
                 ),
               ),
               IconButton(
                 onPressed: () => _searchLot(_searchController.text),
                 icon: const Icon(
-                  Icons.mic_none_rounded,
+                  Icons.search_rounded,
                   color: _C.onSurfaceVariant,
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMapSearchResults() {
+    final compact = MediaQuery.sizeOf(context).width < 600;
+    return Positioned(
+      top: compact ? 172 : 232,
+      left: compact ? 12 : 24,
+      right: compact ? 62 : null,
+      child: SizedBox(
+        width: compact ? null : 420,
+        child: _glass(
+          borderRadius: 16,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 360),
+            child: _mapSearchResults.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text(
+                      'No matching names or lots found.',
+                      style: TextStyle(color: _C.onSurfaceVariant),
+                    ),
+                  )
+                : ListView.separated(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    itemCount: _mapSearchResults.length,
+                    separatorBuilder: (_, _) => Divider(
+                      height: 1,
+                      indent: 56,
+                      color: _C.outlineVariant.withValues(alpha: 0.7),
+                    ),
+                    itemBuilder: (context, index) {
+                      final result = _mapSearchResults[index];
+                      final lot = result.marker['cemetery_lot'] is Map
+                          ? Map<String, dynamic>.from(
+                              result.marker['cemetery_lot'] as Map,
+                            )
+                          : <String, dynamic>{};
+                      final grave = result.grave;
+                      final burial = _burialForGrave(grave);
+                      final deceased = burial?['name_of_deceased']
+                          ?.toString()
+                          .trim();
+                      final lotLabel = lotReference(
+                        lot,
+                        fallback: 'Unlabeled lot',
+                      );
+                      final title = deceased != null && deceased.isNotEmpty
+                          ? deceased
+                          : lotLabel;
+                      final subtitle = grave == null
+                          ? '${lotBlockLabel(lot)} · Lot $lotLabel'
+                          : '${_graveLabel(grave) ?? 'Grave'} · ${lotBlockLabel(lot)} · Lot $lotLabel';
+                      return ListTile(
+                        dense: true,
+                        leading: Icon(
+                          grave == null
+                              ? Icons.map_outlined
+                              : Icons.person_outline,
+                          color: _C.primary,
+                        ),
+                        title: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: const Icon(
+                          Icons.north_west_rounded,
+                          size: 18,
+                        ),
+                        onTap: () => _selectMapSearchResult(result),
+                      );
+                    },
+                  ),
           ),
         ),
       ),
@@ -1708,7 +1900,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                 label: 'Occupied',
               ),
               SizedBox(height: compact ? 6 : 12),
-              _LegendItem(color: _C.tertiary, label: 'Popular'),
+              _LegendItem(color: _C.tertiary, label: 'Ongoing interment'),
             ],
           ),
         ),
@@ -2262,7 +2454,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
               polylines: [
                 Polyline(
                   points: routePoints,
-                  color: _C.primary,
+                  color: _navigationRouteColor,
                   strokeWidth: 5,
                 ),
               ],
@@ -2776,12 +2968,14 @@ class _SelectedLeafletPin extends StatelessWidget {
 class VisitorMapScreenWithDestination extends StatelessWidget {
   final int? destinationLotId;
   final String? destinationLotNumber;
+  final int? destinationBurialId;
   final Map<String, dynamic>? destinationBurial;
 
   const VisitorMapScreenWithDestination({
     super.key,
     this.destinationLotId,
     this.destinationLotNumber,
+    this.destinationBurialId,
     this.destinationBurial,
   });
 
@@ -2790,6 +2984,7 @@ class VisitorMapScreenWithDestination extends StatelessWidget {
     return VisitorMapScreen(
       initialLotId: destinationLotId,
       initialLotNumber: destinationLotNumber,
+      initialBurialId: destinationBurialId,
       initialBurial: destinationBurial,
     );
   }
