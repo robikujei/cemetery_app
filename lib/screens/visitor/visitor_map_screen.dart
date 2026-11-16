@@ -68,6 +68,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
   static const Color _navigationRouteColor = Color(0xFF1976D2);
 
   bool _isLoading = true;
+  bool _initialDestinationPending = false;
   bool _hasMapData = false;
   bool _loadInProgress = false;
   int _loadGeneration = 0;
@@ -115,6 +116,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
   @override
   void initState() {
     super.initState();
+    _initialDestinationPending = widget.initialLotId != null;
     WidgetsBinding.instance.addObserver(this);
     _gps.addListener(_onGpsChanged);
     _loadMapData();
@@ -576,11 +578,23 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
             _loadingStage = 'Loading cemetery lots… ${markers.length} loaded';
           });
         }
-        if (!initialSelected &&
-            widget.initialLotId != null &&
-            markers.any(
-              (m) => _sameRecordId(_markerLotId(m), widget.initialLotId),
-            )) {
+        if (!initialSelected && widget.initialLotId != null) {
+          final hasInitialMarker = markers.any(
+            (m) => _sameRecordId(_markerLotId(m), widget.initialLotId),
+          );
+          if (!hasInitialMarker) continue;
+
+          // The requested marker can arrive between the larger UI publishing
+          // batches above. Publish its page before selecting it; otherwise the
+          // lookup runs against an older `_lotMarkers` snapshot, falls back to
+          // a lot-number-only card, and never retries.
+          if (_lotMarkers.length != markers.length) {
+            lastPublishedCount = markers.length;
+            setState(() {
+              _lotMarkers = List.of(markers);
+              _loadingStage = 'Loading cemetery lots… ${markers.length} loaded';
+            });
+          }
           initialSelected = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (current()) _selectInitialLot();
@@ -609,6 +623,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
           ? 'The map request timed out. Check your connection and tap Retry.'
           : 'Some map data could not load. Check your connection and tap Retry.';
       setState(() {
+        _initialDestinationPending = false;
         if (_hasMapData) {
           _loadWarning = message;
         } else {
@@ -737,9 +752,13 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
       final grave =
           _graveForBurialId(marker, widget.initialBurialId) ??
           _graveFromInitialBurial();
+      if (_initialDestinationPending) {
+        setState(() => _initialDestinationPending = false);
+      }
       _selectMarker(marker, showSheet: true, showRoute: true, grave: grave);
     } else {
       setState(() {
+        _initialDestinationPending = false;
         _selectedLotId = widget.initialLotId;
         _selectedLotNumber = widget.initialLotNumber;
         _showNavigationRoute = false;
@@ -1610,8 +1629,8 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: _C.background,
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: _C.primary))
+      body: _isLoading || _initialDestinationPending
+          ? _buildDestinationLoading()
           : _errorMessage != null
           ? _buildErrorWidget()
           : Stack(
@@ -1678,6 +1697,26 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                   _buildRouteCard(),
               ],
             ),
+    );
+  }
+
+  Widget _buildDestinationLoading() {
+    final name = widget.initialBurial?['name_of_deceased']?.toString().trim();
+    final target = name == null || name.isEmpty ? 'the selected grave' : name;
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(color: _C.primary),
+          const SizedBox(height: 16),
+          Text(
+            'Locating $target…',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6),
+          const Text('Loading the cemetery map and grave details.'),
+        ],
+      ),
     );
   }
 
