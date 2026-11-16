@@ -186,15 +186,25 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
 
   void _goToMapTab() => ref.read(visitorNavIndexProvider.notifier).state = 1;
 
-  void _navigateToGrave(Map<String, dynamic> search) =>
-      Navigator.of(context).push(
-        _visitorRoute(
-          builder: (_) => VisitorMapScreen(
-            initialLotId: search['lotId'],
-            initialLotNumber: search['lotNumber'],
-          ),
+  void _navigateToGrave(Map<String, dynamic> search) {
+    final burialId = search['burialId'] ?? search['burial_id'];
+    Navigator.of(context).push(
+      _visitorRoute(
+        builder: (_) => VisitorMapScreen(
+          initialLotId: search['lotId'] ?? search['lot_id'],
+          initialLotNumber: search['lotNumber'] ?? search['lot_number'],
+          initialBurialId: burialId,
+          initialBurial: burialId == null
+              ? null
+              : {
+                  'burial_id': burialId,
+                  'name_of_deceased': search['name'] ?? search['deceased_name'],
+                  'lot_id': search['lotId'] ?? search['lot_id'],
+                },
         ),
-      );
+      ),
+    );
+  }
 
   PageRoute<T> _visitorRoute<T>({required WidgetBuilder builder}) =>
       PageRouteBuilder<T>(
