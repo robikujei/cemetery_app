@@ -28,7 +28,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   static final Uri _androidDownloadUri = Uri.parse(
-    'https://github.com/robikujei/cemetery_app/releases/latest/download/GeoGrave.apk',
+    'https://github.com/robikujei/cemetery_app/releases/latest/download/GeoGrave-v1.0.2.apk',
   );
 
   final _emailCtrl = TextEditingController();
