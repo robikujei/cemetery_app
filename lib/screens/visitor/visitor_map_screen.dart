@@ -1629,8 +1629,22 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: _C.background,
-      body: _isLoading || _initialDestinationPending
+      body: _initialDestinationPending
           ? _buildDestinationLoading()
+          : _isLoading
+          ? const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: _C.primary),
+                  SizedBox(height: 16),
+                  Text(
+                    'Loading cemetery map…',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            )
           : _errorMessage != null
           ? _buildErrorWidget()
           : Stack(
