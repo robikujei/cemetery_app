@@ -6,12 +6,10 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-type AdminAction = "create";
-
 type LotOwnerProfilePayload = Record<string, unknown>;
 
 type CreateUserPayload = {
-  action: AdminAction;
+  action: "create";
   name?: string;
   email?: string;
   phone?: string;
@@ -26,6 +24,12 @@ const normalizeRole = (value: unknown) => {
     ? "gate_officer"
     : role;
 };
+
+type ListUsersPayload = {
+  action: "list";
+};
+
+type AdminUserManagementPayload = CreateUserPayload | ListUsersPayload;
 
 const textOrNull = (value: unknown) => {
   const text = String(value ?? "").trim();
@@ -159,7 +163,71 @@ Deno.serve(async (req) => {
     );
   }
 
-  const body = (await req.json()) as CreateUserPayload;
+  const body = (await req.json()) as AdminUserManagementPayload;
+
+  if (body.action === "list") {
+    const users = [];
+    const perPage = 1000;
+
+    for (let page = 1; ; page += 1) {
+      const { data, error } = await adminClient.auth.admin.listUsers({
+        page,
+        perPage,
+      });
+
+      if (error) {
+        return Response.json(
+          { error: `Failed to list users: ${error.message}` },
+          { status: 500, headers: corsHeaders },
+        );
+      }
+
+      users.push(...data.users);
+      if (data.users.length < perPage) break;
+    }
+
+    const userIds = users.map((user) => user.id);
+    const profilesById = new Map<string, Record<string, unknown>>();
+
+    for (let start = 0; start < userIds.length; start += perPage) {
+      const ids = userIds.slice(start, start + perPage);
+      if (ids.length === 0) continue;
+
+      const { data: profiles, error: profilesError } = await adminClient
+        .from("users")
+        .select("*")
+        .in("user_id", ids);
+
+      if (profilesError) {
+        return Response.json(
+          { error: `Failed to load user profiles: ${profilesError.message}` },
+          { status: 500, headers: corsHeaders },
+        );
+      }
+
+      for (const profile of profiles ?? []) {
+        profilesById.set(String(profile.user_id), profile);
+      }
+    }
+
+    return Response.json(
+      {
+        users: users.map((user) => {
+          const profile = profilesById.get(user.id) ?? {};
+          const metadata = user.user_metadata ?? {};
+          return {
+            ...profile,
+            user_id: user.id,
+            name: profile.name ?? metadata.name ?? user.email ?? "Unknown",
+            email: profile.email ?? user.email ?? "",
+            phone: profile.phone ?? metadata.phone ?? "",
+            role: profile.role ?? metadata.role ?? "visitor",
+          };
+        }),
+      },
+      { headers: corsHeaders },
+    );
+  }
 
   if (body.action !== "create") {
     return Response.json(

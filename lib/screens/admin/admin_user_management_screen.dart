@@ -7,37 +7,6 @@ import '../../utils/lot_formatters.dart';
 import '../../utils/lot_pricing.dart';
 import '../../widgets/app_date_field.dart';
 
-const _lotOwnerProfileSelect = '''
-  control_number,
-  first_name,
-  middle_name,
-  last_name,
-  address,
-  occupation,
-  age,
-  civil_status,
-  date_of_birth,
-  gender,
-  spouse_beneficiary,
-  beneficiary_relationship,
-  lot_class_type,
-  block_number,
-  lot_number,
-  number_of_lots,
-  purchase_term,
-  lot_price,
-  interment_fee,
-  certification_fee,
-  burial_permit_fee,
-  total_amount,
-  or_number,
-  receipt_amount,
-  receipt_date,
-  approved_date,
-  approved_by_name,
-  approval_signature
-''';
-
 String? _textOrNull(String? value) {
   final text = value?.trim() ?? '';
   return text.isEmpty ? null : text;
@@ -165,18 +134,11 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
 
     try {
       final supabase = Supabase.instance.client;
-      final results = await Future.wait([
-        supabase
-            .from('users')
-            .select('''
-              user_id,
-              name,
-              email,
-              phone,
-              role,
-              $_lotOwnerProfileSelect
-            ''')
-            .order('name', ascending: true),
+      final results = await Future.wait<dynamic>([
+        supabase.functions.invoke(
+          'admin-user-management',
+          body: const {'action': 'list'},
+        ),
         supabase
             .from('cemetery_lot')
             .select(
@@ -199,16 +161,31 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
         }
       }
 
-      final users = (results[0] as List).map((user) {
-        final row = Map<String, dynamic>.from(user);
-        final ownership = ownershipByUserId[row['user_id']?.toString() ?? ''];
-        if (ownership != null) {
-          row['linked_lot_id'] = ownership['lot_id'];
-          row['linked_ownership_id'] = ownership['ownership_id'];
-          row['linked_total_months'] = ownership['total_months'];
-        }
-        return row;
-      }).toList();
+      final userResponse = results[0] as FunctionResponse;
+      final userData = userResponse.data;
+      if (userData is Map && userData['error'] != null) {
+        throw Exception(userData['error']);
+      }
+      if (userData is! Map || userData['users'] is! List) {
+        throw Exception('The user-management service returned invalid data.');
+      }
+
+      final users =
+          (userData['users'] as List).map((user) {
+            final row = Map<String, dynamic>.from(user);
+            final ownership =
+                ownershipByUserId[row['user_id']?.toString() ?? ''];
+            if (ownership != null) {
+              row['linked_lot_id'] = ownership['lot_id'];
+              row['linked_ownership_id'] = ownership['ownership_id'];
+              row['linked_total_months'] = ownership['total_months'];
+            }
+            return row;
+          }).toList()..sort((a, b) {
+            return (a['name'] ?? '').toString().compareTo(
+              (b['name'] ?? '').toString(),
+            );
+          });
 
       setState(() {
         _users = users;
