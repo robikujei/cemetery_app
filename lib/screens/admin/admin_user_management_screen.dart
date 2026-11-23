@@ -152,6 +152,10 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
             .from('lot_ownership')
             .select('ownership_id, user_id, lot_id, total_months, status')
             .order('ownership_id'),
+        // The auth service only returns people with a Supabase Auth account.
+        // Import/migration records may exist only in the application users
+        // table, and must still be visible to an administrator.
+        supabase.from('users').select('*').order('name'),
       ]);
 
       // A person remains a visitor in authentication after being assigned a
@@ -176,8 +180,30 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
         throw Exception('The user-management service returned invalid data.');
       }
 
+      final databaseUsers = List<Map<String, dynamic>>.from(results[3] as List);
+      final databaseUsersById = <String, Map<String, dynamic>>{
+        for (final user in databaseUsers)
+          if ((user['user_id']?.toString() ?? '').isNotEmpty)
+            user['user_id'].toString(): user,
+      };
+
+      // Merge Auth-backed users with every profile row in the database.  The
+      // database profile wins for display fields because it is the cemetery's
+      // administrative record, while Auth fills any missing account metadata.
+      final usersById = <String, Map<String, dynamic>>{};
+      for (final user in userData['users'] as List) {
+        final authUser = Map<String, dynamic>.from(user);
+        final userId = authUser['user_id']?.toString() ?? '';
+        final profile = databaseUsersById[userId];
+        usersById[userId] = {...authUser, if (profile != null) ...profile};
+      }
+      for (final profile in databaseUsers) {
+        final userId = profile['user_id']?.toString() ?? '';
+        if (userId.isNotEmpty) usersById.putIfAbsent(userId, () => profile);
+      }
+
       final users =
-          (userData['users'] as List).map((user) {
+          usersById.values.map((user) {
             final row = Map<String, dynamic>.from(user);
             final ownerships =
                 ownershipsByUserId[row['user_id']?.toString() ?? ''] ??
