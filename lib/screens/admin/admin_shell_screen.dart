@@ -16,6 +16,7 @@ import 'admin_visitor_logs_screen.dart';
 import 'admin_user_management_screen.dart';
 import 'admin_interment_planner_screen.dart';
 import 'admin_apartment_crypt_grid_screen.dart';
+import '../payment_requests_screen.dart';
 
 class AdminShellScreen extends ConsumerStatefulWidget {
   const AdminShellScreen({super.key});
@@ -29,6 +30,8 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
   int _selected = 0;
   int _mapRefreshToken = 0;
   Map<String, dynamic>? _selectedApartmentCrypt;
+  Map<String, dynamic>? _lotToEdit;
+  int _lotEditorRequestToken = 0;
   final _mapSaveProgress = ValueNotifier<String?>(null);
 
   @override
@@ -214,6 +217,12 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
                   onTap: () => _go(10),
                 ),
                 _NavTile(
+                  selected: _selected == 12,
+                  icon: Icons.receipt_long_outlined,
+                  label: 'Payment Review',
+                  onTap: () => _go(12),
+                ),
+                _NavTile(
                   selected: _selected == 4,
                   icon: Icons.qr_code_scanner_rounded,
                   label: 'Visitor Logs',
@@ -306,6 +315,8 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
       AdminLotsScreen(
         onMenuPressed: _toggleNavigation,
         onLogoutPressed: _logout,
+        initialLot: _lotToEdit,
+        editorRequestToken: _lotEditorRequestToken,
       ),
       const AdminVisitorLogsScreen(),
       const AdminReportsScreen(),
@@ -317,7 +328,17 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
       AdminApartmentCryptGridScreen(
         apartmentCrypt: _selectedApartmentCrypt,
         onBackToMap: () => _go(1),
+        onEditApartmentCrypt: () {
+          final crypt = _selectedApartmentCrypt;
+          if (crypt == null) return;
+          setState(() {
+            _lotToEdit = Map<String, dynamic>.from(crypt);
+            _lotEditorRequestToken++;
+            _selected = 3;
+          });
+        },
       ),
+      const PaymentRequestsScreen(admin: true),
     ],
   );
 
@@ -344,6 +365,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
       9 => 'Profile Settings',
       10 => 'Weekly Interment Planner',
       11 => 'Apartment-Type Crypt Grid',
+      12 => 'Payment Review',
       _ => 'Cemetery Admin',
     };
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../providers/visitor_nav_providers.dart';
 import '../../widgets/brand_logo.dart';
@@ -8,6 +9,22 @@ import 'visitor_home_screen.dart';
 import 'visitor_map_screen.dart';
 import 'visitor_qr_screen.dart';
 import 'visitor_profile_screen.dart';
+import '../lot_owner/lot_owner_home_screen.dart';
+
+/// Ownership is the capability that unlocks the owner dashboard. A user can
+/// keep the visitor experience even if their profile role was previously set
+/// to lot_owner, until a lot is actually assigned to the account.
+final visitorOwnershipAccessProvider = FutureProvider<bool>((ref) async {
+  final user = Supabase.instance.client.auth.currentUser;
+  if (user == null) return false;
+  final ownership = await Supabase.instance.client
+      .from('lot_ownership')
+      .select('ownership_id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle();
+  return ownership != null;
+});
 
 class VisitorShellScreen extends ConsumerWidget {
   const VisitorShellScreen({super.key});
@@ -17,12 +34,16 @@ class VisitorShellScreen extends ConsumerWidget {
     final index = ref.watch(visitorNavIndexProvider);
     void select(int value) =>
         ref.read(visitorNavIndexProvider.notifier).state = value;
-    const screens = [
-      VisitorHomeScreen(),
-      VisitorMapScreen(),
-      VisitorQrScreen(),
-      VisitorProfileScreen(),
+    final hasOwnership =
+        ref.watch(visitorOwnershipAccessProvider).valueOrNull ?? false;
+    final screens = [
+      const VisitorHomeScreen(),
+      const VisitorMapScreen(),
+      const VisitorQrScreen(),
+      const VisitorProfileScreen(),
+      if (hasOwnership) const LotOwnerHomeScreen(embedded: true),
     ];
+    final selectedIndex = index < screens.length ? index : 0;
     final wide = MediaQuery.sizeOf(context).width >= 840;
     final colors = Theme.of(context).colorScheme;
     final body = AnimatedSwitcher(
@@ -41,8 +62,8 @@ class VisitorShellScreen extends ConsumerWidget {
         );
       },
       child: KeyedSubtree(
-        key: ValueKey(index),
-        child: RepaintBoundary(child: screens[index]),
+        key: ValueKey(selectedIndex),
+        child: RepaintBoundary(child: screens[selectedIndex]),
       ),
     );
     return Scaffold(
@@ -62,7 +83,7 @@ class VisitorShellScreen extends ConsumerWidget {
                     extended: true,
                     minExtendedWidth: 224,
                     backgroundColor: Colors.transparent,
-                    selectedIndex: index,
+                    selectedIndex: selectedIndex,
                     onDestinationSelected: select,
                     useIndicator: true,
                     groupAlignment: -0.82,
@@ -87,7 +108,7 @@ class VisitorShellScreen extends ConsumerWidget {
                       padding: EdgeInsets.fromLTRB(20, 18, 20, 24),
                       child: BrandLogo(height: 88),
                     ),
-                    destinations: const [
+                    destinations: [
                       NavigationRailDestination(
                         icon: Icon(CupertinoIcons.house),
                         selectedIcon: Icon(CupertinoIcons.house_fill),
@@ -107,6 +128,12 @@ class VisitorShellScreen extends ConsumerWidget {
                         selectedIcon: Icon(CupertinoIcons.person_fill),
                         label: Text('Profile'),
                       ),
+                      if (hasOwnership)
+                        const NavigationRailDestination(
+                          icon: Icon(CupertinoIcons.square_grid_2x2),
+                          selectedIcon: Icon(CupertinoIcons.square_grid_2x2_fill),
+                          label: Text('My lots'),
+                        ),
                     ],
                   ),
                 ),
@@ -122,7 +149,7 @@ class VisitorShellScreen extends ConsumerWidget {
               ),
               child: BottomNavigationBar(
                 type: BottomNavigationBarType.fixed,
-                currentIndex: index,
+                currentIndex: selectedIndex,
                 onTap: select,
                 backgroundColor: colors.surface,
                 selectedItemColor: colors.primary,
@@ -134,7 +161,7 @@ class VisitorShellScreen extends ConsumerWidget {
                 selectedLabelStyle: const TextStyle(
                   fontWeight: FontWeight.w600,
                 ),
-                items: const [
+                items: [
                   BottomNavigationBarItem(
                     icon: Icon(CupertinoIcons.house),
                     activeIcon: Icon(CupertinoIcons.house_fill),
@@ -154,6 +181,12 @@ class VisitorShellScreen extends ConsumerWidget {
                     activeIcon: Icon(CupertinoIcons.person_fill),
                     label: 'Profile',
                   ),
+                  if (hasOwnership)
+                    const BottomNavigationBarItem(
+                      icon: Icon(CupertinoIcons.square_grid_2x2),
+                      activeIcon: Icon(CupertinoIcons.square_grid_2x2_fill),
+                      label: 'My Lots',
+                    ),
                 ],
               ),
             ),

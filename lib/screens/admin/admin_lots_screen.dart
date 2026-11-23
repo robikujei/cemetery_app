@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../services/admin_delete_service.dart';
 import '../../services/admin_grave_service.dart';
+import '../../services/lot_price_catalog_service.dart';
 import '../../services/supabase_pagination_service.dart';
 import '../../utils/lot_formatters.dart';
 import '../../utils/lot_pricing.dart';
@@ -18,11 +19,13 @@ class AdminLotsScreen extends ConsumerStatefulWidget {
     this.onMenuPressed,
     this.onLogoutPressed,
     this.initialLot,
+    this.editorRequestToken = 0,
   });
 
   final VoidCallback? onMenuPressed;
   final VoidCallback? onLogoutPressed;
   final Map<String, dynamic>? initialLot;
+  final int editorRequestToken;
 
   @override
   ConsumerState<AdminLotsScreen> createState() => _AdminLotsScreenState();
@@ -33,6 +36,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
   List<Map<String, dynamic>> _lots = [];
   List<Map<String, dynamic>> _filteredLots = [];
   List<Map<String, dynamic>> _lotOwners = [];
+  List<LotPrice> _priceCatalog = List.of(lotPriceCatalog);
   bool _isLoading = true;
   String? _errorMessage;
   String _searchQuery = '';
@@ -66,6 +70,26 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void didUpdateWidget(AdminLotsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final newLotId = widget.initialLot?['lot_id']?.toString();
+    if (newLotId == null ||
+        widget.editorRequestToken == oldWidget.editorRequestToken ||
+        _lots.isEmpty) {
+      return;
+    }
+    final requestedLot = _lots.firstWhere(
+      (lot) => lot['lot_id']?.toString() == newLotId,
+      orElse: () => <String, dynamic>{},
+    );
+    if (requestedLot.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showEditDialog(requestedLot);
+      });
+    }
   }
 
   @override
@@ -113,12 +137,17 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
           orderColumn: 'ownership_id',
         ),
         _loadRegisterDetails(),
+        LotPriceCatalogService.load(),
       ]);
-      final lots = results[0];
-      final burialRows = results[1];
-      final ownershipRows = results[2];
+      final lots = List<Map<String, dynamic>>.from(results[0] as List);
+      final burialRows = List<Map<String, dynamic>>.from(results[1] as List);
+      final ownershipRows = List<Map<String, dynamic>>.from(results[2] as List);
+      final registerDetails = List<Map<String, dynamic>>.from(
+        results[3] as List,
+      );
       final registerByLot = {
-        for (final row in results[3]) row['lot_id'].toString(): row['details'],
+        for (final row in registerDetails)
+          row['lot_id'].toString(): row['details'],
       };
       final gravesByLotId = await AdminGraveService.loadGravesByLotIds(
         lots.map((lot) => lot['lot_id']),
@@ -163,6 +192,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
 
       setState(() {
         _lotOwners = List<Map<String, dynamic>>.from(owners);
+        _priceCatalog = List<LotPrice>.from(results[4] as List<LotPrice>);
         _lots = lotsWithDetails;
         _filteredLots = List<Map<String, dynamic>>.from(lotsWithDetails);
         _currentPage = 0;
@@ -186,6 +216,15 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  LotPrice? _priceForType(String? value) {
+    final normalized = value?.trim().toLowerCase();
+    if (normalized == null || normalized.isEmpty) return null;
+    for (final price in _priceCatalog) {
+      if (price.type.toLowerCase() == normalized) return price;
+    }
+    return null;
   }
 
   Future<List<Map<String, dynamic>>> _loadRegisterDetails() async {
@@ -327,14 +366,14 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    initialValue: lotPriceForType(
+                    initialValue: _priceForType(
                       _lotClassTypeController.text,
                     )?.type,
                     decoration: _fieldDecoration(
                       labelText: 'Lot Class / Type',
                       icon: Icons.category_outlined,
                     ),
-                    items: lotPriceCatalog
+                    items: _priceCatalog
                         .map(
                           (entry) => DropdownMenuItem(
                             value: entry.type,
@@ -343,7 +382,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
                         )
                         .toList(),
                     onChanged: (value) {
-                      final pricing = lotPriceForType(value);
+                      final pricing = _priceForType(value);
                       setDialogState(() {
                         _lotClassTypeController.text = value ?? '';
                         _priceController.text =
@@ -354,7 +393,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
                   const SizedBox(height: 12),
                   Builder(
                     builder: (context) {
-                      final pricing = lotPriceForType(
+                      final pricing = _priceForType(
                         _lotClassTypeController.text,
                       );
                       return InputDecorator(
@@ -850,7 +889,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
       _showError('Lot number is required');
       return false;
     }
-    if (lotPriceForType(_lotClassTypeController.text) == null) {
+    if (_priceForType(_lotClassTypeController.text) == null) {
       _showError('Please select a valid lot type');
       return false;
     }
@@ -895,7 +934,7 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
           ? _defaultLotLabel(blockNumber: blockNumber, lotNumber: lotNumber)
           : _lotLabelController.text.trim();
       final lotClassType = _lotClassTypeController.text.trim();
-      final pricing = lotPriceForType(lotClassType)!;
+      final pricing = _priceForType(lotClassType)!;
       final data = {
         'block_number': blockNumber.isEmpty ? null : blockNumber,
         'lot_number': lotNumber,
@@ -1119,6 +1158,17 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
             ),
           ),
         );
+        final priceCatalogButton = FilledButton.icon(
+          onPressed: _showPriceCatalogDialog,
+          icon: const Icon(Icons.sell_outlined),
+          label: const Text('Lot prices'),
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
 
         if (isNarrow) {
           return Column(
@@ -1126,6 +1176,8 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
             children: [
               titleBlock,
               const SizedBox(height: 16),
+              SizedBox(width: double.infinity, child: priceCatalogButton),
+              const SizedBox(height: 10),
               SizedBox(width: double.infinity, child: refreshButton),
             ],
           );
@@ -1136,11 +1188,153 @@ class _AdminLotsScreenState extends ConsumerState<AdminLotsScreen> {
           children: [
             Expanded(child: titleBlock),
             const SizedBox(width: 16),
+            priceCatalogButton,
+            const SizedBox(width: 12),
             refreshButton,
           ],
         );
       },
     );
+  }
+
+  Future<void> _showPriceCatalogDialog() async {
+    final atNeedControllers = <String, TextEditingController>{
+      for (final price in _priceCatalog)
+        price.type: TextEditingController(text: price.atNeed.toStringAsFixed(2)),
+    };
+    final preNeedControllers = <String, TextEditingController>{
+      for (final price in _priceCatalog)
+        price.type: TextEditingController(text: price.preNeed.toStringAsFixed(2)),
+    };
+
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, setDialogState) => AlertDialog(
+            backgroundColor: _colors(dialogContext).surfaceContainer,
+            surfaceTintColor: Colors.transparent,
+            title: const Text('Lot price catalogue'),
+            content: SizedBox(
+              width: 560,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Set the at-need and pre-need prices for each lot type. Saving updates existing lots of that type.',
+                      style: TextStyle(
+                        color: _colors(dialogContext).onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ..._priceCatalog.map(
+                      (price) => Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              price.type,
+                              style: const TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: atNeedControllers[price.type],
+                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    decoration: const InputDecoration(
+                                      labelText: 'At-need price',
+                                      prefixText: 'PHP ',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: TextField(
+                                    controller: preNeedControllers[price.type],
+                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    decoration: const InputDecoration(
+                                      labelText: 'Pre-need price',
+                                      prefixText: 'PHP ',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  final changes = <LotPrice>[];
+                  for (final price in _priceCatalog) {
+                    final atNeed = double.tryParse(
+                      atNeedControllers[price.type]!.text.trim(),
+                    );
+                    final preNeed = double.tryParse(
+                      preNeedControllers[price.type]!.text.trim(),
+                    );
+                    if (atNeed == null || preNeed == null || atNeed < 0 || preNeed < 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Enter valid, non-negative prices.')),
+                      );
+                      return;
+                    }
+                    if (atNeed != price.atNeed || preNeed != price.preNeed) {
+                      changes.add(LotPrice(type: price.type, atNeed: atNeed, preNeed: preNeed));
+                    }
+                  }
+                  if (changes.isEmpty) {
+                    Navigator.of(dialogContext).pop();
+                    return;
+                  }
+                  try {
+                    for (final price in changes) {
+                      await LotPriceCatalogService.save(price);
+                    }
+                    if (!mounted) return;
+                    await _refreshLots();
+                    if (!mounted) return;
+                    Navigator.of(dialogContext).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Lot prices updated.')),
+                    );
+                  } catch (error) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Could not update lot prices: $error')),
+                    );
+                  }
+                },
+                child: const Text('Save prices'),
+              ),
+            ],
+          ),
+        ),
+      );
+    } finally {
+      for (final controller in atNeedControllers.values) {
+        controller.dispose();
+      }
+      for (final controller in preNeedControllers.values) {
+        controller.dispose();
+      }
+    }
   }
 
   Widget _buildPaginationControls() {

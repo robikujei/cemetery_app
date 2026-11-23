@@ -3,17 +3,18 @@ import 'package:flutter/material.dart';
 import '../../services/admin_grave_service.dart';
 import '../../utils/apartment_crypt.dart';
 import '../../utils/lot_formatters.dart';
-import 'admin_lots_screen.dart';
 
 class AdminApartmentCryptGridScreen extends StatefulWidget {
   const AdminApartmentCryptGridScreen({
     super.key,
     this.apartmentCrypt,
     this.onBackToMap,
+    this.onEditApartmentCrypt,
   });
 
   final Map<String, dynamic>? apartmentCrypt;
   final VoidCallback? onBackToMap;
+  final VoidCallback? onEditApartmentCrypt;
 
   @override
   State<AdminApartmentCryptGridScreen> createState() =>
@@ -110,14 +111,12 @@ class _AdminApartmentCryptGridScreenState
   }
 
   Future<void> _editSlot(int slot) async {
-    final result = await Navigator.of(context).push<int>(
-      MaterialPageRoute(
-        builder: (_) => AdminLotsScreen(initialLot: widget.apartmentCrypt),
-      ),
-    );
-    if (result != null) await _loadGraves();
-    return;
-    // Face labels remain managed by the dedicated crypt-label workflow below.
+    // The general lot editor is hosted by the admin shell so its navigation
+    // remains available; do not push it as a standalone route here.
+    if (widget.onEditApartmentCrypt != null) {
+      widget.onEditApartmentCrypt!();
+      return;
+    }
     final lotId = _lotId;
     if (lotId == null) return;
     final code = apartmentCryptSlotCode(_wing, slot);
@@ -254,7 +253,7 @@ class _AdminApartmentCryptGridScreenState
                         style: Theme.of(context).textTheme.headlineSmall,
                       ),
                       Text(
-                        'Apartment crypt grid - 20 columns by 5 levels per wing',
+                        'Apartment Crypt · 20 columns × 5 levels per wing',
                         style: TextStyle(color: colors.onSurfaceVariant),
                       ),
                     ],
@@ -275,13 +274,14 @@ class _AdminApartmentCryptGridScreenState
               children: [
                 SegmentedButton<String>(
                   segments: const [
-                    ButtonSegment(value: 'A', label: Text('Wing A')),
-                    ButtonSegment(value: 'B', label: Text('Wing B')),
+                    ButtonSegment(value: 'A', label: Text('Wing A · Left')),
+                    ButtonSegment(value: 'B', label: Text('Wing B · Right')),
                   ],
                   selected: {_wing},
                   onSelectionChanged: (value) =>
                       setState(() => _wing = value.first),
                 ),
+                _WingOrientationIndicator(activeWing: _wing),
                 Text('$savedCount of 100 crypt labels saved'),
                 const _StatusLegend(),
               ],
@@ -387,13 +387,13 @@ class _AdminApartmentCryptGridScreenState
                 const Icon(Icons.apartment_rounded, size: 64),
                 const SizedBox(height: 16),
                 Text(
-                  'Select an apartment crypt on the map',
+              'Select an Apartment Crypt on the map',
                   style: Theme.of(context).textTheme.headlineSmall,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Its Wing A and Wing B crypt grid will open here automatically.',
+                  'Wing A is displayed on the left and Wing B on the right, with 100 faces in each wing.',
                   textAlign: TextAlign.center,
                 ),
                 if (widget.onBackToMap != null) ...[
@@ -409,6 +409,44 @@ class _AdminApartmentCryptGridScreenState
           ),
         ),
       ),
+    );
+  }
+}
+
+class _WingOrientationIndicator extends StatelessWidget {
+  const _WingOrientationIndicator({required this.activeWing});
+
+  final String activeWing;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    Widget wing(String code, String position, Color color) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: activeWing == code ? color : colors.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: activeWing == code ? color : colors.outlineVariant),
+      ),
+      child: Text(
+        'Wing $code · $position',
+        style: TextStyle(
+          color: activeWing == code ? Colors.white : colors.onSurfaceVariant,
+          fontWeight: FontWeight.w700,
+          fontSize: 12,
+        ),
+      ),
+    );
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        wing('A', 'LEFT', const Color(0xFF1565C0)),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4),
+          child: Icon(Icons.arrow_forward_rounded, size: 16),
+        ),
+        wing('B', 'RIGHT', const Color(0xFF7B1FA2)),
+      ],
     );
   }
 }

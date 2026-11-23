@@ -18,17 +18,11 @@ import '../payment_requests_screen.dart';
 import '../../services/supabase_pagination_service.dart';
 import '../../utils/lot_formatters.dart';
 import '../../utils/lot_pricing.dart';
+import '../../utils/phone_input.dart';
 import '../../utils/map_feature_geometry.dart';
 import '../../utils/map_bounds_index.dart';
 
-const _background = AppColors.background;
-const _surface = Color(0xFFFFFFFF);
-const _surfaceLow = AppColors.surfaceLow;
-const _primary = AppColors.brandDark;
-const _primaryContainer = AppColors.brandLight;
 const _onSurface = AppColors.text;
-const _onSurfaceVariant = AppColors.textSecondary;
-const _outlineVariant = AppColors.border;
 
 const _lotOwnerProfileSelect = '''
   control_number,
@@ -62,13 +56,30 @@ const _lotOwnerProfileSelect = '''
 ''';
 
 class LotOwnerHomeScreen extends ConsumerStatefulWidget {
-  const LotOwnerHomeScreen({super.key});
+  const LotOwnerHomeScreen({super.key, this.embedded = false});
+
+  /// When shown from the Visitor shell, only the ownership dashboard is
+  /// rendered; visitor navigation remains the single navigation system.
+  final bool embedded;
 
   @override
   ConsumerState<LotOwnerHomeScreen> createState() => _LotOwnerHomeScreenState();
 }
 
 class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
+  // Keep the established dashboard layout, but resolve its palette from the
+  // active theme so the owner experience is legible in both light and dark
+  // modes like the visitor and admin areas.
+  ColorScheme get _colors => Theme.of(context).colorScheme;
+  Color get _background => _colors.surfaceContainer;
+  Color get _surface => _colors.surface;
+  Color get _surfaceLow => _colors.surfaceContainerLow;
+  Color get _primary => _colors.primary;
+  Color get _primaryContainer => _colors.primaryContainer;
+  Color get _onSurface => _colors.onSurface;
+  Color get _onSurfaceVariant => _colors.onSurfaceVariant;
+  Color get _outlineVariant => _colors.outlineVariant;
+
   List<Map<String, dynamic>> _ownedLots = [];
   List<Map<String, dynamic>> _availableLots = [];
   bool _isLoading = true;
@@ -320,7 +331,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Visit the cemetery office',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
@@ -328,7 +339,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'Please visit the cemetery office at the cemetery location to inquire about this lot and its availability.',
                     style: TextStyle(color: _onSurfaceVariant, height: 1.35),
                   ),
@@ -404,6 +415,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                       icon: Icons.phone_outlined,
                     ),
                     keyboardType: TextInputType.phone,
+                    inputFormatters: phoneInputFormatters,
                   ),
                   const Divider(height: 32),
                   const Text(
@@ -480,15 +492,15 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
       fillColor: _surface,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(20),
-        borderSide: const BorderSide(color: _outlineVariant),
+        borderSide: BorderSide(color: _outlineVariant),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(20),
-        borderSide: const BorderSide(color: _outlineVariant),
+        borderSide: BorderSide(color: _outlineVariant),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(20),
-        borderSide: const BorderSide(color: _primary, width: 1.4),
+        borderSide: BorderSide(color: _primary, width: 1.4),
       ),
     );
   }
@@ -604,6 +616,11 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.embedded) {
+      return _isLoading
+          ? Center(child: CircularProgressIndicator(color: _primary))
+          : _buildMyLotsTab();
+    }
     return DefaultTabController(
       length: 3,
       child: Scaffold(
@@ -618,7 +635,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
           elevation: 0,
           scrolledUnderElevation: 1,
           shadowColor: const Color(0x1A000000),
-          titleTextStyle: const TextStyle(
+          titleTextStyle: TextStyle(
             color: _primary,
             fontSize: 20,
             fontWeight: FontWeight.w600,
@@ -638,7 +655,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
             ),
             IconButton(
               icon: _isRefreshing
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 22,
                       height: 22,
                       child: CircularProgressIndicator(
@@ -702,7 +719,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
           ),
         ),
         body: _isLoading
-            ? const Center(child: CircularProgressIndicator(color: _primary))
+            ? Center(child: CircularProgressIndicator(color: _primary))
             : TabBarView(
                 children: [
                   _buildMyLotsTab(),
@@ -731,7 +748,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                   const SizedBox(height: 16),
                   Text(
                     'No lots owned yet',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: _onSurface,
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
@@ -740,7 +757,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                   const SizedBox(height: 8),
                   Text(
                     'Browse available lots in the Shop tab',
-                    style: const TextStyle(color: _onSurfaceVariant),
+                    style: TextStyle(color: _onSurfaceVariant),
                   ),
                 ],
               ),
@@ -757,17 +774,23 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
             onRefresh: _refreshData,
             child: ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: _ownedLots.length + 2,
+              itemCount: _ownedLots.length + 3,
               itemBuilder: (context, index) {
-                if (index == 0) return _buildOwnerSummaryCard();
+                if (index == 0) return _buildOwnerHero();
                 if (index == 1) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: _buildOwnerSummaryCard(),
+                  );
+                }
+                if (index == 2) {
                   return Padding(
                     padding: const EdgeInsets.only(top: 12, bottom: 16),
                     child: _buildPurchaserProfileCard(),
                   );
                 }
 
-                final ownership = _ownedLots[index - 2];
+                final ownership = _ownedLots[index - 3];
                 final lot = ownership['cemetery_lot'] ?? {};
                 final locationText = lotMeta(lot).isEmpty
                     ? lotBlockLabel(lot)
@@ -798,7 +821,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                       ListTile(
                         leading: CircleAvatar(
                           backgroundColor: _primaryContainer,
-                          child: const Icon(Icons.location_on, color: _primary),
+                          child: Icon(Icons.location_on, color: _primary),
                         ),
                         title: Text(
                           'Lot ${lotReference(lot)}',
@@ -846,6 +869,63 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildOwnerHero() {
+    final colors = _colors;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            colors.primary,
+            colors.primary.withValues(alpha: 0.72),
+          ],
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Welcome back, $_userName',
+            style: TextStyle(
+              color: colors.onPrimary,
+              fontSize: 28,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${_ownedLots.length} ${_ownedLots.length == 1 ? 'lot' : 'lots'} in your account. Review details, payments, and available lots below.',
+            style: TextStyle(
+              color: colors.onPrimary.withValues(alpha: 0.86),
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const PaymentRequestsScreen(),
+                ),
+              );
+              if (mounted) await _refreshData();
+            },
+            icon: const Icon(Icons.receipt_long_outlined),
+            label: const Text('Submit payment receipt'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: colors.onPrimary,
+              side: BorderSide(color: colors.onPrimary.withValues(alpha: 0.7)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1022,7 +1102,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
             width: 132,
             child: Text(
               label,
-              style: const TextStyle(color: _onSurfaceVariant, fontSize: 12),
+              style: TextStyle(color: _onSurfaceVariant, fontSize: 12),
             ),
           ),
           const SizedBox(width: 10),
@@ -1053,7 +1133,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
       return Column(
         children: [
           Expanded(
-            child: const Center(
+            child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -1113,7 +1193,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
                     ),
                     leading: CircleAvatar(
                       backgroundColor: _primaryContainer,
-                      child: const Icon(Icons.location_on, color: _primary),
+                      child: Icon(Icons.location_on, color: _primary),
                     ),
                     title: Text(
                       'Lot ${lotReference(lot)}',
@@ -1202,6 +1282,12 @@ class _LotMapPreview extends StatefulWidget {
 }
 
 class _LotMapPreviewState extends State<_LotMapPreview> {
+  ColorScheme get _colors => Theme.of(context).colorScheme;
+  Color get _primary => _colors.primary;
+  Color get _onSurface => _colors.onSurface;
+  Color get _onSurfaceVariant => _colors.onSurfaceVariant;
+  Color get _outlineVariant => _colors.outlineVariant;
+
   static final LatLng _tagumMapCenter = LatLng(7.318551542, 125.662934679);
   static const double _initialZoom = 19;
   static const double _mapLatSpan = 0.0036;
@@ -1352,7 +1438,7 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: _primary));
+      return Center(child: CircularProgressIndicator(color: _primary));
     }
     if (_errorMessage != null) {
       return Center(
@@ -1361,7 +1447,7 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
           child: Text(
             'Unable to load map preview\n$_errorMessage',
             textAlign: TextAlign.center,
-            style: const TextStyle(color: _onSurfaceVariant),
+            style: TextStyle(color: _onSurfaceVariant),
           ),
         ),
       );
@@ -1419,7 +1505,7 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
                       vertical: 1,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.92),
+                      color: _colors.surface.withValues(alpha: 0.92),
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(color: color.withValues(alpha: 0.35)),
                     ),
@@ -1506,15 +1592,15 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.94),
+              color: _colors.surface.withValues(alpha: 0.94),
               borderRadius: BorderRadius.circular(999),
               border: Border.all(color: _outlineVariant.withValues(alpha: 0.5)),
             ),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.map_outlined, size: 17, color: _onSurface),
-                SizedBox(width: 7),
+                const SizedBox(width: 7),
                 Text(
                   'Cemetery Map',
                   style: TextStyle(
@@ -1532,7 +1618,7 @@ class _LotMapPreviewState extends State<_LotMapPreview> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.94),
+              color: _colors.surface.withValues(alpha: 0.94),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: _outlineVariant.withValues(alpha: 0.5)),
             ),
@@ -1588,6 +1674,7 @@ class _AvailableLotMapCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     final lotNumber = lotReference(lot);
     final meta = lotMeta(lot);
     final locationText = meta.isEmpty ? lotBlockLabel(lot) : meta;
@@ -1596,9 +1683,9 @@ class _AvailableLotMapCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.96),
+        color: colors.surface.withValues(alpha: 0.96),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _outlineVariant.withValues(alpha: 0.5)),
+        border: Border.all(color: colors.outlineVariant),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.12),
@@ -1613,10 +1700,10 @@ class _AvailableLotMapCard extends StatelessWidget {
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: _primaryContainer,
+              color: colors.primaryContainer,
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Icon(Icons.location_on_rounded, color: _primary),
+            child: Icon(Icons.location_on_rounded, color: colors.onPrimaryContainer),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1626,8 +1713,8 @@ class _AvailableLotMapCard extends StatelessWidget {
               children: [
                 Text(
                   'Lot $lotNumber',
-                  style: const TextStyle(
-                    color: _onSurface,
+                  style: TextStyle(
+                    color: colors.onSurface,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1637,16 +1724,16 @@ class _AvailableLotMapCard extends StatelessWidget {
                   locationText,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _onSurfaceVariant,
+                  style: TextStyle(
+                    color: colors.onSurfaceVariant,
                     fontSize: 12,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Price: $price',
-                  style: const TextStyle(
-                    color: _primary,
+                  style: TextStyle(
+                    color: colors.primary,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1658,8 +1745,8 @@ class _AvailableLotMapCard extends StatelessWidget {
           ElevatedButton(
             onPressed: onInquire,
             style: ElevatedButton.styleFrom(
-              backgroundColor: _primary,
-              foregroundColor: Colors.white,
+              backgroundColor: colors.primary,
+              foregroundColor: colors.onPrimary,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
@@ -1670,7 +1757,7 @@ class _AvailableLotMapCard extends StatelessWidget {
           IconButton(
             onPressed: onClose,
             icon: const Icon(Icons.close_rounded),
-            color: _onSurfaceVariant,
+            color: colors.onSurfaceVariant,
             tooltip: 'Close',
           ),
         ],
@@ -1756,7 +1843,7 @@ class _LegendDot extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 6),
-        Text(label, style: const TextStyle(fontSize: 12, color: _onSurface)),
+        Text(label, style: TextStyle(fontSize: 12, color: _onSurface)),
       ],
     );
   }

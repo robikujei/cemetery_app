@@ -25,6 +25,7 @@ class ViewportLotLayer extends StatefulWidget {
   final List<Map<String, dynamic>> markers;
   final LayerHitNotifier<String> hitNotifier;
   final Object? selectedLotId;
+
   /// Lots with an active interment today are shown in orange on the visitor map.
   final Set<String> scheduledLotIds;
   final double detailZoom;
@@ -312,9 +313,7 @@ class _LotSnapshot {
     final lot = marker['cemetery_lot'];
     geometry = lot is Map ? lot['polygon_geo'] : null;
     id = lot is Map ? lot['lot_id']?.toString() : null;
-    status = lot is Map
-        ? lot['status']?.toString() ?? 'Available'
-        : 'Available';
+    status = lot is Map ? effectiveLotStatus(lot) : 'Available';
     isApartmentCrypt =
         lot is Map && isApartmentCryptLot(Map<String, dynamic>.from(lot));
   }
@@ -327,9 +326,7 @@ class _LotSnapshot {
     final lot = marker['cemetery_lot'];
     final otherGeometry = lot is Map ? lot['polygon_geo'] : null;
     final otherId = lot is Map ? lot['lot_id']?.toString() : null;
-    final otherStatus = lot is Map
-        ? lot['status']?.toString() ?? 'Available'
-        : 'Available';
+    final otherStatus = lot is Map ? effectiveLotStatus(lot) : 'Available';
     final otherIsApartmentCrypt =
         lot is Map && isApartmentCryptLot(Map<String, dynamic>.from(lot));
     // Geometry values are immutable snapshots from Supabase; edits replace them.

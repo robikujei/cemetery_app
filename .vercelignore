@@ -3,6 +3,7 @@
 !/build
 /build/*
 !/build/web
+!/build/web/**
 # Vercel's generated output metadata must not be uploaded from inside the
 # Flutter build directory on the next deployment.
 /build/web/.vercel

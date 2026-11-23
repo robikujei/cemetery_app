@@ -8,7 +8,6 @@ import '../screens/auth/register_screen.dart';
 import '../screens/visitor/visitor_shell_screen.dart' deferred as visitor;
 import '../screens/admin/admin_shell_screen.dart' deferred as admin;
 import '../screens/guard/qr_scanner_screen.dart' deferred as guard;
-import '../screens/lot_owner/lot_owner_home_screen.dart' deferred as owner;
 import '../services/user_profile_service.dart';
 import '../utils/app_role.dart';
 
@@ -94,8 +93,8 @@ final router = GoRouter(
     GoRoute(
       path: '/lot-owner',
       builder: (context, state) => DeferredScreen(
-        load: owner.loadLibrary,
-        builder: (_) => owner.LotOwnerHomeScreen(),
+        load: visitor.loadLibrary,
+        builder: (_) => visitor.VisitorShellScreen(),
       ),
     ),
   ],

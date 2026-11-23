@@ -1,5 +1,6 @@
 import '../../core/app_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
@@ -8,6 +9,8 @@ import '../../services/audit_service.dart';
 import '../../utils/lot_formatters.dart';
 import '../../widgets/app_date_field.dart';
 import '../../utils/lot_pricing.dart';
+import '../../utils/apartment_crypt.dart';
+import '../../utils/phone_input.dart';
 import 'admin_map_manager_screen.dart';
 
 class AdminBurialRecordsScreen extends ConsumerStatefulWidget {
@@ -33,9 +36,10 @@ class AdminBurialRecordsScreen extends ConsumerStatefulWidget {
 
 class _AdminBurialRecordsScreenState
     extends ConsumerState<AdminBurialRecordsScreen> {
-  static final _burialCategories = lotPriceCatalog
-      .map((lot) => lot.type)
-      .toList(growable: false);
+  static final _burialCategories = [
+    ...lotPriceCatalog.map((lot) => lot.type),
+    'Apartment-Type Crypt',
+  ];
 
   List<Map<String, dynamic>> _burialRecords = [];
   List<Map<String, dynamic>> _filteredRecords = [];
@@ -43,6 +47,10 @@ class _AdminBurialRecordsScreenState
   String? _errorMessage;
   static const int _pageSize = 30;
   int _currentPage = 0;
+  final _recordSearchController = TextEditingController();
+  String _categoryFilter = 'All';
+  String _lotFilter = 'All';
+  String _sortOrder = 'Death date (newest)';
 
   int get _pageCount => _filteredRecords.isEmpty
       ? 1
@@ -100,6 +108,29 @@ class _AdminBurialRecordsScreenState
   String? _editingId;
   Map<String, dynamic>? _selectedLot;
 
+  bool get _selectedLotIsCrypt =>
+      _selectedLot != null && isApartmentCryptLot(_selectedLot!);
+
+  bool get _selectedLotIsAssigned => _selectedLot?['lot_id'] != null;
+
+  bool get _selectedLotIsLawn {
+    if (_selectedLot == null || _selectedLotIsCrypt) return false;
+    final type =
+        _selectedLot!['lot_class_type']?.toString().toLowerCase() ?? '';
+    return type.contains('lawn') ||
+        type.contains('regular') ||
+        type.contains('prime') ||
+        type.contains('corner') ||
+        (type.isEmpty && _selectedLotIsAssigned);
+  }
+
+  String? _burialCategoryForLot(Map<String, dynamic>? lot, {String? fallback}) {
+    if (lot == null) return fallback;
+    if (isApartmentCryptLot(lot)) return 'Apartment-Type Crypt';
+    final lotType = lot['lot_class_type']?.toString();
+    return _burialCategories.contains(lotType) ? lotType : fallback;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -138,6 +169,7 @@ class _AdminBurialRecordsScreenState
     _orNumberController.dispose();
     _intermentTotalController.dispose();
     _paymentDateController.dispose();
+    _recordSearchController.dispose();
     super.dispose();
   }
 
@@ -193,6 +225,10 @@ class _AdminBurialRecordsScreenState
 
       final informantsResult = await _fetchInformants(supabase);
       final informantList = informantsResult.items;
+      final relationshipsByBurialId = await _fetchInformantRelationships(
+        supabase,
+        records.map((record) => record['burial_id']),
+      );
       final informantMap = <String, Map<String, dynamic>>{};
       for (final inf in informantList) {
         informantMap[inf['informant_id'].toString()] = inf;
@@ -205,6 +241,8 @@ class _AdminBurialRecordsScreenState
         if (infId != null && informantMap.containsKey(infId.toString())) {
           mutable['informant'] = informantMap[infId.toString()];
         }
+        mutable['informant_relationship'] =
+            relationshipsByBurialId[mutable['burial_id']?.toString()];
         return mutable;
       }).toList();
 
@@ -221,6 +259,28 @@ class _AdminBurialRecordsScreenState
         _errorMessage = 'Error loading data: $e';
         _isLoading = false;
       });
+    }
+  }
+
+  Future<Map<String, String?>> _fetchInformantRelationships(
+    SupabaseClient supabase,
+    Iterable<dynamic> burialIds,
+  ) async {
+    final ids = burialIds.whereType<num>().map((id) => id.toInt()).toList();
+    if (ids.isEmpty) return {};
+    try {
+      final rows = await supabase
+          .from('burial_informant_relationships')
+          .select('burial_id, relationship_to_deceased')
+          .inFilter('burial_id', ids);
+      return {
+        for (final row in rows)
+          row['burial_id'].toString():
+              row['relationship_to_deceased']?.toString(),
+      };
+    } on PostgrestException catch (error) {
+      if (_isMissingTableError(error)) return {};
+      rethrow;
     }
   }
 
@@ -494,12 +554,10 @@ class _AdminBurialRecordsScreenState
     return true;
   }
 
-  void _filterRecords(String query) {
+  void _applyRecordFilters() {
+    final query = _recordSearchController.text.trim().toLowerCase();
     setState(() {
-      if (query.isEmpty) {
-        _filteredRecords = List.from(_burialRecords);
-      } else {
-        _filteredRecords = _burialRecords.where((record) {
+      _filteredRecords = _burialRecords.where((record) {
           final name = record['name_of_deceased']?.toLowerCase() ?? '';
           final lotText = lotSearchText(record['cemetery_lot']);
           final informant = record['informant'];
@@ -509,16 +567,134 @@ class _AdminBurialRecordsScreenState
           final category =
               record['burial_category']?.toString().toLowerCase() ?? '';
           final religion = record['religion']?.toString().toLowerCase() ?? '';
-          final normalizedQuery = query.toLowerCase();
-          return name.contains(query.toLowerCase()) ||
-              lotText.contains(normalizedQuery) ||
-              informantName.contains(normalizedQuery) ||
-              category.contains(normalizedQuery) ||
-              religion.contains(normalizedQuery);
+          final matchesSearch = query.isEmpty ||
+              name.contains(query) ||
+              lotText.contains(query) ||
+              informantName.contains(query) ||
+              category.contains(query) ||
+              religion.contains(query) ||
+              record['death_date']?.toString().contains(query) == true ||
+              record['interment_date']?.toString().contains(query) == true;
+          final matchesCategory = _categoryFilter == 'All' ||
+              record['burial_category']?.toString() == _categoryFilter;
+          final matchesLot = _lotFilter == 'All' ||
+              lotReference(record['cemetery_lot'], fallback: '') == _lotFilter;
+          return matchesSearch && matchesCategory && matchesLot;
         }).toList();
-      }
+      _filteredRecords.sort((a, b) {
+        if (_sortOrder == 'Deceased name (A–Z)') {
+          return (a['name_of_deceased'] ?? '').toString().compareTo(
+                (b['name_of_deceased'] ?? '').toString(),
+              );
+        }
+        final comparison = (a['death_date'] ?? '').toString().compareTo(
+              (b['death_date'] ?? '').toString(),
+            );
+        return _sortOrder == 'Death date (oldest)' ? comparison : -comparison;
+      });
       _currentPage = 0;
     });
+  }
+
+  List<String> get _categoryOptions {
+    final values = _burialRecords
+        .map((record) => record['burial_category']?.toString().trim() ?? '')
+        .where((value) => value.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    return ['All', ...values];
+  }
+
+  List<String> get _lotOptions {
+    final values = _burialRecords
+        .map((record) => lotReference(record['cemetery_lot'], fallback: ''))
+        .where((value) => value.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    return ['All', ...values];
+  }
+
+  Future<void> _showRecordFilters() async {
+    var category = _categoryFilter;
+    var lot = _lotFilter;
+    var sort = _sortOrder;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Filter burial records'),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: category,
+                  decoration: const InputDecoration(labelText: 'Burial category'),
+                  items: _categoryOptions
+                      .map((value) => DropdownMenuItem(value: value, child: Text(value)))
+                      .toList(),
+                  onChanged: (value) =>
+                      setDialogState(() => category = value ?? 'All'),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: lot,
+                  decoration: const InputDecoration(labelText: 'Lot'),
+                  items: _lotOptions
+                      .map((value) => DropdownMenuItem(value: value, child: Text(value)))
+                      .toList(),
+                  onChanged: (value) => setDialogState(() => lot = value ?? 'All'),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: sort,
+                  decoration: const InputDecoration(labelText: 'Sort records by'),
+                  items: const [
+                    'Death date (newest)',
+                    'Death date (oldest)',
+                    'Deceased name (A–Z)',
+                  ]
+                      .map((value) => DropdownMenuItem(value: value, child: Text(value)))
+                      .toList(),
+                  onChanged: (value) => setDialogState(() => sort = value ?? sort),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _categoryFilter = 'All';
+                  _lotFilter = 'All';
+                  _sortOrder = 'Death date (newest)';
+                });
+                _applyRecordFilters();
+                Navigator.of(dialogContext).pop();
+              },
+              child: const Text('Reset'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                _categoryFilter = category;
+                _lotFilter = lot;
+                _sortOrder = sort;
+                _applyRecordFilters();
+                Navigator.of(dialogContext).pop();
+              },
+              child: const Text('Apply'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _sectionTitle(String title) {
@@ -546,12 +722,14 @@ class _AdminBurialRecordsScreenState
     String? helper,
     String? error,
     TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
     int maxLines = 1,
   }) {
     return TextField(
       controller: controller,
       maxLines: maxLines,
       keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
       decoration: _recordFieldDecoration(
         labelText: label,
         hintText: hint,
@@ -576,8 +754,6 @@ class _AdminBurialRecordsScreenState
 
   void _applyInformantToForm(Map<String, dynamic> informant) {
     _informantNameController.text = informant['full_name']?.toString() ?? '';
-    _informantRelationshipController.text =
-        informant['relationship_to_deceased']?.toString() ?? '';
     _informantAddressController.text = informant['address']?.toString() ?? '';
     _informantWorkController.text = informant['work']?.toString() ?? '';
     _informantCellphoneController.text =
@@ -588,6 +764,168 @@ class _AdminBurialRecordsScreenState
         informant['id_number']?.toString() ?? '';
     _informantPlaceIssuedController.text =
         informant['place_issued']?.toString() ?? '';
+  }
+
+  Widget _informantPicker(void Function(void Function()) setDialogState) {
+    final selected = _informants.where(
+      (item) => item['informant_id'].toString() == _selectedInformantId,
+    );
+    final selectedInformant = selected.isEmpty ? null : selected.first;
+    final label = selectedInformant == null
+        ? 'New informant'
+        : '${selectedInformant['full_name'] ?? 'Unnamed'}'
+              '${selectedInformant['cellphone_no'] == null ? '' : ' (${selectedInformant['cellphone_no']})'}';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        OutlinedButton.icon(
+          onPressed: () async {
+            final informant = await _showInformantSearchDialog();
+            if (informant == null) return;
+            setDialogState(() {
+              _selectedInformantId = informant['informant_id'].toString();
+              _applyInformantToForm(informant);
+              // The relationship belongs to this deceased record, not the
+              // shared informant profile.
+              _informantRelationshipController.clear();
+            });
+          },
+          icon: const Icon(Icons.search_rounded),
+          label: const Text('Find existing informant'),
+        ),
+        const SizedBox(height: 8),
+        InputDecorator(
+          decoration: _recordFieldDecoration(
+            labelText: 'Selected informant',
+            icon: Icons.manage_accounts_outlined,
+          ),
+          child: Row(
+            children: [
+              Expanded(child: Text(label)),
+              if (_selectedInformantId != null)
+                TextButton(
+                  onPressed: () => setDialogState(() {
+                    _selectedInformantId = null;
+                    _informantNameController.clear();
+                    _informantRelationshipController.clear();
+                    _informantAddressController.clear();
+                    _informantWorkController.clear();
+                    _informantCellphoneController.clear();
+                    _informantIdPresentedController.clear();
+                    _informantIdNumberController.clear();
+                    _informantPlaceIssuedController.clear();
+                  }),
+                  child: const Text('Use new'),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<Map<String, dynamic>?> _showInformantSearchDialog() async {
+    final searchController = TextEditingController();
+    var results = <Map<String, dynamic>>[];
+    var isSearching = false;
+    var searched = false;
+
+    try {
+      return await showDialog<Map<String, dynamic>>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, setState) {
+            Future<void> search() async {
+              final query = searchController.text.trim();
+              if (query.isEmpty) return;
+              setState(() {
+                isSearching = true;
+                searched = true;
+              });
+              try {
+                final escaped = query.replaceAll('%', r'\%').replaceAll('_', r'\_');
+                final rows = await Supabase.instance.client
+                    .from('burial_informants')
+                    .select('informant_id, full_name, cellphone_no, address')
+                    .or('full_name.ilike.%$escaped%,cellphone_no.ilike.%$escaped%')
+                    .order('full_name')
+                    .limit(100);
+                if (!dialogContext.mounted) return;
+                setState(() => results = List<Map<String, dynamic>>.from(rows));
+              } on PostgrestException catch (error) {
+                if (!dialogContext.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Could not search informants: $error')),
+                );
+              } finally {
+                if (dialogContext.mounted) setState(() => isSearching = false);
+              }
+            }
+
+            return AlertDialog(
+              title: const Text('Find existing informant'),
+              content: SizedBox(
+                width: 480,
+                height: 440,
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: searchController,
+                      autofocus: true,
+                      onSubmitted: (_) => search(),
+                      decoration: InputDecoration(
+                        labelText: 'Search name or cellphone number',
+                        prefixIcon: const Icon(Icons.search_rounded),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.search_rounded),
+                          onPressed: search,
+                        ),
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: isSearching
+                          ? const Center(child: CircularProgressIndicator())
+                          : !searched
+                          ? const Center(child: Text('Search to find any informant.'))
+                          : results.isEmpty
+                          ? const Center(child: Text('No matching informants found.'))
+                          : ListView.separated(
+                              itemCount: results.length,
+                              separatorBuilder: (_, _) => const Divider(height: 1),
+                              itemBuilder: (_, index) {
+                                final informant = results[index];
+                                return ListTile(
+                                  leading: const Icon(Icons.person_outline_rounded),
+                                  title: Text(informant['full_name']?.toString() ?? 'Unnamed'),
+                                  subtitle: Text(
+                                    [
+                                      informant['cellphone_no']?.toString(),
+                                      informant['address']?.toString(),
+                                    ].whereType<String>().where((value) => value.isNotEmpty).join(' • '),
+                                  ),
+                                  onTap: () => Navigator.of(dialogContext).pop(informant),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    } finally {
+      searchController.dispose();
+    }
   }
 
   Future<void> _showAddEditDialog([Map<String, dynamic>? record]) async {
@@ -620,7 +958,10 @@ class _AdminBurialRecordsScreenState
       _intermentTimeController.text = intermentTime.length >= 5
           ? intermentTime.substring(0, 5)
           : intermentTime;
-      _selectedBurialCategory = record['burial_category']?.toString();
+      _selectedBurialCategory = _burialCategoryForLot(
+        _selectedLot,
+        fallback: record['burial_category']?.toString(),
+      );
       if (!_burialCategories.contains(_selectedBurialCategory)) {
         _selectedBurialCategory = null;
       }
@@ -628,6 +969,9 @@ class _AdminBurialRecordsScreenState
           record['informant_id']?.toString() ??
           informant['informant_id']?.toString();
       _applyInformantToForm(informant);
+      _informantRelationshipController.text =
+          record['informant_relationship']?.toString() ??
+          informant['relationship_to_deceased']?.toString() ?? '';
       _bldgNoController.text = record['bldg_no']?.toString() ?? '';
       _nicheNoController.text = record['niche_no']?.toString() ?? '';
       _levelController.text = record['level']?.toString() ?? '';
@@ -662,10 +1006,7 @@ class _AdminBurialRecordsScreenState
       _religionController.clear();
       _intermentDateController.clear();
       _intermentTimeController.clear();
-      final initialLotType = widget.initialLot?['lot_class_type']?.toString();
-      _selectedBurialCategory = _burialCategories.contains(initialLotType)
-          ? initialLotType
-          : null;
+      _selectedBurialCategory = _burialCategoryForLot(_selectedLot);
       _selectedInformantId = null;
       _informantNameController.clear();
       _informantRelationshipController.clear();
@@ -689,6 +1030,31 @@ class _AdminBurialRecordsScreenState
       _deathCertificateSubmitted = false;
       _ownershipCertificateSubmitted = false;
       _authorityDocumentSubmitted = false;
+    }
+
+    if (_selectedLotIsCrypt) {
+      final cryptFace = parseApartmentCryptLabel(
+        _nicheNoController.text.isNotEmpty
+            ? _nicheNoController.text
+            : _lotLocationNoController.text,
+      );
+      if (cryptFace != null) {
+        _nicheNoController.text = apartmentCryptSlotCode(
+          cryptFace.wing,
+          cryptFace.slot,
+        );
+        if (_levelController.text.trim().isEmpty) {
+          _levelController.text = _cryptLevelForSlot(cryptFace.slot);
+        }
+      }
+      if (_bldgNoController.text.isEmpty) {
+        _bldgNoController.text = lotReference(_selectedLot, fallback: '');
+      }
+      _lotLocationNoController.clear();
+    } else {
+      _nicheNoController.clear();
+      _levelController.clear();
+      _bldgNoController.clear();
     }
 
     if (!mounted) return;
@@ -749,50 +1115,7 @@ class _AdminBurialRecordsScreenState
                     ),
                     const SizedBox(height: 18),
                     _sectionTitle('Informant'),
-                    DropdownButtonFormField<String?>(
-                      initialValue: _selectedInformantId,
-                      decoration: _recordFieldDecoration(
-                        labelText: 'Use Existing Informant',
-                        icon: Icons.manage_accounts_outlined,
-                      ),
-                      items: [
-                        const DropdownMenuItem<String?>(
-                          value: null,
-                          child: Text('New informant'),
-                        ),
-                        ..._informants.map(
-                          (informant) => DropdownMenuItem<String?>(
-                            value: informant['informant_id'].toString(),
-                            child: Text(
-                              '${informant['full_name'] ?? 'Unnamed'}'
-                              '${informant['cellphone_no'] == null ? '' : ' (${informant['cellphone_no']})'}',
-                            ),
-                          ),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        setDialogState(() {
-                          _selectedInformantId = value;
-                          if (value == null) {
-                            _informantNameController.clear();
-                            _informantRelationshipController.clear();
-                            _informantAddressController.clear();
-                            _informantWorkController.clear();
-                            _informantCellphoneController.clear();
-                            _informantIdPresentedController.clear();
-                            _informantIdNumberController.clear();
-                            _informantPlaceIssuedController.clear();
-                          } else {
-                            final selected = _informants.firstWhere(
-                              (item) =>
-                                  item['informant_id'].toString() == value,
-                              orElse: () => {},
-                            );
-                            _applyInformantToForm(selected);
-                          }
-                        });
-                      },
-                    ),
+                    _informantPicker(setDialogState),
                     const SizedBox(height: 12),
                     _textField(
                       controller: _informantNameController,
@@ -811,6 +1134,7 @@ class _AdminBurialRecordsScreenState
                         label: 'Cellphone No.',
                         icon: Icons.phone_outlined,
                         keyboardType: TextInputType.phone,
+                        inputFormatters: phoneInputFormatters,
                       ),
                     ]),
                     const SizedBox(height: 12),
@@ -909,6 +1233,7 @@ class _AdminBurialRecordsScreenState
                     ]),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String?>(
+                      key: ValueKey(_selectedBurialCategory),
                       initialValue: _selectedBurialCategory,
                       decoration: _recordFieldDecoration(
                         labelText: 'Lot Type',
@@ -931,32 +1256,39 @@ class _AdminBurialRecordsScreenState
                       },
                     ),
                     const SizedBox(height: 18),
-                    _sectionTitle('Lot Location on Paper Form'),
-                    _fieldRow([
-                      _textField(
-                        controller: _bldgNoController,
-                        label: 'Bldg No.',
-                        icon: Icons.apartment_rounded,
-                      ),
-                      _textField(
-                        controller: _nicheNoController,
-                        label: 'Niche No.',
-                        icon: Icons.inventory_2_outlined,
-                      ),
-                    ]),
-                    const SizedBox(height: 12),
-                    _fieldRow([
-                      _textField(
-                        controller: _levelController,
-                        label: 'Level',
-                        icon: Icons.layers_outlined,
-                      ),
-                      _textField(
-                        controller: _lotLocationNoController,
-                        label: 'Lot No.',
-                        icon: Icons.location_on_outlined,
-                      ),
-                    ]),
+                    if (_selectedLotIsCrypt || _selectedLotIsLawn) ...[
+                      _sectionTitle('Lot Location on Paper Form'),
+                      if (_selectedLotIsCrypt) ...[
+                        _fieldRow([
+                          _textField(
+                            controller: _bldgNoController,
+                            label: 'Bldg No.',
+                            icon: Icons.apartment_rounded,
+                          ),
+                          _textField(
+                            controller: _nicheNoController,
+                            label: 'Niche No.',
+                            icon: Icons.inventory_2_outlined,
+                          ),
+                        ]),
+                        const SizedBox(height: 12),
+                        _fieldRow([
+                          _textField(
+                            controller: _levelController,
+                            label: 'Level',
+                            icon: Icons.layers_outlined,
+                          ),
+                        ]),
+                      ],
+                      if (_selectedLotIsLawn)
+                        _fieldRow([
+                          _textField(
+                            controller: _lotLocationNoController,
+                            label: 'Lot No.',
+                            icon: Icons.location_on_outlined,
+                          ),
+                        ]),
+                    ],
                     const SizedBox(height: 12),
                     _fieldRow([
                       _textField(
@@ -969,6 +1301,7 @@ class _AdminBurialRecordsScreenState
                         label: 'Owner Contact No.',
                         icon: Icons.phone_android_outlined,
                         keyboardType: TextInputType.phone,
+                        inputFormatters: phoneInputFormatters,
                       ),
                     ]),
                     const SizedBox(height: 12),
@@ -1101,18 +1434,146 @@ class _AdminBurialRecordsScreenState
   }
 
   Future<void> _pickLotOnMap(StateSetter setDialogState) async {
-    final lot = await Navigator.of(context).push<Map<String, dynamic>>(
+    final pickedLot = await Navigator.of(context).push<Map<String, dynamic>>(
       MaterialPageRoute(
         builder: (_) => const AdminMapManagerScreen(lotPicker: true),
       ),
     );
-    if (lot == null || !mounted) return;
+    if (pickedLot == null || !mounted) return;
+    final lot = Map<String, dynamic>.from(pickedLot);
+    if (isApartmentCryptLot(lot)) {
+      final face = await _pickApartmentCryptFace(lot);
+      if (face == null || !mounted) return;
+      lot['selected_crypt_face'] = face;
+    }
     setDialogState(() {
       _selectedLot = lot;
-      _lotLocationNoController.text = lotReference(lot, fallback: '');
-      final type = lot['lot_class_type']?.toString();
-      if (_burialCategories.contains(type)) _selectedBurialCategory = type;
+      _lotLocationNoController.text = _selectedLotIsLawn
+          ? lotReference(lot, fallback: '')
+          : '';
+      if (_selectedLotIsCrypt) {
+        final cryptFace = lot['selected_crypt_face']?.toString() ?? '';
+        _nicheNoController.text = cryptFace;
+        _levelController.text = _cryptLevelForFace(cryptFace) ?? '';
+        _bldgNoController.text = lotReference(lot, fallback: '');
+      } else {
+        _nicheNoController.clear();
+        _levelController.clear();
+        _bldgNoController.clear();
+      }
+      _selectedBurialCategory = _burialCategoryForLot(
+        lot,
+        fallback: _selectedBurialCategory,
+      );
     });
+  }
+
+  String? _cryptLevelForFace(String? face) {
+    final parsed = parseApartmentCryptLabel(face);
+    return parsed == null ? null : _cryptLevelForSlot(parsed.slot);
+  }
+
+  String _cryptLevelForSlot(int slot) => 'Level ${((slot - 1) ~/ 20) + 1}';
+
+  Future<String?> _pickApartmentCryptFace(Map<String, dynamic> lot) async {
+    final result = await Supabase.instance.client
+        .from('graves')
+        .select('grave_label,status,burial_id')
+        .eq('lot_id', lot['lot_id']);
+    final unavailable = <String>{};
+    for (final row in List<Map<String, dynamic>>.from(result)) {
+      final parsed = parseApartmentCryptLabel(row['grave_label']?.toString());
+      if (parsed == null) continue;
+      final occupied =
+          row['burial_id'] != null ||
+          row['status']?.toString().toLowerCase() == 'occupied';
+      if (occupied) {
+        unavailable.add(apartmentCryptSlotCode(parsed.wing, parsed.slot));
+      }
+    }
+    if (!mounted) return null;
+    var wing = 'A';
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setGridState) => AlertDialog(
+          title: Text('Choose a crypt face - ${lotReference(lot)}'),
+          content: SizedBox(
+            width: 820,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(value: 'A', label: Text('Wing A · Left')),
+                    ButtonSegment(value: 'B', label: Text('Wing B · Right')),
+                  ],
+                  selected: {wing},
+                  onSelectionChanged: (value) =>
+                      setGridState(() => wing = value.first),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 300,
+                  child: GridView.builder(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 20,
+                          crossAxisSpacing: 5,
+                          mainAxisSpacing: 5,
+                          childAspectRatio: 1.35,
+                        ),
+                    itemCount: 100,
+                    itemBuilder: (context, index) {
+                      final row = index ~/ 20;
+                      final column = index % 20;
+                      final rowStart = row * 20;
+                      final slot = row.isEven
+                          ? rowStart + (20 - column)
+                          : rowStart + column + 1;
+                      final code = apartmentCryptSlotCode(wing, slot);
+                      final occupied = unavailable.contains(code);
+                      return Tooltip(
+                        message: occupied ? '$code - Occupied' : code,
+                        child: InkWell(
+                          onTap: occupied
+                              ? null
+                              : () => Navigator.pop(dialogContext, code),
+                          child: Container(
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: occupied
+                                  ? Theme.of(context).colorScheme.errorContainer
+                                  : Theme.of(
+                                      context,
+                                    ).colorScheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(5),
+                              border: Border.all(
+                                color: Theme.of(context).colorScheme.outline,
+                              ),
+                            ),
+                            child: Text(
+                              code,
+                              style: const TextStyle(fontSize: 10),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   bool get _hasInformantDetails {
@@ -1149,7 +1610,6 @@ class _AdminBurialRecordsScreenState
 
     final data = {
       'full_name': fullName,
-      'relationship_to_deceased': _textOrNull(_informantRelationshipController),
       'address': _textOrNull(_informantAddressController),
       'work': _textOrNull(_informantWorkController),
       'cellphone_no': _textOrNull(_informantCellphoneController),
@@ -1198,9 +1658,15 @@ class _AdminBurialRecordsScreenState
         'interment_time': _textOrNull(_intermentTimeController),
         'burial_category': _selectedBurialCategory,
         'bldg_no': _textOrNull(_bldgNoController),
-        'niche_no': _textOrNull(_nicheNoController),
+        'niche_no': _selectedLotIsCrypt
+            ? _textOrNull(_nicheNoController)
+            : null,
         'level': _textOrNull(_levelController),
-        'lot_location_no': _textOrNull(_lotLocationNoController),
+        'lot_location_no': _selectedLotIsCrypt
+            ? _selectedLot!['selected_crypt_face']?.toString()
+            : (_selectedLotIsLawn
+                  ? _textOrNull(_lotLocationNoController)
+                  : null),
         'registered_lot_owner': _textOrNull(_registeredLotOwnerController),
         'registered_owner_contact_no': _textOrNull(
           _registeredOwnerContactController,
@@ -1220,10 +1686,20 @@ class _AdminBurialRecordsScreenState
       }
 
       if (_isEditing && _editingId != null) {
+        final burialId = int.parse(_editingId!);
         await supabase
             .from('burial_record')
             .update(data)
-            .eq('burial_id', int.parse(_editingId!));
+            .eq('burial_id', burialId);
+        await _saveInformantRelationship(
+          supabase,
+          burialId: burialId,
+          informantId: informantId,
+        );
+        await _assignSelectedCryptFace(
+          supabase,
+          burialId: burialId,
+        );
 
         await AuditService.log(
           action: 'UPDATE',
@@ -1245,6 +1721,13 @@ class _AdminBurialRecordsScreenState
             .insert(data)
             .select();
         final newId = result.first['burial_id'].toString();
+        final burialId = int.parse(newId);
+        await _saveInformantRelationship(
+          supabase,
+          burialId: burialId,
+          informantId: informantId,
+        );
+        await _assignSelectedCryptFace(supabase, burialId: burialId);
 
         await AuditService.log(
           action: 'CREATE',
@@ -1274,6 +1757,72 @@ class _AdminBurialRecordsScreenState
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _saveInformantRelationship(
+    SupabaseClient supabase, {
+    required int burialId,
+    required int? informantId,
+  }) async {
+    try {
+      if (informantId == null) {
+        await supabase
+            .from('burial_informant_relationships')
+            .delete()
+            .eq('burial_id', burialId);
+        return;
+      }
+      await supabase.from('burial_informant_relationships').upsert({
+        'burial_id': burialId,
+        'informant_id': informantId,
+        'relationship_to_deceased': _textOrNull(
+          _informantRelationshipController,
+        ),
+      }, onConflict: 'burial_id');
+    } on PostgrestException catch (error) {
+      if (_isMissingTableError(error)) {
+        throw Exception(
+          'Run supabase/add_burial_informant_relationships.sql before saving '
+          'informant relationships.',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> _assignSelectedCryptFace(
+    SupabaseClient supabase, {
+    required int burialId,
+  }) async {
+    final lot = _selectedLot;
+    final code = lot?['selected_crypt_face']?.toString();
+    final lotId = lot?['lot_id'];
+    if (code == null || code.isEmpty || lotId == null) return;
+
+    final existing = await supabase
+        .from('graves')
+        .select('grave_id,burial_id')
+        .eq('lot_id', lotId)
+        .eq('grave_label', code)
+        .maybeSingle();
+    final assignedBurialId = existing?['burial_id'];
+    if (assignedBurialId != null &&
+        assignedBurialId.toString() != burialId.toString()) {
+      throw Exception('$code is already occupied. Choose another crypt face.');
+    }
+    if (existing == null) {
+      await supabase.from('graves').insert({
+        'lot_id': lotId,
+        'grave_label': code,
+        'status': 'Occupied',
+        'burial_id': burialId,
+      });
+    } else {
+      await supabase
+          .from('graves')
+          .update({'status': 'Occupied', 'burial_id': burialId})
+          .eq('grave_id', existing['grave_id']);
     }
   }
 
@@ -1375,7 +1924,7 @@ class _AdminBurialRecordsScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
       appBar: widget.closeAfterCreate
           ? AppBar(
               backgroundColor: AppColors.background,
@@ -1430,6 +1979,7 @@ class _AdminBurialRecordsScreenState
   }
 
   Widget _buildPaginationControls() {
+    final colors = Theme.of(context).colorScheme;
     final firstRecord = _filteredRecords.isEmpty
         ? 0
         : (_currentPage * _pageSize) + 1;
@@ -1441,7 +1991,7 @@ class _AdminBurialRecordsScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
@@ -1449,8 +1999,8 @@ class _AdminBurialRecordsScreenState
           Expanded(
             child: Text(
               'Showing $firstRecord–$lastRecord of ${_filteredRecords.length} records',
-              style: const TextStyle(
-                color: AppColors.textSecondary,
+              style: TextStyle(
+                color: colors.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -1482,6 +2032,7 @@ class _AdminBurialRecordsScreenState
   }
 
   Widget _buildHeaderSection() {
+    final colors = Theme.of(context).colorScheme;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1489,10 +2040,10 @@ class _AdminBurialRecordsScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Burial Records',
                 style: TextStyle(
-                  color: AppColors.brandDark,
+                  color: colors.onSurface,
                   fontSize: 28,
                   fontWeight: FontWeight.w400,
                   height: 1.2,
@@ -1502,7 +2053,7 @@ class _AdminBurialRecordsScreenState
               Text(
                 'Manage and organize historical and current interment data.',
                 style: TextStyle(
-                  color: Colors.black.withValues(alpha: 0.58),
+                  color: colors.onSurfaceVariant,
                   fontSize: 14,
                   height: 1.4,
                 ),
@@ -1514,8 +2065,8 @@ class _AdminBurialRecordsScreenState
         FilledButton.icon(
           onPressed: () => _showAddEditDialog(),
           style: FilledButton.styleFrom(
-            backgroundColor: AppColors.brandDark,
-            foregroundColor: Colors.white,
+            backgroundColor: colors.primary,
+            foregroundColor: colors.onPrimary,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -1529,46 +2080,48 @@ class _AdminBurialRecordsScreenState
   }
 
   Widget _buildSearchFilterBar() {
+    final colors = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceLow,
+        color: colors.surfaceContainerLow,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         children: [
           Expanded(
             child: TextField(
+              controller: _recordSearchController,
               decoration: InputDecoration(
-                hintText: 'Search by deceased, informant, category, or lot',
+                hintText: 'Search deceased, informant, date, category, or lot',
                 prefixIcon: const Icon(Icons.search_rounded),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: colors.surface,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(999),
-                  borderSide: const BorderSide(color: AppColors.border),
+                  borderSide: BorderSide(color: colors.outline),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(999),
-                  borderSide: const BorderSide(color: AppColors.border),
+                  borderSide: BorderSide(color: colors.outline),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(999),
-                  borderSide: const BorderSide(
-                    color: AppColors.brandDark,
+                  borderSide: BorderSide(
+                    color: colors.primary,
                     width: 1.4,
                   ),
                 ),
               ),
-              onChanged: _filterRecords,
+              onChanged: (_) => _applyRecordFilters(),
             ),
           ),
           const SizedBox(width: 12),
           OutlinedButton.icon(
-            onPressed: () {},
+            onPressed: _showRecordFilters,
             style: OutlinedButton.styleFrom(
-              backgroundColor: AppColors.secondaryLight,
-              foregroundColor: const Color(0xFF2F4A57),
+              backgroundColor: colors.secondaryContainer,
+              foregroundColor: colors.onSecondaryContainer,
               side: BorderSide.none,
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
               shape: const StadiumBorder(),
@@ -1582,23 +2135,25 @@ class _AdminBurialRecordsScreenState
   }
 
   Widget _buildEmptyState() {
+    final colors = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.surfaceHighest),
+        border: Border.all(color: colors.outlineVariant),
       ),
-      child: const Text(
+      child: Text(
         'No records found',
         textAlign: TextAlign.center,
-        style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
+        style: TextStyle(color: colors.onSurfaceVariant, fontSize: 16),
       ),
     );
   }
 
   Widget _buildRecordCard(Map<String, dynamic> record) {
+    final colors = Theme.of(context).colorScheme;
     final lot = record['cemetery_lot'] ?? {};
     final deathDate = _formatDate(record['death_date']);
     final birthDate = _formatDate(record['birth_date']);
@@ -1617,9 +2172,9 @@ class _AdminBurialRecordsScreenState
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.surfaceHighest),
+        border: Border.all(color: colors.outlineVariant),
         boxShadow: const [
           BoxShadow(
             color: Color(0x0A000000),
@@ -1644,8 +2199,8 @@ class _AdminBurialRecordsScreenState
                 child: Center(
                   child: Text(
                     initials,
-                    style: const TextStyle(
-                      color: AppColors.brandDark,
+                    style: TextStyle(
+                      color: colors.onPrimaryContainer,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1658,8 +2213,8 @@ class _AdminBurialRecordsScreenState
                   children: [
                     Text(
                       record['name_of_deceased'] ?? 'Unknown',
-                      style: const TextStyle(
-                        color: AppColors.text,
+                      style: TextStyle(
+                        color: colors.onSurface,
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                       ),
@@ -1815,21 +2370,27 @@ class _InfoChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final foreground = Theme.of(context).brightness == Brightness.dark
+        ? colors.onSurface
+        : color;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
+        color: Theme.of(context).brightness == Brightness.dark
+            ? colors.surfaceContainerHigh
+            : color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: color),
+          Icon(icon, size: 16, color: foreground),
           const SizedBox(width: 6),
           Text(
             label,
             style: TextStyle(
-              color: color,
+              color: foreground,
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),

@@ -6,6 +6,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
@@ -19,6 +20,7 @@ import '../../services/map_feature_service.dart';
 import '../../services/lot_label_batch_service.dart';
 import '../../utils/lot_label_batch.dart';
 import '../../utils/lot_row_selection.dart';
+import '../../utils/phone_input.dart';
 import '../../services/supabase_pagination_service.dart';
 import '../../utils/lot_formatters.dart';
 import '../../utils/lot_pricing.dart';
@@ -83,6 +85,7 @@ class AdminMapManagerScreen extends ConsumerStatefulWidget {
   final ValueChanged<String?>? onBatchProgress;
   final ValueChanged<String>? onBatchFinished;
   final ValueChanged<Map<String, dynamic>>? onApartmentCryptSelected;
+
   /// Opens the familiar map as a picker and returns the selected lot.
   final bool lotPicker;
 
@@ -2520,7 +2523,9 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
       _routePreviewPoints = const [];
     });
     final rawLot = marker['cemetery_lot'];
-    if (rawLot is Map<String, dynamic> && isApartmentCryptLot(rawLot)) {
+    if (!widget.lotPicker &&
+        rawLot is Map<String, dynamic> &&
+        isApartmentCryptLot(rawLot)) {
       _editApartmentCryptLabel(
         Map<String, dynamic>.from(rawLot.cast<String, dynamic>()),
       );
@@ -2964,7 +2969,9 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
     final camera = _mapController.camera;
     final candidates = _lotMarkers.where((marker) {
       if (marker['cemetery_lot'] is! Map ||
-          !area.contains(camera.latLngToScreenOffset(_markerToLatLng(marker)))) {
+          !area.contains(
+            camera.latLngToScreenOffset(_markerToLatLng(marker)),
+          )) {
         return false;
       }
       if (_mode != _MapMode.assignEstatePhase) return true;
@@ -3014,7 +3021,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const Text(
-                  'Drag a box to add lots whose centers are inside. Draw more boxes for irregular blocks. Use Remove area to trim the selection.',
+                  'Drag a box to select lots whose centers are inside. Draw more boxes for irregular blocks. Use Remove area to trim the selection.',
                 ),
                 const SizedBox(height: 8),
                 Wrap(
@@ -3752,7 +3759,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
       ) {
         final selected = marker['marker_id'] == _selectedMarker?['marker_id'];
         final lot = marker['cemetery_lot'] ?? {};
-        final status = lot['status']?.toString() ?? 'Available';
+        final status = lot is Map ? effectiveLotStatus(lot) : 'Available';
         return Marker(
           point: _markerToLatLng(marker),
           width: selected ? 54 : 38,
@@ -3916,18 +3923,6 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                       _routePreviewPoints = const [];
                       _mode = _MapMode.labelRow;
                     }),
-                  ),
-                  _ActionButton(
-                    icon: Icons.add_location_alt_rounded,
-                    label: 'Add Node',
-                    selected: _mode == _MapMode.addNode,
-                    onTap: () => _setMode(_MapMode.addNode),
-                  ),
-                  _ActionButton(
-                    icon: Icons.add_business_rounded,
-                    label: 'Add Lot',
-                    selected: _mode == _MapMode.plotLot,
-                    onTap: () => _setMode(_MapMode.plotLot),
                   ),
                   _ActionButton(
                     icon: Icons.login_rounded,
@@ -4156,7 +4151,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
     final estatePhase = familyEstatePhase(lot);
     final lotNumber = lotReference(lot, fallback: '--');
     final meta = lotMeta(lot);
-    final status = lot['status']?.toString() ?? 'No selection';
+    final status = marker == null ? 'No selection' : effectiveLotStatus(lot);
     final price = lot['price']?.toString() ?? '--';
     final assignedOwner = marker == null ? '--' : _ownerLabelForLot(lot);
     final assignedDeceased = marker == null ? '--' : _burialNamesForLot(lot);
@@ -4219,7 +4214,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                     marker == null
                         ? 'Tap a marker on the map'
                         : isCrypt
-                        ? 'Block ${lotText(lot, 'block_number')} - Apartment Crypt'
+                        ? 'Block ${lotText(lot, 'block_number')} · Apartment Crypt · Wings A & B'
                         : isFamilyEstate
                         ? 'Phase ${estatePhase.isEmpty ? '--' : estatePhase} · Family Estate'
                         : meta.isEmpty
@@ -4239,7 +4234,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                     const SizedBox(height: 10),
                     _infoRow('Lot Number', lotText(lot, 'lot_number')),
                     const SizedBox(height: 10),
-                    _infoRow('Structure', '100 faces per wing'),
+                    _infoRow('Structure', 'Wing A + Wing B · 100 faces each'),
                   ] else if (isFamilyEstate) ...[
                     const SizedBox(height: 10),
                     _infoRow(
@@ -4315,9 +4310,9 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                       child: FilledButton.icon(
                         onPressed: marker == null
                             ? null
-                            : () => Navigator.of(context).pop(
-                                Map<String, dynamic>.from(lot),
-                              ),
+                            : () => Navigator.of(
+                                context,
+                              ).pop(Map<String, dynamic>.from(lot)),
                         icon: const Icon(Icons.check_circle_rounded, size: 16),
                         label: const Text('Use This Lot'),
                         style: FilledButton.styleFrom(
@@ -5612,6 +5607,7 @@ class _LotOwnerAssignmentDialogState extends State<_LotOwnerAssignmentDialog> {
           label: 'Mobile',
           icon: Icons.phone_rounded,
           keyboardType: TextInputType.phone,
+          inputFormatters: phoneInputFormatters,
         ),
       ]),
       const SizedBox(height: 12),
@@ -5862,6 +5858,7 @@ class _LotOwnerAssignmentDialogState extends State<_LotOwnerAssignmentDialog> {
     int maxLines = 1,
     String? Function(String?)? validator,
     ValueChanged<String>? onChanged,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return TextFormField(
       controller: controller,
@@ -5871,6 +5868,7 @@ class _LotOwnerAssignmentDialogState extends State<_LotOwnerAssignmentDialog> {
       keyboardType: keyboardType,
       validator: validator,
       onChanged: onChanged,
+      inputFormatters: inputFormatters,
       decoration: _fieldDecoration(
         label,
         icon,

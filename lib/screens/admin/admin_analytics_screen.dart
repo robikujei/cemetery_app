@@ -23,7 +23,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
   AnalyticsData? _data;
   bool _loading = false, _exporting = false;
   DateTimeRange? _range;
-  TrendInterval _interval = TrendInterval.daily;
+  DateTime _visitorMonth = DateTime(DateTime.now().year, DateTime.now().month);
   double _epsilon = 15, _medium = 30, _high = 70;
   int _minPoints = 5;
   String _report = 'Burial records';
@@ -37,6 +37,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
   static const _accent = AppColors.brand;
   static const _types = [
     'Burial records',
+    'Burial records (detailed)',
     'Visitor logs',
     'Visitor trends',
     'Lot inventory',
@@ -107,12 +108,12 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
 
   bool _included(Object? value) => inPeriod(value, _range?.start, _range?.end);
   List<BlockDemand> get _demand => classifyDemand(_data!.lots, _data!.sales);
-  Map<DateTime, int> get _trend => visitorTrend(
-    _data!.visitors,
-    _interval,
-    start: _range?.start,
-    end: _range?.end,
-  );
+  Map<DateTime, int> get _visitorDays => visitorTrend(
+        _data!.visitors,
+        TrendInterval.daily,
+        start: _range?.start,
+        end: _range?.end,
+      );
   Widget _densitySummary() {
     final areas = _data!.mappedLotAreas();
     final counts = <String, int>{};
@@ -188,8 +189,120 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
     }
   }
 
+  Widget _visitorCalendar() {
+    final monthStart = DateTime(_visitorMonth.year, _visitorMonth.month);
+    final monthEnd = DateTime(_visitorMonth.year, _visitorMonth.month + 1);
+    final days = _visitorDays;
+    final counts = <DateTime, int>{
+      for (var day = monthStart; day.isBefore(monthEnd); day = day.add(const Duration(days: 1)))
+        day: days[day] ?? 0,
+    };
+    final maxCount = counts.values.fold<int>(0, math.max);
+    final firstOffset = monthStart.weekday - 1;
+    final cellCount = firstOffset + counts.length;
+    final totalCells = ((cellCount + 6) ~/ 7) * 7;
+    final total = counts.values.fold<int>(0, (sum, count) => sum + count);
+
+    Color colorFor(int count) {
+      if (count == 0) return Theme.of(context).colorScheme.surfaceContainerHighest;
+      final opacity = 0.20 + (0.80 * count / maxCount);
+      return _accent.withValues(alpha: opacity);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            IconButton(
+              tooltip: 'Previous month',
+              icon: const Icon(Icons.chevron_left_rounded),
+              onPressed: () => setState(() {
+                _visitorMonth = DateTime(_visitorMonth.year, _visitorMonth.month - 1);
+              }),
+            ),
+            Expanded(
+              child: Text(
+                DateFormat.yMMMM().format(monthStart),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Next month',
+              icon: const Icon(Icons.chevron_right_rounded),
+              onPressed: monthStart.isBefore(DateTime(DateTime.now().year, DateTime.now().month))
+                  ? () => setState(() {
+                      _visitorMonth = DateTime(_visitorMonth.year, _visitorMonth.month + 1);
+                    })
+                  : null,
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            width: 7 * 56,
+            child: Column(
+              children: [
+                Row(
+                  children: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+                      .map((label) => SizedBox(
+                            width: 56,
+                            child: Text(label, textAlign: TextAlign.center),
+                          ))
+                      .toList(),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  children: List.generate(totalCells, (index) {
+                    if (index < firstOffset || index >= cellCount) {
+                      return const SizedBox(width: 56, height: 56);
+                    }
+                    final day = monthStart.add(Duration(days: index - firstOffset));
+                    final count = counts[day] ?? 0;
+                    return SizedBox(
+                      width: 56,
+                      height: 56,
+                      child: Tooltip(
+                        message: '${DateFormat.yMMMd().format(day)}: $count visitor ${count == 1 ? 'entry' : 'entries'}',
+                        child: Padding(
+                          padding: const EdgeInsets.all(3),
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: colorFor(count),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '${day.day}',
+                                style: TextStyle(
+                                  color: count > 0
+                                      ? Colors.white
+                                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text('$total visitor entries this month. Darker dates have more entries.'),
+      ],
+    );
+  }
+
   Widget _card(String title, Widget child) => Card(
-    color: Colors.white,
+    color: Theme.of(context).colorScheme.surface,
     margin: const EdgeInsets.only(bottom: 20),
     child: Padding(
       padding: const EdgeInsets.all(20),
@@ -198,10 +311,10 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w600,
-              color: _accent,
+              color: Theme.of(context).colorScheme.primary,
             ),
           ),
           const SizedBox(height: 16),
@@ -235,8 +348,6 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
     if (_data == null) return const Center(child: CircularProgressIndicator());
     final data = _data!;
     final demands = _demand;
-    final trend = _trend;
-    final maxCount = trend.values.fold<int>(1, math.max);
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
@@ -348,69 +459,15 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
             ),
           if (!data.errors.containsKey('visitor_log'))
             _card(
-              'Visitor trends',
+              'Visitor calendar',
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Wrap(
-                    spacing: 8,
-                    children: TrendInterval.values
-                        .map(
-                          (v) => ChoiceChip(
-                            label: Text(v.name),
-                            selected: _interval == v,
-                            onSelected: (_) => setState(() => _interval = v),
-                          ),
-                        )
-                        .toList(),
+                  const Text(
+                    'Daily visitor entries are shown as a calendar heatmap. Use the arrows to review earlier months; CSV export remains available for full detail.',
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    '${trend.values.fold<int>(0, (s, v) => s + v)} entries. Weeks start Monday; empty periods count as zero.',
-                  ),
-                  const SizedBox(height: 12),
-                  if (trend.isEmpty)
-                    const Text('No visitor entries in this period.'),
-                  ...trend.entries
-                      .toList()
-                      .reversed
-                      .take(24)
-                      .toList()
-                      .reversed
-                      .map(
-                        (e) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 3),
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 100,
-                                child: Text(
-                                  DateFormat('yyyy-MM-dd').format(e.key),
-                                ),
-                              ),
-                              Expanded(
-                                child: LinearProgressIndicator(
-                                  value: e.value / maxCount,
-                                  minHeight: 12,
-                                  color: _accent,
-                                  backgroundColor: AppColors.surfaceHighest,
-                                ),
-                              ),
-                              SizedBox(
-                                width: 48,
-                                child: Text(
-                                  '${e.value}',
-                                  textAlign: TextAlign.end,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                  if (trend.length > 24)
-                    const Text(
-                      'Chart shows the latest 24 periods. Export for the full history.',
-                    ),
+                  _visitorCalendar(),
                 ],
               ),
             ),
@@ -808,12 +865,87 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
     ),
   );
 
+  List<List<Object?>> _burialSummaryRows(
+    AnalyticsData data,
+    Map<String, Map<String, dynamic>> lots,
+  ) {
+    final burials = data.burials
+        .where((record) => _included(
+              record['interment_date'] ?? record['burial_date'],
+            ))
+        .toList();
+    final categories = <String, int>{};
+    final blocks = <String, int>{};
+    final months = <String, int>{};
+    final lotIds = <String>{};
+    var unassignedLots = 0;
+
+    for (final burial in burials) {
+      final category = burial['burial_category']?.toString().trim();
+      final categoryLabel =
+          category == null || category.isEmpty ? 'Unspecified' : category;
+      categories[categoryLabel] = (categories[categoryLabel] ?? 0) + 1;
+
+      final lotId = burial['lot_id']?.toString();
+      final lot = lotId == null ? null : lots[lotId];
+      if (lot == null) {
+        unassignedLots++;
+        blocks['Unassigned'] = (blocks['Unassigned'] ?? 0) + 1;
+      } else {
+        lotIds.add(lotId!);
+        final block = blockOf(lot);
+        blocks[block] = (blocks[block] ?? 0) + 1;
+      }
+
+      final date = cemeteryDate(
+        burial['interment_date'] ?? burial['burial_date'],
+      );
+      if (date != null) {
+        final month = DateFormat('yyyy-MM').format(date);
+        months[month] = (months[month] ?? 0) + 1;
+      }
+    }
+
+    final selectedRange = _range == null
+        ? 'All available records'
+        : '${DateFormat('yyyy-MM-dd').format(_range!.start)} to ${DateFormat('yyyy-MM-dd').format(_range!.end)}';
+    final categoryRows = categories.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    final blockRows = blocks.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    final monthRows = months.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    final rows = <List<Object?>>[
+      ['Burial statistics', 'Value'],
+      ['Selected date range', selectedRange],
+      ['Total burial records', burials.length],
+      ['Records with assigned lots', burials.length - unassignedLots],
+      ['Records without assigned lots', unassignedLots],
+      ['Distinct lots represented', lotIds.length],
+      [],
+      ['Burial category', 'Records'],
+      ...categoryRows.map((entry) => <Object?>[entry.key, entry.value]),
+    ];
+    rows.addAll([
+      [],
+      ['Block', 'Burial records'],
+      ...blockRows.map((entry) => <Object?>[entry.key, entry.value]),
+      [],
+      ['Interment/burial month', 'Burial records'],
+      ...monthRows.map((entry) => <Object?>[entry.key, entry.value]),
+    ]);
+    return rows;
+  }
+
   Future<void> _export() async {
     setState(() => _exporting = true);
     try {
       final data = _data!;
       final requiredTables = switch (_report) {
-        'Burial records' => ['burial_record', 'cemetery_lot'],
+        'Burial records' || 'Burial records (detailed)' => [
+          'burial_record',
+          'cemetery_lot',
+        ],
         'Visitor logs' || 'Visitor trends' => ['visitor_log'],
         'Lot inventory' => ['cemetery_lot'],
         'Lot sales' => ['lot_ownership', 'cemetery_lot'],
@@ -828,6 +960,9 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
       final List<List<Object?>> rows;
       switch (_report) {
         case 'Burial records':
+          rows = _burialSummaryRows(data, lots);
+          break;
+        case 'Burial records (detailed)':
           rows = [
             [
               'ID',
@@ -873,10 +1008,10 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
         case 'Visitor trends':
           rows = [
             ['Period start (Asia/Manila)', 'Interval', 'Entries'],
-            ..._trend.entries.map(
+            ..._visitorDays.entries.map(
               (e) => [
                 DateFormat('yyyy-MM-dd').format(e.key),
-                _interval.name,
+                'daily',
                 e.value,
               ],
             ),

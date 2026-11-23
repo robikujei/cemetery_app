@@ -621,6 +621,20 @@ const lotStatusOccupiedStroke = Color(0xFF2F6F43);
 const lotStatusUnknownFill = Color(0xFFEAE8E5);
 const lotStatusUnknownStroke = Color(0xFF727971);
 
+/// Returns the status the map should display for a lot.
+///
+/// A linked burial is stronger evidence of occupancy than a stale manually
+/// maintained lot status. This keeps map colors consistent with the deceased
+/// records shown when the lot is selected.
+String effectiveLotStatus(Map<dynamic, dynamic> lot) {
+  final burialRecord = lot['burial_record'];
+  final hasBurial = burialRecord is List
+      ? burialRecord.isNotEmpty
+      : burialRecord is Map && burialRecord.isNotEmpty;
+  if (hasBurial) return 'Occupied';
+  return lot['status']?.toString() ?? 'Available';
+}
+
 Color lotStatusFillColor(String? status) {
   return switch (status?.trim().toLowerCase()) {
     'occupied' => lotStatusOccupiedFill,

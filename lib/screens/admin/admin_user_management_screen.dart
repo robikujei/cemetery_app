@@ -1,10 +1,12 @@
 import '../../core/app_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../services/audit_service.dart';
 import '../../utils/lot_formatters.dart';
 import '../../utils/lot_pricing.dart';
+import '../../utils/phone_input.dart';
 import '../../widgets/app_date_field.dart';
 
 String? _textOrNull(String? value) {
@@ -152,12 +154,16 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
             .order('ownership_id'),
       ]);
 
-      final ownershipByUserId = <String, Map<String, dynamic>>{};
+      // A person remains a visitor in authentication after being assigned a
+      // lot.  Treat the ownership record as the source of truth for the
+      // "Lot Owners" directory, so the directory does not depend on a legacy
+      // lot_owner role being present on the user profile.
+      final ownershipsByUserId = <String, List<Map<String, dynamic>>>{};
       for (final ownership in results[2] as List) {
         final row = Map<String, dynamic>.from(ownership);
         final userId = row['user_id']?.toString();
         if (userId != null && userId.isNotEmpty) {
-          ownershipByUserId[userId] = row;
+          ownershipsByUserId.putIfAbsent(userId, () => []).add(row);
         }
       }
 
@@ -173,8 +179,13 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
       final users =
           (userData['users'] as List).map((user) {
             final row = Map<String, dynamic>.from(user);
-            final ownership =
-                ownershipByUserId[row['user_id']?.toString() ?? ''];
+            final ownerships =
+                ownershipsByUserId[row['user_id']?.toString() ?? ''] ??
+                const [];
+            final ownership = ownerships.isEmpty ? null : ownerships.first;
+            row['is_lot_owner'] =
+                ownerships.isNotEmpty || _roleKey(row['role']) == 'lot_owner';
+            row['owned_lot_count'] = ownerships.length;
             if (ownership != null) {
               row['linked_lot_id'] = ownership['lot_id'];
               row['linked_ownership_id'] = ownership['ownership_id'];
@@ -206,7 +217,9 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
 
     List<Map<String, dynamic>> data = List<Map<String, dynamic>>.from(_users);
 
-    if (_selectedRoleFilter != 'All') {
+    if (_selectedRoleFilter == 'lot_owner') {
+      data = data.where(_isLotOwner).toList();
+    } else if (_selectedRoleFilter != 'All') {
       data = data.where((user) {
         final role = (user['role'] ?? '').toString().toLowerCase();
         return role == _selectedRoleFilter.toLowerCase();
@@ -219,6 +232,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
         final email = (user['email'] ?? '').toString().toLowerCase();
         final phone = (user['phone'] ?? '').toString().toLowerCase();
         final role = (user['role'] ?? '').toString().toLowerCase();
+        final owner = _isLotOwner(user) ? 'lot owner' : '';
         final controlNumber = (user['control_number'] ?? '')
             .toString()
             .toLowerCase();
@@ -227,6 +241,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
             email.contains(query) ||
             phone.contains(query) ||
             role.contains(query) ||
+            owner.contains(query) ||
             controlNumber.contains(query) ||
             address.contains(query);
       }).toList();
@@ -589,9 +604,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
     final visitors = _users
         .where((u) => _roleKey(u['role']) == 'visitor')
         .length;
-    final owners = _users
-        .where((u) => _roleKey(u['role']) == 'lot_owner')
-        .length;
+    final owners = _users.where(_isLotOwner).length;
     return {
       'all': _users.length,
       'admins': admins,
@@ -812,6 +825,11 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
 
   String _roleKey(dynamic role) {
     return (role ?? '').toString().toLowerCase();
+  }
+
+  bool _isLotOwner(Map<String, dynamic> user) {
+    return user['is_lot_owner'] == true ||
+        _roleKey(user['role']) == 'lot_owner';
   }
 }
 
@@ -1080,10 +1098,12 @@ class _UserCard extends StatelessWidget {
     final email = user['email']?.toString() ?? '';
     final phone = user['phone']?.toString() ?? '';
     final role = user['role']?.toString() ?? 'visitor';
+    final isLotOwner = user['is_lot_owner'] == true || role == 'lot_owner';
+    final displayRole = isLotOwner ? 'lot_owner' : role;
     final controlNumber = user['control_number']?.toString() ?? '';
     final address = user['address']?.toString() ?? '';
     final initials = _initials(name);
-    final roleStyle = _roleStyle(role);
+    final roleStyle = _roleStyle(displayRole);
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -1146,7 +1166,7 @@ class _UserCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
-                        _roleLabel(role),
+                        _roleLabel(displayRole),
                         style: TextStyle(
                           color: roleStyle.foreground,
                           fontSize: 11,
@@ -1174,7 +1194,7 @@ class _UserCard extends StatelessWidget {
                     ),
                   ),
                 ],
-                if (role == 'lot_owner' && controlNumber.isNotEmpty) ...[
+                if (isLotOwner && controlNumber.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(
                     'Control No. $controlNumber',
@@ -1185,7 +1205,7 @@ class _UserCard extends StatelessWidget {
                     ),
                   ),
                 ],
-                if (role == 'lot_owner' && address.isNotEmpty) ...[
+                if (isLotOwner && address.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(
                     address,
@@ -1645,6 +1665,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
         label: 'Phone Number',
         icon: Icons.phone_rounded,
         keyboardType: TextInputType.phone,
+        inputFormatters: phoneInputFormatters,
       ),
     ];
   }
@@ -1695,6 +1716,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
           label: 'Mobile',
           icon: Icons.phone_rounded,
           keyboardType: TextInputType.phone,
+          inputFormatters: phoneInputFormatters,
         ),
       ]),
       const SizedBox(height: 12),
@@ -2157,6 +2179,7 @@ class _Field extends StatelessWidget {
     this.maxLines = 1,
     this.prefixText,
     this.onChanged,
+    this.inputFormatters,
   });
 
   final TextEditingController controller;
@@ -2169,6 +2192,7 @@ class _Field extends StatelessWidget {
   final int maxLines;
   final String? prefixText;
   final ValueChanged<String>? onChanged;
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   Widget build(BuildContext context) {
@@ -2180,6 +2204,7 @@ class _Field extends StatelessWidget {
       validator: validator,
       maxLines: obscureText ? 1 : maxLines,
       onChanged: onChanged,
+      inputFormatters: inputFormatters,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: AppColors.brandDark),

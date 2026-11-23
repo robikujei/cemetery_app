@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/surface_style.dart';
 import '../../utils/lot_formatters.dart';
+import '../../services/visitor_relative_groups_service.dart';
 
 class VisitorHistoryScreen extends ConsumerStatefulWidget {
   const VisitorHistoryScreen({super.key});
@@ -23,7 +24,28 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
   String? _errorMessage;
 
   String _selectedFilter = 'Recent';
+  String _selectedLot = 'All lots';
+  bool _groupByLot = false;
+  List<String> _relativeGroups = [];
+  Map<String, Map<String, dynamic>> _relativeAssignments = {};
+  String _selectedRelativeGroup = 'All';
   final TextEditingController _searchController = TextEditingController();
+
+  List<String> get _lotFilters {
+    final values =
+        _visitHistory
+            .map((visit) {
+              final lot = visit['burial']?['cemetery_lot'];
+              if (lot is! Map) return 'Unknown lot';
+              final reference = lotReference(Map<String, dynamic>.from(lot));
+              final block = lotBlockLabel(Map<String, dynamic>.from(lot));
+              return '$block · Lot $reference';
+            })
+            .toSet()
+            .toList()
+          ..sort();
+    return ['All lots', ...values];
+  }
 
   @override
   void dispose() {
@@ -34,7 +56,61 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
   @override
   void initState() {
     super.initState();
+    _loadRelativeGroups();
     _loadVisitHistory();
+  }
+
+  Future<void> _loadRelativeGroups() async {
+    final groups = await VisitorRelativeGroupsService.loadGroups();
+    final assignments = await VisitorRelativeGroupsService.loadAssignments();
+    if (!mounted) return;
+    setState(() {
+      _relativeGroups = groups;
+      _relativeAssignments = assignments;
+    });
+    _applyFilters();
+  }
+
+  Future<void> _createRelativeGroup() async {
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Create a relatives group'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Group name'),
+          onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pop(dialogContext, controller.text.trim()),
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (name == null || name.isEmpty) return;
+    await VisitorRelativeGroupsService.createGroup(name);
+    await _loadRelativeGroups();
+  }
+
+  Future<void> _toggleVisitFavorite(String name) async {
+    final current = _relativeAssignments[name]?['favorite'] == true;
+    await VisitorRelativeGroupsService.setAssignment(name, favorite: !current);
+    await _loadRelativeGroups();
+  }
+
+  Future<void> _assignVisitGroup(String name, String group) async {
+    await VisitorRelativeGroupsService.setAssignment(name, group: group);
+    await _loadRelativeGroups();
   }
 
   Future<void> _loadVisitHistory() async {
@@ -107,6 +183,28 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
       }).toList();
     }
 
+    if (_selectedLot != 'All lots') {
+      data = data.where((visit) {
+        final lot = visit['burial']?['cemetery_lot'];
+        if (lot is! Map) return _selectedLot == 'Unknown lot';
+        final map = Map<String, dynamic>.from(lot);
+        return '${lotBlockLabel(map)} · Lot ${lotReference(map)}' ==
+            _selectedLot;
+      }).toList();
+    }
+
+    if (_selectedRelativeGroup == 'Favorites') {
+      data = data.where((visit) {
+        final name = visit['burial']?['name_of_deceased']?.toString() ?? '';
+        return _relativeAssignments[name]?['favorite'] == true;
+      }).toList();
+    } else if (_selectedRelativeGroup != 'All') {
+      data = data.where((visit) {
+        final name = visit['burial']?['name_of_deceased']?.toString() ?? '';
+        return _relativeAssignments[name]?['group'] == _selectedRelativeGroup;
+      }).toList();
+    }
+
     // SORTING
     if (_selectedFilter == 'Recent') {
       data.sort(
@@ -166,11 +264,18 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
       final timeIn = visit['time_in'];
       if (timeIn == null) continue;
 
-      final date = DateTime.parse(timeIn);
-      final monthKey = DateFormat('MMMM y').format(date);
+      final date = DateTime.tryParse(timeIn.toString());
+      if (date == null) continue;
+      final burial = visit['burial'];
+      final lot = burial is Map ? burial['cemetery_lot'] : null;
+      final key = _groupByLot
+          ? lot is Map
+                ? '${lotBlockLabel(Map<String, dynamic>.from(lot))} · Lot ${lotReference(Map<String, dynamic>.from(lot))}'
+                : 'Unknown lot'
+          : DateFormat('MMMM y').format(date);
 
-      grouped.putIfAbsent(monthKey, () => []);
-      grouped[monthKey]!.add(visit);
+      grouped.putIfAbsent(key, () => []);
+      grouped[key]!.add(visit);
     }
 
     return grouped;
@@ -229,8 +334,10 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
           : Column(
               children: [
                 _buildHeader(),
+                _buildRelativeGroupFilters(),
                 _buildSearchBar(),
                 _buildFilterChips(),
+                _buildLotOptions(),
                 Expanded(
                   child: _filteredHistory.isEmpty
                       ? _buildEmptyWidget()
@@ -238,6 +345,37 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                 ),
               ],
             ),
+    );
+  }
+
+  Widget _buildRelativeGroupFilters() {
+    final options = ['All', 'Favorites', ..._relativeGroups];
+    return SizedBox(
+      height: 54,
+      child: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        scrollDirection: Axis.horizontal,
+        children: [
+          ...options.map(
+            (group) => Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                label: Text(group),
+                selected: _selectedRelativeGroup == group,
+                onSelected: (_) {
+                  setState(() => _selectedRelativeGroup = group);
+                  _applyFilters();
+                },
+              ),
+            ),
+          ),
+          ActionChip(
+            avatar: const Icon(Icons.create_new_folder_outlined, size: 17),
+            label: const Text('New group'),
+            onPressed: _createRelativeGroup,
+          ),
+        ],
+      ),
     );
   }
 
@@ -395,6 +533,56 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
     );
   }
 
+  Widget _buildLotOptions() {
+    final lots = _lotFilters;
+    if (_selectedLot != 'All lots' && !lots.contains(_selectedLot)) {
+      _selectedLot = 'All lots';
+    }
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: DropdownButtonFormField<String>(
+              initialValue: _selectedLot,
+              decoration: InputDecoration(
+                labelText: 'Related lot',
+                prefixIcon: const Icon(Icons.place_outlined),
+                filled: true,
+                fillColor: _colors(context).surface,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 9,
+                ),
+              ),
+              items: lots
+                  .map((lot) => DropdownMenuItem(value: lot, child: Text(lot)))
+                  .toList(),
+              onChanged: (lot) {
+                if (lot == null) return;
+                setState(() => _selectedLot = lot);
+                _applyFilters();
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          FilterChip(
+            avatar: Icon(
+              _groupByLot ? Icons.place_rounded : Icons.calendar_month_rounded,
+              size: 16,
+            ),
+            label: Text(_groupByLot ? 'Group: lot' : 'Group: month'),
+            selected: _groupByLot,
+            onSelected: (value) => setState(() => _groupByLot = value),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHistoryList() {
     final groupedHistory = _groupByMonth();
 
@@ -490,6 +678,58 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                                   ),
                                 ),
                                 const SizedBox(width: 8),
+                                IconButton(
+                                  visualDensity: VisualDensity.compact,
+                                  constraints: const BoxConstraints.tightFor(
+                                    width: 30,
+                                    height: 30,
+                                  ),
+                                  padding: EdgeInsets.zero,
+                                  onPressed: () => _toggleVisitFavorite(
+                                    deceasedName.toString(),
+                                  ),
+                                  tooltip: 'Favorite relative',
+                                  icon: Icon(
+                                    _relativeAssignments[deceasedName
+                                                .toString()]?['favorite'] ==
+                                            true
+                                        ? Icons.favorite_rounded
+                                        : Icons.favorite_border_rounded,
+                                    size: 18,
+                                    color:
+                                        _relativeAssignments[deceasedName
+                                                .toString()]?['favorite'] ==
+                                            true
+                                        ? _colors(context).error
+                                        : _colors(context).onSurfaceVariant,
+                                  ),
+                                ),
+                                PopupMenuButton<String>(
+                                  tooltip: 'Assign to relatives group',
+                                  padding: EdgeInsets.zero,
+                                  onSelected: (group) => _assignVisitGroup(
+                                    deceasedName.toString(),
+                                    group,
+                                  ),
+                                  itemBuilder: (context) => [
+                                    const PopupMenuItem(
+                                      value: '',
+                                      child: Text('No group'),
+                                    ),
+                                    ..._relativeGroups.map(
+                                      (group) => PopupMenuItem(
+                                        value: group,
+                                        child: Text(group),
+                                      ),
+                                    ),
+                                  ],
+                                  iconSize: 18,
+                                  icon: Icon(
+                                    Icons.folder_outlined,
+                                    color: _colors(context).onSurfaceVariant,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
                                 Text(
                                   formattedTime,
                                   style: TextStyle(
@@ -523,6 +763,25 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen> {
                               ],
                             ),
                             const SizedBox(height: 12),
+                            if ((_relativeAssignments[deceasedName
+                                            .toString()]?['group']
+                                        ?.toString() ??
+                                    '')
+                                .isNotEmpty) ...[
+                              Chip(
+                                visualDensity: VisualDensity.compact,
+                                avatar: const Icon(
+                                  Icons.folder_outlined,
+                                  size: 15,
+                                ),
+                                label: Text(
+                                  _relativeAssignments[deceasedName
+                                          .toString()]!['group']
+                                      .toString(),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                            ],
                             Row(
                               children: [
                                 Container(

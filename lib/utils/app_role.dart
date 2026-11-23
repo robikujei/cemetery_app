@@ -23,7 +23,9 @@ bool isGeoGraveAllowedRole(Object? value) => switch (normalizeAppRole(value)) {
 String? appHomeForRole(Object? value) => switch (normalizeAppRole(value)) {
   'admin' => '/admin',
   'gate_officer' => '/gate-officer',
-  'lot_owner' => '/lot-owner',
+  // Lot ownership unlocks an extra area in the Visitor shell rather than a
+  // separate portal, keeping search, map, QR, and profile in one experience.
+  'lot_owner' => '/visitor',
   'visitor' => '/visitor',
   _ => null,
 };
