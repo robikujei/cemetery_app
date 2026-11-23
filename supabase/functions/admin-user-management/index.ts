@@ -186,17 +186,16 @@ Deno.serve(async (req) => {
       if (data.users.length < perPage) break;
     }
 
-    const userIds = users.map((user) => user.id);
     const profilesById = new Map<string, Record<string, unknown>>();
 
-    for (let start = 0; start < userIds.length; start += perPage) {
-      const ids = userIds.slice(start, start + perPage);
-      if (ids.length === 0) continue;
-
+    // The directory is based on the cemetery's users table, not only auth
+    // users. Historical/imported lot owners can have a profile without an
+    // Auth account and must remain visible to administrators.
+    for (let start = 0; ; start += perPage) {
       const { data: profiles, error: profilesError } = await adminClient
         .from("users")
         .select("*")
-        .in("user_id", ids);
+        .range(start, start + perPage - 1);
 
       if (profilesError) {
         return Response.json(
@@ -208,11 +207,23 @@ Deno.serve(async (req) => {
       for (const profile of profiles ?? []) {
         profilesById.set(String(profile.user_id), profile);
       }
+      if ((profiles ?? []).length < perPage) break;
     }
+
+    const authUserIds = new Set(users.map((user) => user.id));
+    const databaseOnlyUsers = Array.from(profilesById.values())
+      .filter((profile) => !authUserIds.has(String(profile.user_id)))
+      .map((profile) => ({
+        ...profile,
+        name: profile.name ?? profile.email ?? "Unknown",
+        email: profile.email ?? "",
+        phone: profile.phone ?? "",
+        role: profile.role ?? "visitor",
+      }));
 
     return Response.json(
       {
-        users: users.map((user) => {
+        users: [...users.map((user) => {
           const profile = profilesById.get(user.id) ?? {};
           const metadata = user.user_metadata ?? {};
           return {
@@ -223,7 +234,7 @@ Deno.serve(async (req) => {
             phone: profile.phone ?? metadata.phone ?? "",
             role: profile.role ?? metadata.role ?? "visitor",
           };
-        }),
+        }), ...databaseOnlyUsers],
       },
       { headers: corsHeaders },
     );

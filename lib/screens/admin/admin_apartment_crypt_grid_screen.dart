@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../services/admin_grave_service.dart';
 import '../../utils/apartment_crypt.dart';
@@ -111,12 +112,159 @@ class _AdminApartmentCryptGridScreenState
   }
 
   Future<void> _editSlot(int slot) async {
-    // The general lot editor is hosted by the admin shell so its navigation
-    // remains available; do not push it as a standalone route here.
-    if (widget.onEditApartmentCrypt != null) {
-      widget.onEditApartmentCrypt!();
-      return;
+    final lotId = _lotId;
+    if (lotId == null) return;
+    final code = apartmentCryptSlotCode(_wing, slot);
+    final existing = _gravesBySlot[code];
+    final burial = existing?['burial'];
+    final deceasedName = burial is Map
+        ? burial['name_of_deceased']?.toString().trim()
+        : null;
+
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          child: Wrap(
+            runSpacing: 8,
+            children: [
+              Text(code, style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                deceasedName == null || deceasedName.isEmpty
+                    ? 'This individual crypt face has no deceased assigned.'
+                    : 'Assigned to $deceasedName.',
+              ),
+              const SizedBox(height: 8),
+              if (deceasedName == null || deceasedName.isEmpty)
+                ListTile(
+                  leading: const Icon(Icons.person_add_alt_1_rounded),
+                  title: const Text('Assign deceased'),
+                  subtitle: const Text(
+                    'Link this exact crypt face to a burial record.',
+                  ),
+                  onTap: () => Navigator.pop(context, 'assign'),
+                ),
+              ListTile(
+                leading: const Icon(Icons.label_outline_rounded),
+                title: const Text('Edit crypt label'),
+                subtitle: const Text(
+                  'Change the optional family or location label.',
+                ),
+                onTap: () => Navigator.pop(context, 'label'),
+              ),
+              if (deceasedName != null && deceasedName.isNotEmpty)
+                const ListTile(
+                  leading: Icon(Icons.info_outline_rounded),
+                  title: Text('Manage the deceased record in Burial Records'),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (action == 'assign') {
+      await _assignDeceasedToSlot(slot, existing);
+    } else if (action == 'label') {
+      await _editSlotLabel(slot);
     }
+  }
+
+  Future<void> _assignDeceasedToSlot(
+    int slot,
+    Map<String, dynamic>? existing,
+  ) async {
+    final lotId = _lotId;
+    if (lotId == null) return;
+    final code = apartmentCryptSlotCode(_wing, slot);
+    final rows = await Supabase.instance.client
+        .from('burial_record')
+        .select('burial_id, name_of_deceased, death_date, lot_id')
+        .order('name_of_deceased');
+    if (!mounted) return;
+    final burials = List<Map<String, dynamic>>.from(rows as List);
+    int? selectedBurialId;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Assign deceased to $code'),
+          content: SizedBox(
+            width: 480,
+            child: DropdownButtonFormField<int>(
+              value: selectedBurialId,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Deceased record',
+                prefixIcon: Icon(Icons.person_search_rounded),
+              ),
+              items: burials.map((burial) {
+                final assigned = burial['lot_id'] == null
+                    ? ''
+                    : ' · currently assigned';
+                return DropdownMenuItem<int>(
+                  value: int.tryParse(burial['burial_id'].toString()),
+                  child: Text(
+                    '${burial['name_of_deceased'] ?? 'Unknown'}$assigned',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              }).toList(),
+              onChanged: (value) =>
+                  setDialogState(() => selectedBurialId = value),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: selectedBurialId == null
+                  ? null
+                  : () => Navigator.pop(context, true),
+              child: const Text('Assign'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true || selectedBurialId == null) return;
+    final int burialId = selectedBurialId!;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      if (existing == null) {
+        await AdminGraveService.addGrave(
+          lotId: lotId,
+          graveLabel: apartmentCryptLabel(wing: _wing, slot: slot),
+          status: 'Occupied',
+          burialId: burialId,
+        );
+      } else {
+        await AdminGraveService.linkExistingBurialToGrave(
+          lotId: lotId,
+          graveId: int.parse(existing['grave_id'].toString()),
+          burialId: burialId,
+        );
+      }
+      await _loadGraves();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Deceased assigned to crypt $code.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = 'Unable to assign deceased to $code: $error');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _editSlotLabel(int slot) async {
     final lotId = _lotId;
     if (lotId == null) return;
     final code = apartmentCryptSlotCode(_wing, slot);
@@ -387,7 +535,7 @@ class _AdminApartmentCryptGridScreenState
                 const Icon(Icons.apartment_rounded, size: 64),
                 const SizedBox(height: 16),
                 Text(
-              'Select an Apartment Crypt on the map',
+                  'Select an Apartment Crypt on the map',
                   style: Theme.of(context).textTheme.headlineSmall,
                   textAlign: TextAlign.center,
                 ),
@@ -426,7 +574,9 @@ class _WingOrientationIndicator extends StatelessWidget {
       decoration: BoxDecoration(
         color: activeWing == code ? color : colors.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: activeWing == code ? color : colors.outlineVariant),
+        border: Border.all(
+          color: activeWing == code ? color : colors.outlineVariant,
+        ),
       ),
       child: Text(
         'Wing $code · $position',
