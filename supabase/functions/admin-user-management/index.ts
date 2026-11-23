@@ -27,6 +27,8 @@ const normalizeRole = (value: unknown) => {
 
 type ListUsersPayload = {
   action: "list";
+  page?: number;
+  pageSize?: number;
 };
 
 type AdminUserManagementPayload = CreateUserPayload | ListUsersPayload;
@@ -166,76 +168,54 @@ Deno.serve(async (req) => {
   const body = (await req.json()) as AdminUserManagementPayload;
 
   if (body.action === "list") {
-    const users = [];
-    const perPage = 1000;
-
-    for (let page = 1; ; page += 1) {
-      const { data, error } = await adminClient.auth.admin.listUsers({
-        page,
-        perPage,
-      });
-
-      if (error) {
-        return Response.json(
-          { error: `Failed to list users: ${error.message}` },
-          { status: 500, headers: corsHeaders },
-        );
-      }
-
-      users.push(...data.users);
-      if (data.users.length < perPage) break;
+    const pageSize = Math.min(Math.max(Number(body.pageSize) || 100, 1), 100);
+    const page = Math.max(Number(body.page) || 0, 0);
+    const from = page * pageSize;
+    const { data: profiles, error: profilesError, count } = await adminClient
+      .from("users")
+      .select("*", { count: "exact" })
+      .order("name", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (profilesError) {
+      return Response.json(
+        { error: `Failed to load user profiles: ${profilesError.message}` },
+        { status: 500, headers: corsHeaders },
+      );
     }
 
-    const profilesById = new Map<string, Record<string, unknown>>();
-
-    // The directory is based on the cemetery's users table, not only auth
-    // users. Historical/imported lot owners can have a profile without an
-    // Auth account and must remain visible to administrators.
-    for (let start = 0; ; start += perPage) {
-      const { data: profiles, error: profilesError } = await adminClient
-        .from("users")
-        .select("*")
-        .range(start, start + perPage - 1);
-
-      if (profilesError) {
-        return Response.json(
-          { error: `Failed to load user profiles: ${profilesError.message}` },
-          { status: 500, headers: corsHeaders },
-        );
-      }
-
-      for (const profile of profiles ?? []) {
-        profilesById.set(String(profile.user_id), profile);
-      }
-      if ((profiles ?? []).length < perPage) break;
+    const userIds = (profiles ?? []).map((profile) => String(profile.user_id));
+    const { data: ownerships, error: ownershipError } = userIds.length === 0
+      ? { data: [], error: null }
+      : await adminClient
+        .from("lot_ownership")
+        .select("ownership_id, user_id, lot_id, total_months, status")
+        .in("user_id", userIds);
+    if (ownershipError) {
+      return Response.json(
+        { error: `Failed to load lot ownership: ${ownershipError.message}` },
+        { status: 500, headers: corsHeaders },
+      );
     }
-
-    const authUserIds = new Set(users.map((user) => user.id));
-    const databaseOnlyUsers = Array.from(profilesById.values())
-      .filter((profile) => !authUserIds.has(String(profile.user_id)))
-      .map((profile) => ({
+    const ownershipByUserId = new Map<string, Record<string, unknown>>();
+    for (const ownership of ownerships ?? []) {
+      ownershipByUserId.set(String(ownership.user_id), ownership);
+    }
+    const pageUsers = (profiles ?? []).map((profile) => {
+      const ownership = ownershipByUserId.get(String(profile.user_id));
+      return {
         ...profile,
         name: profile.name ?? profile.email ?? "Unknown",
         email: profile.email ?? "",
         phone: profile.phone ?? "",
         role: profile.role ?? "visitor",
-      }));
-
+        is_lot_owner: Boolean(ownership) || profile.role === "lot_owner",
+        linked_lot_id: ownership?.lot_id,
+        linked_ownership_id: ownership?.ownership_id,
+        linked_total_months: ownership?.total_months,
+      };
+    });
     return Response.json(
-      {
-        users: [...users.map((user) => {
-          const profile = profilesById.get(user.id) ?? {};
-          const metadata = user.user_metadata ?? {};
-          return {
-            ...profile,
-            user_id: user.id,
-            name: profile.name ?? metadata.name ?? user.email ?? "Unknown",
-            email: profile.email ?? user.email ?? "",
-            phone: profile.phone ?? metadata.phone ?? "",
-            role: profile.role ?? metadata.role ?? "visitor",
-          };
-        }), ...databaseOnlyUsers],
-      },
+      { users: pageUsers, page, pageSize, total: count ?? 0 },
       { headers: corsHeaders },
     );
   }

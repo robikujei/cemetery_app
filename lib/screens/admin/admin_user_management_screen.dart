@@ -109,6 +109,10 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
   List<Map<String, dynamic>> _users = [];
   List<Map<String, dynamic>> _filteredUsers = [];
   List<Map<String, dynamic>> _lots = [];
+  final Map<int, List<Map<String, dynamic>>> _userPageCache = {};
+  static const int _userPageSize = 100;
+  int _currentPage = 0;
+  int _totalUsers = 0;
   bool _isLoading = true;
   String _selectedRoleFilter = 'All';
   String? _errorMessage;
@@ -128,7 +132,16 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
     super.dispose();
   }
 
-  Future<void> _loadUsers() async {
+  Future<void> _loadUsers({int page = 0, bool force = false}) async {
+    if (!force && _userPageCache.containsKey(page)) {
+      setState(() {
+        _currentPage = page;
+        _users = _userPageCache[page]!;
+        _isLoading = false;
+      });
+      _applyFilters();
+      return;
+    }
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -139,7 +152,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
       final results = await Future.wait<dynamic>([
         supabase.functions.invoke(
           'admin-user-management',
-          body: const {'action': 'list'},
+          body: {'action': 'list', 'page': page, 'pageSize': _userPageSize},
         ),
         supabase
             .from('cemetery_lot')
@@ -148,28 +161,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
             )
             .order('block_number')
             .order('lot_number'),
-        supabase
-            .from('lot_ownership')
-            .select('ownership_id, user_id, lot_id, total_months, status')
-            .order('ownership_id'),
-        // The auth service only returns people with a Supabase Auth account.
-        // Import/migration records may exist only in the application users
-        // table, and must still be visible to an administrator.
-        supabase.from('users').select('*').order('name'),
       ]);
-
-      // A person remains a visitor in authentication after being assigned a
-      // lot.  Treat the ownership record as the source of truth for the
-      // "Lot Owners" directory, so the directory does not depend on a legacy
-      // lot_owner role being present on the user profile.
-      final ownershipsByUserId = <String, List<Map<String, dynamic>>>{};
-      for (final ownership in results[2] as List) {
-        final row = Map<String, dynamic>.from(ownership);
-        final userId = row['user_id']?.toString();
-        if (userId != null && userId.isNotEmpty) {
-          ownershipsByUserId.putIfAbsent(userId, () => []).add(row);
-        }
-      }
 
       final userResponse = results[0] as FunctionResponse;
       final userData = userResponse.data;
@@ -180,52 +172,16 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
         throw Exception('The user-management service returned invalid data.');
       }
 
-      final databaseUsers = List<Map<String, dynamic>>.from(results[3] as List);
-      final databaseUsersById = <String, Map<String, dynamic>>{
-        for (final user in databaseUsers)
-          if ((user['user_id']?.toString() ?? '').isNotEmpty)
-            user['user_id'].toString(): user,
-      };
-
-      // Merge Auth-backed users with every profile row in the database.  The
-      // database profile wins for display fields because it is the cemetery's
-      // administrative record, while Auth fills any missing account metadata.
-      final usersById = <String, Map<String, dynamic>>{};
-      for (final user in userData['users'] as List) {
-        final authUser = Map<String, dynamic>.from(user);
-        final userId = authUser['user_id']?.toString() ?? '';
-        final profile = databaseUsersById[userId];
-        usersById[userId] = {...authUser, if (profile != null) ...profile};
-      }
-      for (final profile in databaseUsers) {
-        final userId = profile['user_id']?.toString() ?? '';
-        if (userId.isNotEmpty) usersById.putIfAbsent(userId, () => profile);
-      }
-
-      final users =
-          usersById.values.map((user) {
-            final row = Map<String, dynamic>.from(user);
-            final ownerships =
-                ownershipsByUserId[row['user_id']?.toString() ?? ''] ??
-                const [];
-            final ownership = ownerships.isEmpty ? null : ownerships.first;
-            row['is_lot_owner'] =
-                ownerships.isNotEmpty || _roleKey(row['role']) == 'lot_owner';
-            row['owned_lot_count'] = ownerships.length;
-            if (ownership != null) {
-              row['linked_lot_id'] = ownership['lot_id'];
-              row['linked_ownership_id'] = ownership['ownership_id'];
-              row['linked_total_months'] = ownership['total_months'];
-            }
-            return row;
-          }).toList()..sort((a, b) {
-            return (a['name'] ?? '').toString().compareTo(
-              (b['name'] ?? '').toString(),
-            );
-          });
+      final users = (userData['users'] as List).map((user) {
+        final row = Map<String, dynamic>.from(user);
+        return row;
+      }).toList();
 
       setState(() {
         _users = users;
+        _userPageCache[page] = users;
+        _currentPage = page;
+        _totalUsers = int.tryParse(userData['total']?.toString() ?? '') ?? 0;
         _lots = List<Map<String, dynamic>>.from(results[1] as List);
         _isLoading = false;
       });
@@ -277,7 +233,10 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
     setState(() => _filteredUsers = data);
   }
 
-  Future<void> _refresh() => _loadUsers();
+  Future<void> _refresh() async {
+    _userPageCache.clear();
+    await _loadUsers(page: _currentPage, force: true);
+  }
 
   Future<void> _showUserDialog({Map<String, dynamic>? user}) async {
     final result = await showDialog<Map<String, String>>(
@@ -632,7 +591,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
         .length;
     final owners = _users.where(_isLotOwner).length;
     return {
-      'all': _users.length,
+      'all': _totalUsers,
       'admins': admins,
       'officers': officers,
       'visitors': visitors,
@@ -842,6 +801,16 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
                   ),
                   const SizedBox(height: 12),
                 ],
+                if (_totalUsers > _userPageSize) ...[
+                  const SizedBox(height: 8),
+                  _UserPagination(
+                    page: _currentPage,
+                    totalUsers: _totalUsers,
+                    pageSize: _userPageSize,
+                    isLoading: _isLoading,
+                    onPageChanged: (page) => _loadUsers(page: page),
+                  ),
+                ],
               ],
             ),
         ],
@@ -856,6 +825,51 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
   bool _isLotOwner(Map<String, dynamic> user) {
     return user['is_lot_owner'] == true ||
         _roleKey(user['role']) == 'lot_owner';
+  }
+}
+
+class _UserPagination extends StatelessWidget {
+  const _UserPagination({
+    required this.page,
+    required this.totalUsers,
+    required this.pageSize,
+    required this.isLoading,
+    required this.onPageChanged,
+  });
+
+  final int page;
+  final int totalUsers;
+  final int pageSize;
+  final bool isLoading;
+  final ValueChanged<int> onPageChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final lastPage = (totalUsers - 1) ~/ pageSize;
+    final first = page * pageSize + 1;
+    final last = ((page + 1) * pageSize).clamp(0, totalUsers);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Text('Showing $first–$last of $totalUsers'),
+        const SizedBox(width: 12),
+        IconButton(
+          tooltip: 'Previous 100 users',
+          onPressed: isLoading || page == 0
+              ? null
+              : () => onPageChanged(page - 1),
+          icon: const Icon(Icons.chevron_left_rounded),
+        ),
+        Text('Page ${page + 1} of ${lastPage + 1}'),
+        IconButton(
+          tooltip: 'Next 100 users',
+          onPressed: isLoading || page >= lastPage
+              ? null
+              : () => onPageChanged(page + 1),
+          icon: const Icon(Icons.chevron_right_rounded),
+        ),
+      ],
+    );
   }
 }
 
