@@ -19,6 +19,8 @@ class AdminBurialRecordsScreen extends ConsumerStatefulWidget {
     this.onMenuPressed,
     this.onLogoutPressed,
     this.initialLot,
+    this.initialBurialId,
+    this.editorRequestToken = 0,
     this.openAddForm = false,
     this.closeAfterCreate = false,
   });
@@ -26,6 +28,8 @@ class AdminBurialRecordsScreen extends ConsumerStatefulWidget {
   final VoidCallback? onMenuPressed;
   final VoidCallback? onLogoutPressed;
   final Map<String, dynamic>? initialLot;
+  final int? initialBurialId;
+  final int editorRequestToken;
   final bool openAddForm;
   final bool closeAfterCreate;
 
@@ -135,12 +139,43 @@ class _AdminBurialRecordsScreenState
   void initState() {
     super.initState();
     _loadData().then((_) {
-      if (mounted && widget.openAddForm) {
+      if (mounted && widget.initialBurialId != null) {
+        _openRequestedBurial();
+      } else if (mounted && widget.openAddForm) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _showAddEditDialog();
         });
       }
     });
+  }
+
+  @override
+  void didUpdateWidget(AdminBurialRecordsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialBurialId == null ||
+        (widget.initialBurialId == oldWidget.initialBurialId &&
+            widget.editorRequestToken == oldWidget.editorRequestToken)) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _openRequestedBurial();
+    });
+  }
+
+  void _openRequestedBurial() {
+    final burialId = widget.initialBurialId;
+    if (burialId == null) return;
+    for (final record in _burialRecords) {
+      if (record['burial_id']?.toString() == burialId.toString()) {
+        _showAddEditDialog(record);
+        return;
+      }
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('The selected burial record was not found.'),
+      ),
+    );
   }
 
   @override
@@ -275,8 +310,8 @@ class _AdminBurialRecordsScreenState
           .inFilter('burial_id', ids);
       return {
         for (final row in rows)
-          row['burial_id'].toString():
-              row['relationship_to_deceased']?.toString(),
+          row['burial_id'].toString(): row['relationship_to_deceased']
+              ?.toString(),
       };
     } on PostgrestException catch (error) {
       if (_isMissingTableError(error)) return {};
@@ -558,38 +593,41 @@ class _AdminBurialRecordsScreenState
     final query = _recordSearchController.text.trim().toLowerCase();
     setState(() {
       _filteredRecords = _burialRecords.where((record) {
-          final name = record['name_of_deceased']?.toLowerCase() ?? '';
-          final lotText = lotSearchText(record['cemetery_lot']);
-          final informant = record['informant'];
-          final informantName = informant is Map
-              ? informant['full_name']?.toString().toLowerCase() ?? ''
-              : '';
-          final category =
-              record['burial_category']?.toString().toLowerCase() ?? '';
-          final religion = record['religion']?.toString().toLowerCase() ?? '';
-          final matchesSearch = query.isEmpty ||
-              name.contains(query) ||
-              lotText.contains(query) ||
-              informantName.contains(query) ||
-              category.contains(query) ||
-              religion.contains(query) ||
-              record['death_date']?.toString().contains(query) == true ||
-              record['interment_date']?.toString().contains(query) == true;
-          final matchesCategory = _categoryFilter == 'All' ||
-              record['burial_category']?.toString() == _categoryFilter;
-          final matchesLot = _lotFilter == 'All' ||
-              lotReference(record['cemetery_lot'], fallback: '') == _lotFilter;
-          return matchesSearch && matchesCategory && matchesLot;
-        }).toList();
+        final name = record['name_of_deceased']?.toLowerCase() ?? '';
+        final lotText = lotSearchText(record['cemetery_lot']);
+        final informant = record['informant'];
+        final informantName = informant is Map
+            ? informant['full_name']?.toString().toLowerCase() ?? ''
+            : '';
+        final category =
+            record['burial_category']?.toString().toLowerCase() ?? '';
+        final religion = record['religion']?.toString().toLowerCase() ?? '';
+        final matchesSearch =
+            query.isEmpty ||
+            name.contains(query) ||
+            lotText.contains(query) ||
+            informantName.contains(query) ||
+            category.contains(query) ||
+            religion.contains(query) ||
+            record['death_date']?.toString().contains(query) == true ||
+            record['interment_date']?.toString().contains(query) == true;
+        final matchesCategory =
+            _categoryFilter == 'All' ||
+            record['burial_category']?.toString() == _categoryFilter;
+        final matchesLot =
+            _lotFilter == 'All' ||
+            lotReference(record['cemetery_lot'], fallback: '') == _lotFilter;
+        return matchesSearch && matchesCategory && matchesLot;
+      }).toList();
       _filteredRecords.sort((a, b) {
         if (_sortOrder == 'Deceased name (A–Z)') {
           return (a['name_of_deceased'] ?? '').toString().compareTo(
-                (b['name_of_deceased'] ?? '').toString(),
-              );
+            (b['name_of_deceased'] ?? '').toString(),
+          );
         }
         final comparison = (a['death_date'] ?? '').toString().compareTo(
-              (b['death_date'] ?? '').toString(),
-            );
+          (b['death_date'] ?? '').toString(),
+        );
         return _sortOrder == 'Death date (oldest)' ? comparison : -comparison;
       });
       _currentPage = 0;
@@ -597,22 +635,24 @@ class _AdminBurialRecordsScreenState
   }
 
   List<String> get _categoryOptions {
-    final values = _burialRecords
-        .map((record) => record['burial_category']?.toString().trim() ?? '')
-        .where((value) => value.isNotEmpty)
-        .toSet()
-        .toList()
-      ..sort();
+    final values =
+        _burialRecords
+            .map((record) => record['burial_category']?.toString().trim() ?? '')
+            .where((value) => value.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
     return ['All', ...values];
   }
 
   List<String> get _lotOptions {
-    final values = _burialRecords
-        .map((record) => lotReference(record['cemetery_lot'], fallback: ''))
-        .where((value) => value.isNotEmpty)
-        .toSet()
-        .toList()
-      ..sort();
+    final values =
+        _burialRecords
+            .map((record) => lotReference(record['cemetery_lot'], fallback: ''))
+            .where((value) => value.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
     return ['All', ...values];
   }
 
@@ -632,9 +672,14 @@ class _AdminBurialRecordsScreenState
               children: [
                 DropdownButtonFormField<String>(
                   value: category,
-                  decoration: const InputDecoration(labelText: 'Burial category'),
+                  decoration: const InputDecoration(
+                    labelText: 'Burial category',
+                  ),
                   items: _categoryOptions
-                      .map((value) => DropdownMenuItem(value: value, child: Text(value)))
+                      .map(
+                        (value) =>
+                            DropdownMenuItem(value: value, child: Text(value)),
+                      )
                       .toList(),
                   onChanged: (value) =>
                       setDialogState(() => category = value ?? 'All'),
@@ -644,22 +689,35 @@ class _AdminBurialRecordsScreenState
                   value: lot,
                   decoration: const InputDecoration(labelText: 'Lot'),
                   items: _lotOptions
-                      .map((value) => DropdownMenuItem(value: value, child: Text(value)))
+                      .map(
+                        (value) =>
+                            DropdownMenuItem(value: value, child: Text(value)),
+                      )
                       .toList(),
-                  onChanged: (value) => setDialogState(() => lot = value ?? 'All'),
+                  onChanged: (value) =>
+                      setDialogState(() => lot = value ?? 'All'),
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   value: sort,
-                  decoration: const InputDecoration(labelText: 'Sort records by'),
-                  items: const [
-                    'Death date (newest)',
-                    'Death date (oldest)',
-                    'Deceased name (A–Z)',
-                  ]
-                      .map((value) => DropdownMenuItem(value: value, child: Text(value)))
-                      .toList(),
-                  onChanged: (value) => setDialogState(() => sort = value ?? sort),
+                  decoration: const InputDecoration(
+                    labelText: 'Sort records by',
+                  ),
+                  items:
+                      const [
+                            'Death date (newest)',
+                            'Death date (oldest)',
+                            'Deceased name (A–Z)',
+                          ]
+                          .map(
+                            (value) => DropdownMenuItem(
+                              value: value,
+                              child: Text(value),
+                            ),
+                          )
+                          .toList(),
+                  onChanged: (value) =>
+                      setDialogState(() => sort = value ?? sort),
                 ),
               ],
             ),
@@ -843,11 +901,15 @@ class _AdminBurialRecordsScreenState
                 searched = true;
               });
               try {
-                final escaped = query.replaceAll('%', r'\%').replaceAll('_', r'\_');
+                final escaped = query
+                    .replaceAll('%', r'\%')
+                    .replaceAll('_', r'\_');
                 final rows = await Supabase.instance.client
                     .from('burial_informants')
                     .select('informant_id, full_name, cellphone_no, address')
-                    .or('full_name.ilike.%$escaped%,cellphone_no.ilike.%$escaped%')
+                    .or(
+                      'full_name.ilike.%$escaped%,cellphone_no.ilike.%$escaped%',
+                    )
                     .order('full_name')
                     .limit(100);
                 if (!dialogContext.mounted) return;
@@ -855,7 +917,9 @@ class _AdminBurialRecordsScreenState
               } on PostgrestException catch (error) {
                 if (!dialogContext.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Could not search informants: $error')),
+                  SnackBar(
+                    content: Text('Could not search informants: $error'),
+                  ),
                 );
               } finally {
                 if (dialogContext.mounted) setState(() => isSearching = false);
@@ -888,24 +952,39 @@ class _AdminBurialRecordsScreenState
                       child: isSearching
                           ? const Center(child: CircularProgressIndicator())
                           : !searched
-                          ? const Center(child: Text('Search to find any informant.'))
+                          ? const Center(
+                              child: Text('Search to find any informant.'),
+                            )
                           : results.isEmpty
-                          ? const Center(child: Text('No matching informants found.'))
+                          ? const Center(
+                              child: Text('No matching informants found.'),
+                            )
                           : ListView.separated(
                               itemCount: results.length,
-                              separatorBuilder: (_, _) => const Divider(height: 1),
+                              separatorBuilder: (_, _) =>
+                                  const Divider(height: 1),
                               itemBuilder: (_, index) {
                                 final informant = results[index];
                                 return ListTile(
-                                  leading: const Icon(Icons.person_outline_rounded),
-                                  title: Text(informant['full_name']?.toString() ?? 'Unnamed'),
+                                  leading: const Icon(
+                                    Icons.person_outline_rounded,
+                                  ),
+                                  title: Text(
+                                    informant['full_name']?.toString() ??
+                                        'Unnamed',
+                                  ),
                                   subtitle: Text(
                                     [
-                                      informant['cellphone_no']?.toString(),
-                                      informant['address']?.toString(),
-                                    ].whereType<String>().where((value) => value.isNotEmpty).join(' • '),
+                                          informant['cellphone_no']?.toString(),
+                                          informant['address']?.toString(),
+                                        ]
+                                        .whereType<String>()
+                                        .where((value) => value.isNotEmpty)
+                                        .join(' • '),
                                   ),
-                                  onTap: () => Navigator.of(dialogContext).pop(informant),
+                                  onTap: () => Navigator.of(
+                                    dialogContext,
+                                  ).pop(informant),
                                 );
                               },
                             ),
@@ -971,7 +1050,8 @@ class _AdminBurialRecordsScreenState
       _applyInformantToForm(informant);
       _informantRelationshipController.text =
           record['informant_relationship']?.toString() ??
-          informant['relationship_to_deceased']?.toString() ?? '';
+          informant['relationship_to_deceased']?.toString() ??
+          '';
       _bldgNoController.text = record['bldg_no']?.toString() ?? '';
       _nicheNoController.text = record['niche_no']?.toString() ?? '';
       _levelController.text = record['level']?.toString() ?? '';
@@ -1696,10 +1776,7 @@ class _AdminBurialRecordsScreenState
           burialId: burialId,
           informantId: informantId,
         );
-        await _assignSelectedCryptFace(
-          supabase,
-          burialId: burialId,
-        );
+        await _assignSelectedCryptFace(supabase, burialId: burialId);
 
         await AuditService.log(
           action: 'UPDATE',
@@ -2107,10 +2184,7 @@ class _AdminBurialRecordsScreenState
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(999),
-                  borderSide: BorderSide(
-                    color: colors.primary,
-                    width: 1.4,
-                  ),
+                  borderSide: BorderSide(color: colors.primary, width: 1.4),
                 ),
               ),
               onChanged: (_) => _applyRecordFilters(),

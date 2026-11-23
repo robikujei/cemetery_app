@@ -11,11 +11,13 @@ class AdminApartmentCryptGridScreen extends StatefulWidget {
     this.apartmentCrypt,
     this.onBackToMap,
     this.onEditApartmentCrypt,
+    this.onEditBurial,
   });
 
   final Map<String, dynamic>? apartmentCrypt;
   final VoidCallback? onBackToMap;
   final VoidCallback? onEditApartmentCrypt;
+  final ValueChanged<int>? onEditBurial;
 
   @override
   State<AdminApartmentCryptGridScreen> createState() =>
@@ -155,9 +157,18 @@ class _AdminApartmentCryptGridScreenState
                 onTap: () => Navigator.pop(context, 'label'),
               ),
               if (deceasedName != null && deceasedName.isNotEmpty)
-                const ListTile(
+                ListTile(
                   leading: Icon(Icons.info_outline_rounded),
-                  title: Text('Manage the deceased record in Burial Records'),
+                  title: const Text('Edit deceased record'),
+                  subtitle: const Text('Open this record in Burial Records.'),
+                  onTap: () {
+                    final burialId = int.tryParse(
+                      (burial as Map)['burial_id']?.toString() ?? '',
+                    );
+                    if (burialId == null) return;
+                    Navigator.pop(context);
+                    widget.onEditBurial?.call(burialId);
+                  },
                 ),
             ],
           ),

@@ -32,6 +32,8 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
   Map<String, dynamic>? _selectedApartmentCrypt;
   Map<String, dynamic>? _lotToEdit;
   int _lotEditorRequestToken = 0;
+  int? _burialToEditId;
+  int _burialEditorRequestToken = 0;
   final _mapSaveProgress = ValueNotifier<String?>(null);
 
   @override
@@ -311,6 +313,8 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
       AdminBurialRecordsScreen(
         onMenuPressed: _toggleNavigation,
         onLogoutPressed: _logout,
+        initialBurialId: _burialToEditId,
+        editorRequestToken: _burialEditorRequestToken,
       ),
       AdminLotsScreen(
         onMenuPressed: _toggleNavigation,
@@ -335,6 +339,13 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
             _lotToEdit = Map<String, dynamic>.from(crypt);
             _lotEditorRequestToken++;
             _selected = 3;
+          });
+        },
+        onEditBurial: (burialId) {
+          setState(() {
+            _burialToEditId = burialId;
+            _burialEditorRequestToken++;
+            _selected = 2;
           });
         },
       ),
