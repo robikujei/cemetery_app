@@ -15,6 +15,7 @@ import 'admin_profile_screen.dart';
 import 'admin_visitor_logs_screen.dart';
 import 'admin_user_management_screen.dart';
 import 'admin_interment_planner_screen.dart';
+import 'admin_informants_screen.dart';
 import 'admin_apartment_crypt_grid_screen.dart';
 import '../payment_requests_screen.dart';
 
@@ -213,6 +214,12 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
                   onTap: () => _go(2),
                 ),
                 _NavTile(
+                  selected: _selected == 13,
+                  icon: Icons.contact_page_outlined,
+                  label: 'Informants',
+                  onTap: () => _go(13),
+                ),
+                _NavTile(
                   selected: _selected == 10,
                   icon: Icons.calendar_month_outlined,
                   label: 'Interment Planner',
@@ -350,6 +357,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
         },
       ),
       const PaymentRequestsScreen(admin: true),
+      const AdminInformantsScreen(),
     ],
   );
 
@@ -377,6 +385,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
       10 => 'Weekly Interment Planner',
       11 => 'Apartment-Type Crypt Grid',
       12 => 'Payment Review',
+      13 => 'Informants',
       _ => 'Cemetery Admin',
     };
   }
