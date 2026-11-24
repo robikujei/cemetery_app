@@ -368,7 +368,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
           });
         },
       ),
-      const PaymentRequestsScreen(admin: true),
+      const PaymentRequestsScreen(admin: true, embedded: true),
       const AdminInformantsScreen(),
     ],
   );

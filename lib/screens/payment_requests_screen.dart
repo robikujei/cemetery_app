@@ -7,8 +7,15 @@ import '../services/supabase_pagination_service.dart';
 import '../utils/lot_formatters.dart';
 
 class PaymentRequestsScreen extends StatefulWidget {
-  const PaymentRequestsScreen({super.key, this.admin = false});
+  const PaymentRequestsScreen({
+    super.key,
+    this.admin = false,
+    this.embedded = false,
+  });
   final bool admin;
+
+  /// Admin Shell already renders the page title; avoid a nested AppBar there.
+  final bool embedded;
   @override
   State<PaymentRequestsScreen> createState() => _PaymentRequestsScreenState();
 }
@@ -377,16 +384,20 @@ class _PaymentRequestsScreenState extends State<PaymentRequestsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(widget.admin ? 'Payment review' : 'My payment requests'),
-      actions: [
-        IconButton(
-          onPressed: _loading ? null : _load,
-          icon: const Icon(Icons.refresh),
-          tooltip: 'Refresh',
-        ),
-      ],
-    ),
+    appBar: widget.embedded
+        ? null
+        : AppBar(
+            title: Text(
+              widget.admin ? 'Payment review' : 'My payment requests',
+            ),
+            actions: [
+              IconButton(
+                onPressed: _loading ? null : _load,
+                icon: const Icon(Icons.refresh),
+                tooltip: 'Refresh',
+              ),
+            ],
+          ),
     floatingActionButton: widget.admin
         ? null
         : FloatingActionButton.extended(
