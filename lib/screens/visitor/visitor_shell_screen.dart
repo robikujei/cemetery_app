@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../providers/visitor_nav_providers.dart';
 import '../../widgets/brand_logo.dart';
+import '../../widgets/logout_dialog.dart';
 import 'visitor_home_screen.dart';
 import 'visitor_map_screen.dart';
 import 'visitor_qr_screen.dart';
@@ -131,10 +132,47 @@ class VisitorShellScreen extends ConsumerWidget {
                       if (hasOwnership)
                         const NavigationRailDestination(
                           icon: Icon(CupertinoIcons.square_grid_2x2),
-                          selectedIcon: Icon(CupertinoIcons.square_grid_2x2_fill),
+                          selectedIcon: Icon(
+                            CupertinoIcons.square_grid_2x2_fill,
+                          ),
                           label: Text('My lots'),
                         ),
                     ],
+                    trailing: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 18),
+                      child: Material(
+                        color: colors.errorContainer,
+                        borderRadius: BorderRadius.circular(16),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => showLogoutDialog(context),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 13,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.logout_rounded,
+                                  color: colors.onErrorContainer,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 10),
+                                Text(
+                                  'Logout',
+                                  style: TextStyle(
+                                    color: colors.onErrorContainer,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
                 Expanded(child: body),
