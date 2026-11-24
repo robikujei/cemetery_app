@@ -1827,20 +1827,43 @@ class _UserFormDialogState extends State<_UserFormDialog> {
         title: 'Lot Details',
       ),
       const SizedBox(height: 12),
-      Row(children: [
-        Expanded(child: DropdownButtonFormField<String>(
-          initialValue: _linkedLotId, isExpanded: true,
-          decoration: _fieldDecoration('Linked App Lot', Icons.map_rounded),
-          items: [const DropdownMenuItem(value: '', child: Text('No linked lot yet')),
-            ...widget.lots.map((lot) => DropdownMenuItem(
-              value: lot['lot_id']?.toString() ?? '',
-              child: Text([lotReference(lot), lotMeta(lot), lot['status']].where((v) => v != null && v.toString().isNotEmpty).join(' • '),
-            ))],
-          onChanged: (value) => setState(() { _linkedLotId = value == null || value.isEmpty ? null : value; _applyLinkedLotDetails(); }),
-        )),
-        const SizedBox(width: 10),
-        FilledButton.icon(onPressed: _pickLotFromMap, icon: const Icon(Icons.map_outlined), label: const Text('Map')),
-      ]),
+      Row(
+        children: [
+          Expanded(
+            child: DropdownButtonFormField<String>(
+              initialValue: _linkedLotId,
+              isExpanded: true,
+              decoration: _fieldDecoration('Linked App Lot', Icons.map_rounded),
+              items: [
+                const DropdownMenuItem(
+                  value: '',
+                  child: Text('No linked lot yet'),
+                ),
+                ...widget.lots.map(
+                  (lot) => DropdownMenuItem(
+                    value: lot['lot_id']?.toString() ?? '',
+                    child: Text(
+                      [lotReference(lot), lotMeta(lot), lot['status']]
+                          .where((v) => v != null && v.toString().isNotEmpty)
+                          .join(' • '),
+                    ),
+                  ),
+                ),
+              ],
+              onChanged: (value) => setState(() {
+                _linkedLotId = value == null || value.isEmpty ? null : value;
+                _applyLinkedLotDetails();
+              }),
+            ),
+          ),
+          const SizedBox(width: 10),
+          FilledButton.icon(
+            onPressed: _pickLotFromMap,
+            icon: const Icon(Icons.map_outlined),
+            label: const Text('Map'),
+          ),
+        ],
+      ),
       const SizedBox(height: 12),
       _fieldGrid([
         _Field(
@@ -2001,7 +2024,11 @@ class _UserFormDialogState extends State<_UserFormDialog> {
       context: context,
       builder: (context) => Dialog(
         insetPadding: const EdgeInsets.all(24),
-        child: SizedBox(width: 1200, height: 760, child: AdminMapManagerScreen(lotPicker: true)),
+        child: SizedBox(
+          width: 1200,
+          height: 760,
+          child: AdminMapManagerScreen(lotPicker: true),
+        ),
       ),
     );
     if (lot == null || !mounted) return;
