@@ -221,6 +221,74 @@ class _AdminInformantsScreenState extends State<AdminInformantsScreen> {
     }
   }
 
+  Future<void> _delete(Map<String, dynamic> item) async {
+    final name = item['full_name']?.toString() ?? 'this informant';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete informant?'),
+        content: Text(
+          'Delete $name? This cannot be undone. Informants linked to burial records cannot be deleted.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(context, true),
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('Delete'),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      final db = Supabase.instance.client;
+      final id = item['informant_id'];
+      final directLinks = await db
+          .from('burial_record')
+          .select('burial_id')
+          .eq('informant_id', id)
+          .limit(1);
+      var relationshipLinks = <dynamic>[];
+      try {
+        relationshipLinks = await db
+            .from('burial_informant_relationships')
+            .select('burial_id')
+            .eq('informant_id', id)
+            .limit(1);
+      } catch (_) {
+        // Older installations may not have the relationship table yet; the
+        // database foreign-key constraint remains the final safety check.
+      }
+      if (directLinks.isNotEmpty || relationshipLinks.isNotEmpty) {
+        throw Exception(
+          'This informant is linked to a burial record. Edit that burial to select another informant before deleting this profile.',
+        );
+      }
+      await db.from('burial_informants').delete().eq('informant_id', id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('$name was deleted.')));
+      final targetPage = _items.length == 1 && _page > 0 ? _page - 1 : _page;
+      await _load(targetPage);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not delete informant: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final q = _search.text.trim().toLowerCase();
@@ -290,10 +358,23 @@ class _AdminInformantsScreenState extends State<AdminInformantsScreen> {
                           .where((v) => v != null && v.toString().isNotEmpty)
                           .join(' · '),
                     ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.edit_outlined),
-                      tooltip: 'Edit informant',
-                      onPressed: () => _edit(item),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined),
+                          tooltip: 'Edit informant',
+                          onPressed: () => _edit(item),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.delete_outline,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                          tooltip: 'Delete informant',
+                          onPressed: () => _delete(item),
+                        ),
+                      ],
                     ),
                   ),
                 ),
