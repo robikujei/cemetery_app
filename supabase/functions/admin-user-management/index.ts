@@ -246,12 +246,25 @@ Deno.serve(async (req) => {
   if (body.action === "list") {
     const pageSize = Math.min(Math.max(Number(body.pageSize) || 100, 1), 100);
     const page = Math.max(Number(body.page) || 0, 0);
-    const from = page * pageSize;
+    // Authentication is the source of truth for portal accounts.  Some
+    // visitor and gate-officer accounts predate their matching public profile,
+    // so listing only public.users makes valid accounts disappear from User
+    // Management.
+    const { data: authPage, error: authUsersError } = await adminClient.auth
+      .admin.listUsers({ page: page + 1, perPage: pageSize });
+    if (authUsersError) {
+      return Response.json(
+        { error: `Failed to load authentication users: ${authUsersError.message}` },
+        { status: 500, headers: corsHeaders },
+      );
+    }
+
+    const authUsers = authPage.users ?? [];
+    const userIds = authUsers.map((user) => user.id);
     const { data: profiles, error: profilesError, count } = await adminClient
       .from("users")
       .select("*", { count: "exact" })
-      .order("name", { ascending: true })
-      .range(from, from + pageSize - 1);
+      .in("user_id", userIds);
     if (profilesError) {
       return Response.json(
         { error: `Failed to load user profiles: ${profilesError.message}` },
@@ -259,7 +272,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    const userIds = (profiles ?? []).map((profile) => String(profile.user_id));
     const { data: ownerships, error: ownershipError } = userIds.length === 0
       ? { data: [], error: null }
       : await adminClient
@@ -276,22 +288,46 @@ Deno.serve(async (req) => {
     for (const ownership of ownerships ?? []) {
       ownershipByUserId.set(String(ownership.user_id), ownership);
     }
-    const pageUsers = (profiles ?? []).map((profile) => {
-      const ownership = ownershipByUserId.get(String(profile.user_id));
+    const profileByUserId = new Map<string, Record<string, unknown>>();
+    for (const profile of profiles ?? []) {
+      profileByUserId.set(String(profile.user_id), profile);
+    }
+    const pageUsers = authUsers.map((authUser) => {
+      const profile = profileByUserId.get(authUser.id);
+      const metadata = (authUser.user_metadata ?? {}) as Record<string, unknown>;
+      const metadataRole = normalizeRole(metadata.role);
+      const role = normalizeRole(profile?.role ?? metadataRole ?? "visitor") ||
+        "visitor";
+      const metadataName = textOrNull(metadata.name);
+      const metadataPhone = textOrNull(metadata.phone);
+      const ownership = ownershipByUserId.get(authUser.id);
       return {
         ...profile,
-        name: profile.name ?? profile.email ?? "Unknown",
-        email: profile.email ?? "",
-        phone: profile.phone ?? "",
-        role: profile.role ?? "visitor",
-        is_lot_owner: Boolean(ownership) || profile.role === "lot_owner",
+        user_id: authUser.id,
+        name: profile?.name ?? metadataName ?? authUser.email?.split("@")[0] ?? "Unknown",
+        email: profile?.email ?? authUser.email ?? "",
+        phone: profile?.phone ?? metadataPhone ?? "",
+        role,
+        profile_missing: !profile,
+        is_lot_owner: Boolean(ownership) || role === "lot_owner",
         linked_lot_id: ownership?.lot_id,
         linked_ownership_id: ownership?.ownership_id,
         linked_total_months: ownership?.total_months,
       };
     });
+    pageUsers.sort((a, b) =>
+      String(a.name).localeCompare(String(b.name), undefined, {
+        sensitivity: "base",
+      })
+    );
+    // GoTrue does not return a total. This exact count is available whenever
+    // the last page is short; on a full page it leaves one more page available
+    // for the client to request without preloading it.
+    const total = authUsers.length < pageSize
+      ? page * pageSize + authUsers.length
+      : (page + 2) * pageSize;
     return Response.json(
-      { users: pageUsers, page, pageSize, total: count ?? 0 },
+      { users: pageUsers, page, pageSize, total: Math.max(total, count ?? 0) },
       { headers: corsHeaders },
     );
   }
