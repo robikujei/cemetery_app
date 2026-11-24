@@ -12,12 +12,14 @@ class AdminApartmentCryptGridScreen extends StatefulWidget {
     this.onBackToMap,
     this.onEditApartmentCrypt,
     this.onEditBurial,
+    this.onCreateBurial,
   });
 
   final Map<String, dynamic>? apartmentCrypt;
   final VoidCallback? onBackToMap;
   final VoidCallback? onEditApartmentCrypt;
   final ValueChanged<int>? onEditBurial;
+  final ValueChanged<Map<String, dynamic>>? onCreateBurial;
 
   @override
   State<AdminApartmentCryptGridScreen> createState() =>
@@ -176,7 +178,11 @@ class _AdminApartmentCryptGridScreenState
       ),
     );
     if (action == 'assign') {
-      await _assignDeceasedToSlot(slot, existing);
+      final lot = widget.apartmentCrypt;
+      if (lot == null) return;
+      final selectedLot = Map<String, dynamic>.from(lot)
+        ..['selected_crypt_face'] = code;
+      widget.onCreateBurial?.call(selectedLot);
     } else if (action == 'label') {
       await _editSlotLabel(slot);
     }

@@ -152,13 +152,16 @@ class _AdminBurialRecordsScreenState
   @override
   void didUpdateWidget(AdminBurialRecordsScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.initialBurialId == null ||
-        (widget.initialBurialId == oldWidget.initialBurialId &&
-            widget.editorRequestToken == oldWidget.editorRequestToken)) {
+    if (widget.editorRequestToken == oldWidget.editorRequestToken) {
       return;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _openRequestedBurial();
+      if (!mounted) return;
+      if (widget.initialBurialId != null) {
+        _openRequestedBurial();
+      } else if (widget.openAddForm) {
+        _showAddEditDialog();
+      }
     });
   }
 
@@ -1107,6 +1110,10 @@ class _AdminBurialRecordsScreenState
       _bldgNoController.clear();
       _nicheNoController.clear();
       _levelController.clear();
+      if (_selectedLotIsCrypt) {
+        _nicheNoController.text =
+            _selectedLot?['selected_crypt_face']?.toString() ?? '';
+      }
       _lotLocationNoController.text = _selectedLot == null
           ? ''
           : lotReference(_selectedLot, fallback: '');

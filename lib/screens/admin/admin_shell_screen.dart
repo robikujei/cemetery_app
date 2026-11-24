@@ -34,6 +34,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
   Map<String, dynamic>? _lotToEdit;
   int _lotEditorRequestToken = 0;
   int? _burialToEditId;
+  Map<String, dynamic>? _burialInitialLot;
   int _burialEditorRequestToken = 0;
   final _mapSaveProgress = ValueNotifier<String?>(null);
 
@@ -321,6 +322,8 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
         onMenuPressed: _toggleNavigation,
         onLogoutPressed: _logout,
         initialBurialId: _burialToEditId,
+        initialLot: _burialInitialLot,
+        openAddForm: _burialInitialLot != null,
         editorRequestToken: _burialEditorRequestToken,
       ),
       AdminLotsScreen(
@@ -351,6 +354,15 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
         onEditBurial: (burialId) {
           setState(() {
             _burialToEditId = burialId;
+            _burialInitialLot = null;
+            _burialEditorRequestToken++;
+            _selected = 2;
+          });
+        },
+        onCreateBurial: (lot) {
+          setState(() {
+            _burialToEditId = null;
+            _burialInitialLot = Map<String, dynamic>.from(lot);
             _burialEditorRequestToken++;
             _selected = 2;
           });
