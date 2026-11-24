@@ -903,23 +903,6 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
               height: 1.4,
             ),
           ),
-          const SizedBox(height: 16),
-          OutlinedButton.icon(
-            onPressed: () async {
-              await Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const PaymentRequestsScreen(),
-                ),
-              );
-              if (mounted) await _refreshData();
-            },
-            icon: const Icon(Icons.receipt_long_outlined),
-            label: const Text('Submit payment receipt'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: colors.onPrimary,
-              side: BorderSide(color: colors.onPrimary.withValues(alpha: 0.7)),
-            ),
-          ),
         ],
       ),
     );
