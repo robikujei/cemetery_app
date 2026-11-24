@@ -169,20 +169,49 @@ class VisitorShellScreen extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             if (isLotOwner) ...[
-                              OutlinedButton.icon(
-                                onPressed: () => context.go('/lot-owner'),
-                                icon: const Icon(Icons.home_work_outlined),
-                                label: const Text('Lot Owner Dashboard'),
+                              Material(
+                                color: colors.primaryContainer,
+                                borderRadius: BorderRadius.circular(20),
+                                child: ListTile(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  leading: Icon(
+                                    Icons.home_work_outlined,
+                                    color: colors.onPrimaryContainer,
+                                  ),
+                                  title: Text(
+                                    'Lot Owner Dashboard',
+                                    style: TextStyle(
+                                      color: colors.onPrimaryContainer,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  onTap: () => context.go('/lot-owner'),
+                                ),
                               ),
                               const SizedBox(height: 10),
                             ],
-                            FilledButton.icon(
-                              onPressed: () => showLogoutDialog(context),
-                              icon: const Icon(Icons.logout_rounded),
-                              label: const Text('Logout'),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: colors.errorContainer,
-                                foregroundColor: colors.onErrorContainer,
+                            Material(
+                              color: colors.errorContainer,
+                              borderRadius: BorderRadius.circular(20),
+                              child: ListTile(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                leading: Icon(
+                                  Icons.logout_rounded,
+                                  color: colors.onErrorContainer,
+                                ),
+                                title: Text(
+                                  'Logout',
+                                  style: TextStyle(
+                                    color: colors.onErrorContainer,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                onTap: () => showLogoutDialog(context),
                               ),
                             ),
                           ],
