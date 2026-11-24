@@ -1076,9 +1076,11 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
     Map<String, dynamic>? grave,
   }) {
     final lot = marker['cemetery_lot'] ?? {};
-    final status =
-        _graveStatus(grave) ?? lot['status']?.toString() ?? 'Unknown';
-    final isAvailable = status.toLowerCase() == 'available';
+    // Use the same effective status as the map paint layer. A lot can have a
+    // missing/stale raw status while still be rendered as available; visitors
+    // should receive the inquiry action whenever they tap that available lot.
+    final status = _graveStatus(grave) ?? effectiveLotStatus(lot);
+    final isAvailable = status.trim().toLowerCase() == 'available';
     final statusColor = _statusColor(status);
     final burial = _burialForGrave(grave) ?? _burialForLot(lot);
     final graveLabel = _graveLabel(grave);
@@ -1266,7 +1268,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
             // A scheduled interment is not a sales opportunity.  Keep fixed
             // prices on genuinely available lots only, never in the active
             // interment details panel.
-            if (isAvailable && burial == null && schedule == null)
+            if (isAvailable)
               _buildDetailRow(
                 Icons.payments_outlined,
                 'Fixed Prices',
@@ -1276,7 +1278,7 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                           'Pre-need: PHP ${lotPriceForType(lot['lot_class_type']?.toString())!.preNeed.toStringAsFixed(2)}',
                 null,
               ),
-            if (isAvailable && burial == null && schedule == null)
+            if (isAvailable)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
                 child: SizedBox(
