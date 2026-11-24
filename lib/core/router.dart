@@ -6,7 +6,7 @@ import '../screens/auth/forgot_password_screen.dart';
 import '../screens/auth/update_password_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../screens/visitor/visitor_shell_screen.dart' deferred as visitor;
-import '../screens/lot_owner/lot_owner_home_screen.dart' deferred as lotOwner;
+import '../screens/lot_owner/lot_owner_home_screen.dart' deferred as lot_owner;
 import '../screens/admin/admin_shell_screen.dart' deferred as admin;
 import '../screens/guard/qr_scanner_screen.dart' deferred as guard;
 import '../services/user_profile_service.dart';
@@ -34,11 +34,16 @@ final router = GoRouter(
       return isPublicRoute ? null : '/login';
     }
     if (_cachedRoleUserId == user.id && _cachedHome != null) {
-      return state.matchedLocation == _cachedHome ? null : _cachedHome;
+      final ownerUsingVisitorTools =
+          _cachedHome == '/lot-owner' && state.matchedLocation == '/visitor';
+      return state.matchedLocation == _cachedHome || ownerUsingVisitorTools
+          ? null
+          : _cachedHome;
     }
     try {
       final profile = await loadAppUserProfile(client, user);
-      final home = appHomeForRole(profile?['role']);
+      final role = normalizeAppRole(profile?['role']);
+      final home = appHomeForRole(role);
       if (home == null) {
         _cachedRoleUserId = null;
         _cachedHome = null;
@@ -46,7 +51,11 @@ final router = GoRouter(
       }
       _cachedRoleUserId = user.id;
       _cachedHome = home;
-      return state.matchedLocation == home ? null : home;
+      final ownerUsingVisitorTools =
+          role == 'lot_owner' && state.matchedLocation == '/visitor';
+      return state.matchedLocation == home || ownerUsingVisitorTools
+          ? null
+          : home;
     } catch (_) {
       _cachedRoleUserId = null;
       _cachedHome = null;
@@ -94,8 +103,8 @@ final router = GoRouter(
     GoRoute(
       path: '/lot-owner',
       builder: (context, state) => DeferredScreen(
-        load: lotOwner.loadLibrary,
-        builder: (_) => lotOwner.LotOwnerHomeScreen(),
+        load: lot_owner.loadLibrary,
+        builder: (_) => lot_owner.LotOwnerHomeScreen(),
       ),
     ),
   ],

@@ -8,6 +8,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
@@ -642,6 +643,11 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
           ),
           actions: [
             IconButton(
+              icon: const Icon(Icons.travel_explore_outlined),
+              tooltip: 'Visitor tools',
+              onPressed: () => context.go('/visitor'),
+            ),
+            IconButton(
               icon: const Icon(Icons.payments_outlined),
               tooltip: 'Payment requests',
               onPressed: () async {
@@ -882,10 +888,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            colors.primary,
-            colors.primary.withValues(alpha: 0.72),
-          ],
+          colors: [colors.primary, colors.primary.withValues(alpha: 0.72)],
         ),
       ),
       child: Column(
@@ -1703,7 +1706,10 @@ class _AvailableLotMapCard extends StatelessWidget {
               color: colors.primaryContainer,
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Icon(Icons.location_on_rounded, color: colors.onPrimaryContainer),
+            child: Icon(
+              Icons.location_on_rounded,
+              color: colors.onPrimaryContainer,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(

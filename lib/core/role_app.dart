@@ -8,7 +8,7 @@ import '../screens/auth/register_screen.dart';
 import '../screens/admin/admin_shell_screen.dart' deferred as admin;
 import '../screens/guard/qr_scanner_screen.dart' deferred as guard;
 import '../screens/visitor/visitor_shell_screen.dart' deferred as visitor;
-import '../screens/lot_owner/lot_owner_home_screen.dart' deferred as lotOwner;
+import '../screens/lot_owner/lot_owner_home_screen.dart' deferred as lot_owner;
 import '../providers/theme_provider.dart';
 import '../services/user_profile_service.dart';
 import '../utils/app_role.dart';
@@ -88,9 +88,15 @@ class _RoleMaterialApp extends ConsumerWidget {
           try {
             final client = Supabase.instance.client;
             final profile = await loadAppUserProfile(client, user);
-            final home = appHomeForRole(profile?['role']);
+            final accountRole = normalizeAppRole(profile?['role']);
+            final home = appHomeForRole(accountRole);
             if (home == null) return '/login';
-            return state.matchedLocation == home ? null : home;
+            final ownerUsingVisitorTools =
+                accountRole == 'lot_owner' &&
+                state.matchedLocation == '/visitor';
+            return state.matchedLocation == home || ownerUsingVisitorTools
+                ? null
+                : home;
           } catch (_) {
             return '/login';
           }
@@ -127,8 +133,8 @@ class _RoleMaterialApp extends ConsumerWidget {
           GoRoute(
             path: '/lot-owner',
             builder: (_, _) => DeferredScreen(
-              load: lotOwner.loadLibrary,
-              builder: (_) => lotOwner.LotOwnerHomeScreen(),
+              load: lot_owner.loadLibrary,
+              builder: (_) => lot_owner.LotOwnerHomeScreen(),
             ),
           ),
         ],
