@@ -11,6 +11,9 @@ class AdminInformantsScreen extends StatefulWidget {
 class _AdminInformantsScreenState extends State<AdminInformantsScreen> {
   final _search = TextEditingController();
   List<Map<String, dynamic>> _items = [];
+  static const _pageSize = 100;
+  int _page = 0;
+  int _total = 0;
   bool _loading = true;
   String? _error;
 
@@ -27,21 +30,27 @@ class _AdminInformantsScreenState extends State<AdminInformantsScreen> {
     super.dispose();
   }
 
-  Future<void> _load() async {
+  Future<void> _load([int? requestedPage]) async {
+    final page = requestedPage ?? _page;
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final rows = await Supabase.instance.client
+      final db = Supabase.instance.client;
+      final total = await db.from('burial_informants').count();
+      final rows = await db
           .from('burial_informants')
           .select(
             'informant_id,full_name,address,work,cellphone_no,id_presented,id_number,place_issued',
           )
-          .order('full_name');
+          .order('full_name')
+          .range(page * _pageSize, page * _pageSize + _pageSize - 1);
       if (mounted)
         setState(() {
           _items = List<Map<String, dynamic>>.from(rows);
+          _total = total;
+          _page = page;
           _loading = false;
         });
     } catch (e) {
@@ -63,31 +72,88 @@ class _AdminInformantsScreenState extends State<AdminInformantsScreen> {
     final address = TextEditingController(
       text: item?['address']?.toString() ?? '',
     );
+    final work = TextEditingController(text: item?['work']?.toString() ?? '');
+    final idPresented = TextEditingController(
+      text: item?['id_presented']?.toString() ?? '',
+    );
+    final idNumber = TextEditingController(
+      text: item?['id_number']?.toString() ?? '',
+    );
+    final placeIssued = TextEditingController(
+      text: item?['place_issued']?.toString() ?? '',
+    );
     final saved = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(item == null ? 'Add informant' : 'Edit informant'),
         content: SizedBox(
-          width: 440,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: name,
-                autofocus: true,
-                decoration: const InputDecoration(labelText: 'Full name *'),
-              ),
-              TextField(
-                controller: phone,
-                decoration: const InputDecoration(
-                  labelText: 'Cellphone number',
+          width: 680,
+          child: SingleChildScrollView(
+            child: Wrap(
+              spacing: 16,
+              runSpacing: 14,
+              children: [
+                SizedBox(
+                  width: 648,
+                  child: TextField(
+                    controller: name,
+                    autofocus: true,
+                    decoration: const InputDecoration(labelText: 'Full name *'),
+                  ),
                 ),
-              ),
-              TextField(
-                controller: address,
-                decoration: const InputDecoration(labelText: 'Address'),
-              ),
-            ],
+                SizedBox(
+                  width: 316,
+                  child: TextField(
+                    controller: phone,
+                    decoration: const InputDecoration(
+                      labelText: 'Cellphone number',
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 316,
+                  child: TextField(
+                    controller: work,
+                    decoration: const InputDecoration(
+                      labelText: 'Occupation / work',
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 648,
+                  child: TextField(
+                    controller: address,
+                    decoration: const InputDecoration(labelText: 'Address'),
+                    maxLines: 2,
+                  ),
+                ),
+                SizedBox(
+                  width: 206,
+                  child: TextField(
+                    controller: idPresented,
+                    decoration: const InputDecoration(
+                      labelText: 'ID presented',
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 206,
+                  child: TextField(
+                    controller: idNumber,
+                    decoration: const InputDecoration(labelText: 'ID number'),
+                  ),
+                ),
+                SizedBox(
+                  width: 206,
+                  child: TextField(
+                    controller: placeIssued,
+                    decoration: const InputDecoration(
+                      labelText: 'Place issued',
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
         actions: [
@@ -105,9 +171,17 @@ class _AdminInformantsScreenState extends State<AdminInformantsScreen> {
     final fullName = name.text.trim();
     final cellphone = phone.text.trim();
     final location = address.text.trim();
+    final occupation = work.text.trim();
+    final idType = idPresented.text.trim();
+    final number = idNumber.text.trim();
+    final issuer = placeIssued.text.trim();
     name.dispose();
     phone.dispose();
     address.dispose();
+    work.dispose();
+    idPresented.dispose();
+    idNumber.dispose();
+    placeIssued.dispose();
     if (saved != true || fullName.isEmpty) return;
     try {
       final db = Supabase.instance.client;
@@ -125,6 +199,10 @@ class _AdminInformantsScreenState extends State<AdminInformantsScreen> {
         'full_name': fullName,
         'cellphone_no': cellphone.isEmpty ? null : cellphone,
         'address': location.isEmpty ? null : location,
+        'work': occupation.isEmpty ? null : occupation,
+        'id_presented': idType.isEmpty ? null : idType,
+        'id_number': number.isEmpty ? null : number,
+        'place_issued': issuer.isEmpty ? null : issuer,
       };
       if (item == null) {
         await db.from('burial_informants').insert(data);
@@ -220,6 +298,31 @@ class _AdminInformantsScreenState extends State<AdminInformantsScreen> {
                   ),
                 ),
               ),
+              if (_total > _pageSize)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text(
+                        'Showing ${_page * _pageSize + 1}–${((_page + 1) * _pageSize).clamp(0, _total)} of $_total',
+                      ),
+                      IconButton(
+                        tooltip: 'Previous page',
+                        onPressed: _page == 0 ? null : () => _load(_page - 1),
+                        icon: const Icon(Icons.chevron_left_rounded),
+                      ),
+                      Text('Page ${_page + 1}'),
+                      IconButton(
+                        tooltip: 'Next page',
+                        onPressed: (_page + 1) * _pageSize >= _total
+                            ? null
+                            : () => _load(_page + 1),
+                        icon: const Icon(Icons.chevron_right_rounded),
+                      ),
+                    ],
+                  ),
+                ),
             ],
           ],
         ),
