@@ -290,12 +290,7 @@ class _PaymentRequestsScreenState extends State<PaymentRequestsScreen> {
   }
 
   Future<void> _review(Map<String, dynamic> request, bool approve) async {
-    final notes = TextEditingController(),
-        months = TextEditingController(text: '0');
-    final ownership = _ownership(request['ownership_id']);
-    final remaining =
-        (ownership?['total_months'] as int? ?? 0) -
-        (ownership?['months_paid'] as int? ?? 0);
+    final notes = TextEditingController();
     String? error;
     final ok = await showDialog<bool>(
       context: context,
@@ -308,16 +303,6 @@ class _PaymentRequestsScreenState extends State<PaymentRequestsScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text('PHP ${request['amount']} · ${request['payment_date']}'),
-                if (approve)
-                  TextField(
-                    controller: months,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Installment months to credit (0–$remaining)',
-                      helperText:
-                          'Use 0 for partial payments that do not complete a month.',
-                    ),
-                  ),
                 TextField(
                   controller: notes,
                   decoration: InputDecoration(
@@ -338,12 +323,9 @@ class _PaymentRequestsScreenState extends State<PaymentRequestsScreen> {
             ),
             FilledButton(
               onPressed: () {
-                final credit = int.tryParse(months.text);
-                if ((approve &&
-                        (credit == null || credit < 0 || credit > remaining)) ||
-                    (!approve && notes.text.trim().isEmpty)) {
+                if (!approve && notes.text.trim().isEmpty) {
                   change(
-                    () => error = 'Check the credited months and review notes.',
+                    () => error = 'Provide a reason for rejecting the payment.',
                   );
                   return;
                 }
@@ -355,10 +337,8 @@ class _PaymentRequestsScreenState extends State<PaymentRequestsScreen> {
         ),
       ),
     );
-    final noteValue = notes.text.trim(),
-        credit = int.tryParse(months.text) ?? 0;
+    final noteValue = notes.text.trim();
     notes.dispose();
-    months.dispose();
     if (ok != true || !mounted) return;
     setState(() => _saving = true);
     try {
@@ -368,7 +348,7 @@ class _PaymentRequestsScreenState extends State<PaymentRequestsScreen> {
           'p_request_id': request['request_id'],
           'p_approve': approve,
           'p_admin_notes': noteValue,
-          'p_months_credit': approve ? credit : 0,
+          'p_months_credit': 0,
         },
       );
       _message(
@@ -421,9 +401,7 @@ class _PaymentRequestsScreenState extends State<PaymentRequestsScreen> {
                 ..._ownerships.map(
                   (o) => ListTile(
                     title: Text('Lot ${_label(o)}'),
-                    subtitle: Text(
-                      '${o['status']} · ${o['months_paid'] ?? 0}/${o['total_months']} installment months paid',
-                    ),
+                    subtitle: Text('${o['status']} · Single-payment purchase'),
                   ),
                 ),
               if (_requests.isEmpty && _error == null)

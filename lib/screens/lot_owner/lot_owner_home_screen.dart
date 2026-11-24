@@ -982,7 +982,7 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
         _recordRow('Block', blockNumber),
         _recordRow('Lot', lotNumber),
         _recordRow('No. of Lots', _profileText('number_of_lots')),
-        _recordRow('Terms', _purchaseTermLabel(_profileText('purchase_term'))),
+        _recordRow('Payment Type', 'Single payment'),
       ],
     );
   }
