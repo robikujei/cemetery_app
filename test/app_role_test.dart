@@ -12,7 +12,7 @@ void main() {
   test('all supported roles resolve to their portal home', () {
     expect(appHomeForRole('admin'), '/admin');
     // Ownership is an unlocked capability inside the Visitor shell.
-    expect(appHomeForRole('lot_owner'), '/visitor');
+    expect(appHomeForRole('lot_owner'), '/lot-owner');
     expect(appHomeForRole('visitor'), '/visitor');
     expect(appHomeForRole('gate_officer'), '/gate-officer');
   });

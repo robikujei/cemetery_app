@@ -8,6 +8,7 @@ import '../screens/auth/register_screen.dart';
 import '../screens/admin/admin_shell_screen.dart' deferred as admin;
 import '../screens/guard/qr_scanner_screen.dart' deferred as guard;
 import '../screens/visitor/visitor_shell_screen.dart' deferred as visitor;
+import '../screens/lot_owner/lot_owner_home_screen.dart' deferred as lotOwner;
 import '../providers/theme_provider.dart';
 import '../services/user_profile_service.dart';
 import '../utils/app_role.dart';
@@ -126,8 +127,8 @@ class _RoleMaterialApp extends ConsumerWidget {
           GoRoute(
             path: '/lot-owner',
             builder: (_, _) => DeferredScreen(
-              load: visitor.loadLibrary,
-              builder: (_) => visitor.VisitorShellScreen(),
+              load: lotOwner.loadLibrary,
+              builder: (_) => lotOwner.LotOwnerHomeScreen(),
             ),
           ),
         ],
