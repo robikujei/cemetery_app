@@ -8,6 +8,7 @@ import '../../utils/lot_formatters.dart';
 import '../../utils/lot_pricing.dart';
 import '../../utils/phone_input.dart';
 import '../../widgets/app_date_field.dart';
+import 'admin_map_manager_screen.dart';
 
 String? _textOrNull(String? value) {
   final text = value?.trim() ?? '';
@@ -1826,31 +1827,20 @@ class _UserFormDialogState extends State<_UserFormDialog> {
         title: 'Lot Details',
       ),
       const SizedBox(height: 12),
-      DropdownButtonFormField<String>(
-        initialValue: _linkedLotId,
-        isExpanded: true,
-        decoration: _fieldDecoration('Linked App Lot', Icons.map_rounded),
-        items: [
-          const DropdownMenuItem(value: '', child: Text('No linked lot yet')),
-          ...widget.lots.map((lot) {
-            final lotId = lot['lot_id']?.toString() ?? '';
-            final status = lot['status']?.toString() ?? 'Unknown';
-            final meta = lotMeta(lot);
-            final label = [
-              lotReference(lot),
-              if (meta.isNotEmpty) meta,
-              status,
-            ].join(' • ');
-            return DropdownMenuItem(value: lotId, child: Text(label));
-          }),
-        ],
-        onChanged: (value) {
-          setState(() {
-            _linkedLotId = value == null || value.isEmpty ? null : value;
-            _applyLinkedLotDetails();
-          });
-        },
-      ),
+      Row(children: [
+        Expanded(child: DropdownButtonFormField<String>(
+          initialValue: _linkedLotId, isExpanded: true,
+          decoration: _fieldDecoration('Linked App Lot', Icons.map_rounded),
+          items: [const DropdownMenuItem(value: '', child: Text('No linked lot yet')),
+            ...widget.lots.map((lot) => DropdownMenuItem(
+              value: lot['lot_id']?.toString() ?? '',
+              child: Text([lotReference(lot), lotMeta(lot), lot['status']].where((v) => v != null && v.toString().isNotEmpty).join(' • '),
+            ))],
+          onChanged: (value) => setState(() { _linkedLotId = value == null || value.isEmpty ? null : value; _applyLinkedLotDetails(); }),
+        )),
+        const SizedBox(width: 10),
+        FilledButton.icon(onPressed: _pickLotFromMap, icon: const Icon(Icons.map_outlined), label: const Text('Map')),
+      ]),
       const SizedBox(height: 12),
       _fieldGrid([
         _Field(
@@ -2004,6 +1994,21 @@ class _UserFormDialogState extends State<_UserFormDialog> {
         );
       },
     );
+  }
+
+  Future<void> _pickLotFromMap() async {
+    final lot = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => Dialog(
+        insetPadding: const EdgeInsets.all(24),
+        child: SizedBox(width: 1200, height: 760, child: AdminMapManagerScreen(lotPicker: true)),
+      ),
+    );
+    if (lot == null || !mounted) return;
+    setState(() {
+      _linkedLotId = lot['lot_id']?.toString();
+      _applyLinkedLotDetails();
+    });
   }
 
   void _applyLinkedLotDetails() {
