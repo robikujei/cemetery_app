@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../providers/visitor_nav_providers.dart';
@@ -27,6 +28,19 @@ final visitorOwnershipAccessProvider = FutureProvider<bool>((ref) async {
   return ownership != null;
 });
 
+/// A lot-owner account retains Visitor access, but also needs a clear route
+/// back to its dedicated owner dashboard.
+final visitorLotOwnerRoleProvider = FutureProvider<bool>((ref) async {
+  final user = Supabase.instance.client.auth.currentUser;
+  if (user == null) return false;
+  final profile = await Supabase.instance.client
+      .from('users')
+      .select('role')
+      .eq('user_id', user.id)
+      .maybeSingle();
+  return profile?['role']?.toString().trim().toLowerCase() == 'lot_owner';
+});
+
 class VisitorShellScreen extends ConsumerWidget {
   const VisitorShellScreen({super.key});
 
@@ -37,6 +51,8 @@ class VisitorShellScreen extends ConsumerWidget {
         ref.read(visitorNavIndexProvider.notifier).state = value;
     final hasOwnership =
         ref.watch(visitorOwnershipAccessProvider).valueOrNull ?? false;
+    final isLotOwner =
+        ref.watch(visitorLotOwnerRoleProvider).valueOrNull ?? false;
     final screens = [
       const VisitorHomeScreen(),
       const VisitorMapScreen(),
@@ -80,99 +96,99 @@ class VisitorShellScreen extends ConsumerWidget {
                       right: BorderSide(color: colors.outlineVariant),
                     ),
                   ),
-                  child: NavigationRail(
-                    extended: true,
-                    minExtendedWidth: 224,
-                    backgroundColor: Colors.transparent,
-                    selectedIndex: selectedIndex,
-                    onDestinationSelected: select,
-                    useIndicator: true,
-                    groupAlignment: -0.82,
-                    indicatorColor: colors.primary.withValues(alpha: 0.12),
-                    indicatorShape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    selectedIconTheme: IconThemeData(color: colors.primary),
-                    unselectedIconTheme: IconThemeData(
-                      color: colors.onSurfaceVariant,
-                    ),
-                    selectedLabelTextStyle: TextStyle(
-                      fontFamily: '.SF Pro Text',
-                      color: colors.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    unselectedLabelTextStyle: TextStyle(
-                      fontFamily: '.SF Pro Text',
-                      color: colors.onSurfaceVariant,
-                    ),
-                    leading: const Padding(
-                      padding: EdgeInsets.fromLTRB(20, 18, 20, 24),
-                      child: BrandLogo(height: 88),
-                    ),
-                    destinations: [
-                      NavigationRailDestination(
-                        icon: Icon(CupertinoIcons.house),
-                        selectedIcon: Icon(CupertinoIcons.house_fill),
-                        label: Text('Home'),
-                      ),
-                      NavigationRailDestination(
-                        icon: Icon(CupertinoIcons.map),
-                        selectedIcon: Icon(CupertinoIcons.map_fill),
-                        label: Text('Cemetery map'),
-                      ),
-                      NavigationRailDestination(
-                        icon: Icon(CupertinoIcons.qrcode),
-                        label: Text('My QR code'),
-                      ),
-                      NavigationRailDestination(
-                        icon: Icon(CupertinoIcons.person),
-                        selectedIcon: Icon(CupertinoIcons.person_fill),
-                        label: Text('Profile'),
-                      ),
-                      if (hasOwnership)
-                        const NavigationRailDestination(
-                          icon: Icon(CupertinoIcons.square_grid_2x2),
-                          selectedIcon: Icon(
-                            CupertinoIcons.square_grid_2x2_fill,
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: NavigationRail(
+                          extended: true,
+                          minExtendedWidth: 224,
+                          backgroundColor: Colors.transparent,
+                          selectedIndex: selectedIndex,
+                          onDestinationSelected: select,
+                          useIndicator: true,
+                          groupAlignment: -0.82,
+                          indicatorColor: colors.primary.withValues(
+                            alpha: 0.12,
                           ),
-                          label: Text('My lots'),
+                          indicatorShape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          selectedIconTheme: IconThemeData(
+                            color: colors.primary,
+                          ),
+                          unselectedIconTheme: IconThemeData(
+                            color: colors.onSurfaceVariant,
+                          ),
+                          selectedLabelTextStyle: TextStyle(
+                            fontFamily: '.SF Pro Text',
+                            color: colors.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          unselectedLabelTextStyle: TextStyle(
+                            fontFamily: '.SF Pro Text',
+                            color: colors.onSurfaceVariant,
+                          ),
+                          leading: const Padding(
+                            padding: EdgeInsets.fromLTRB(20, 18, 20, 24),
+                            child: BrandLogo(height: 88),
+                          ),
+                          destinations: [
+                            NavigationRailDestination(
+                              icon: Icon(CupertinoIcons.house),
+                              selectedIcon: Icon(CupertinoIcons.house_fill),
+                              label: Text('Home'),
+                            ),
+                            NavigationRailDestination(
+                              icon: Icon(CupertinoIcons.map),
+                              selectedIcon: Icon(CupertinoIcons.map_fill),
+                              label: Text('Cemetery map'),
+                            ),
+                            NavigationRailDestination(
+                              icon: Icon(CupertinoIcons.qrcode),
+                              label: Text('My QR code'),
+                            ),
+                            NavigationRailDestination(
+                              icon: Icon(CupertinoIcons.person),
+                              selectedIcon: Icon(CupertinoIcons.person_fill),
+                              label: Text('Profile'),
+                            ),
+                            if (hasOwnership)
+                              const NavigationRailDestination(
+                                icon: Icon(CupertinoIcons.square_grid_2x2),
+                                selectedIcon: Icon(
+                                  CupertinoIcons.square_grid_2x2_fill,
+                                ),
+                                label: Text('My lots'),
+                              ),
+                          ],
                         ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 12, 12, 18),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (isLotOwner) ...[
+                              OutlinedButton.icon(
+                                onPressed: () => context.go('/lot-owner'),
+                                icon: const Icon(Icons.home_work_outlined),
+                                label: const Text('Lot Owner Dashboard'),
+                              ),
+                              const SizedBox(height: 10),
+                            ],
+                            FilledButton.icon(
+                              onPressed: () => showLogoutDialog(context),
+                              icon: const Icon(Icons.logout_rounded),
+                              label: const Text('Logout'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: colors.errorContainer,
+                                foregroundColor: colors.onErrorContainer,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
-                    trailing: Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 18),
-                      child: Material(
-                        color: colors.errorContainer,
-                        borderRadius: BorderRadius.circular(16),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: () => showLogoutDialog(context),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 13,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.logout_rounded,
-                                  color: colors.onErrorContainer,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 10),
-                                Text(
-                                  'Logout',
-                                  style: TextStyle(
-                                    color: colors.onErrorContainer,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
                   ),
                 ),
                 Expanded(child: body),
