@@ -31,7 +31,17 @@ type ListUsersPayload = {
   pageSize?: number;
 };
 
-type AdminUserManagementPayload = CreateUserPayload | ListUsersPayload;
+// This action is deliberately parameter-free.  It lets an authenticated user
+// reconnect only a profile with the same verified Auth email; it never takes a
+// role or a user id from the client.
+type RecoverProfilePayload = {
+  action: "recover_profile";
+};
+
+type AdminUserManagementPayload =
+  | CreateUserPayload
+  | ListUsersPayload
+  | RecoverProfilePayload;
 
 const textOrNull = (value: unknown) => {
   const text = String(value ?? "").trim();
@@ -139,6 +149,74 @@ Deno.serve(async (req) => {
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
   const currentUser = userResult.user;
 
+  const body = (await req.json()) as AdminUserManagementPayload;
+
+  // Auth accounts may survive while their public profile is left pointing at
+  // an old Auth UUID (for example after an account is recreated).  The
+  // password sign-in proves control of the email, so it is safe to reconnect
+  // the same-email profile.  This intentionally does not create a privileged
+  // profile from client-provided metadata.
+  if (body.action === "recover_profile") {
+    const email = currentUser.email?.trim().toLowerCase();
+    if (!email) {
+      return Response.json(
+        { error: "The signed-in account has no email address" },
+        { status: 400, headers: corsHeaders },
+      );
+    }
+
+    const { data: profile, error: profileError } = await adminClient
+      .from("users")
+      .select("user_id, name, role, email")
+      .ilike("email", email)
+      .maybeSingle();
+    if (profileError) {
+      return Response.json(
+        { error: `Unable to find the portal profile: ${profileError.message}` },
+        { status: 500, headers: corsHeaders },
+      );
+    }
+    if (!profile) {
+      return Response.json(
+        { error: "No portal profile matches this account email" },
+        { status: 404, headers: corsHeaders },
+      );
+    }
+
+    if (profile.user_id !== currentUser.id) {
+      const { error: relinkError } = await adminClient
+        .from("users")
+        .update({ user_id: currentUser.id, email })
+        .eq("user_id", profile.user_id);
+      if (relinkError) {
+        return Response.json(
+          { error: `Unable to reconnect the portal profile: ${relinkError.message}` },
+          { status: 500, headers: corsHeaders },
+        );
+      }
+    }
+
+    const { data: linkedProfile, error: linkedProfileError } = await adminClient
+      .from("users")
+      .select("user_id, name, role, email")
+      .eq("user_id", currentUser.id)
+      .maybeSingle();
+    if (linkedProfileError || !linkedProfile) {
+      return Response.json(
+        {
+          error: linkedProfileError?.message ??
+            "The portal profile could not be reloaded after reconnecting",
+        },
+        { status: 500, headers: corsHeaders },
+      );
+    }
+
+    return Response.json(
+      { profile: linkedProfile, recovered: true },
+      { headers: corsHeaders },
+    );
+  }
+
   let { data: adminProfile } = await adminClient
     .from("users")
     .select("user_id, email, role")
@@ -164,8 +242,6 @@ Deno.serve(async (req) => {
       { status: 403, headers: corsHeaders },
     );
   }
-
-  const body = (await req.json()) as AdminUserManagementPayload;
 
   if (body.action === "list") {
     const pageSize = Math.min(Math.max(Number(body.pageSize) || 100, 1), 100);
