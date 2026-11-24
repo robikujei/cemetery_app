@@ -110,7 +110,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
   List<Map<String, dynamic>> _users = [];
   List<Map<String, dynamic>> _filteredUsers = [];
   List<Map<String, dynamic>> _lots = [];
-  final Map<int, List<Map<String, dynamic>>> _userPageCache = {};
+  final Map<String, List<Map<String, dynamic>>> _userPageCache = {};
   static const int _userPageSize = 100;
   int _currentPage = 0;
   int _totalUsers = 0;
@@ -134,10 +134,11 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
   }
 
   Future<void> _loadUsers({int page = 0, bool force = false}) async {
-    if (!force && _userPageCache.containsKey(page)) {
+    final cacheKey = '$_selectedRoleFilter:$page';
+    if (!force && _userPageCache.containsKey(cacheKey)) {
       setState(() {
         _currentPage = page;
-        _users = _userPageCache[page]!;
+        _users = _userPageCache[cacheKey]!;
         _isLoading = false;
       });
       _applyFilters();
@@ -153,7 +154,12 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
       final results = await Future.wait<dynamic>([
         supabase.functions.invoke(
           'admin-user-management',
-          body: {'action': 'list', 'page': page, 'pageSize': _userPageSize},
+          body: {
+            'action': 'list',
+            'page': page,
+            'pageSize': _userPageSize,
+            'roleFilter': _selectedRoleFilter,
+          },
         ),
         supabase
             .from('cemetery_lot')
@@ -180,7 +186,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
 
       setState(() {
         _users = users;
-        _userPageCache[page] = users;
+        _userPageCache[cacheKey] = users;
         _currentPage = page;
         _totalUsers = int.tryParse(userData['total']?.toString() ?? '') ?? 0;
         _lots = List<Map<String, dynamic>>.from(results[1] as List);
@@ -199,15 +205,6 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
     final query = _searchController.text.trim().toLowerCase();
 
     List<Map<String, dynamic>> data = List<Map<String, dynamic>>.from(_users);
-
-    if (_selectedRoleFilter == 'lot_owner') {
-      data = data.where(_isLotOwner).toList();
-    } else if (_selectedRoleFilter != 'All') {
-      data = data.where((user) {
-        final role = (user['role'] ?? '').toString().toLowerCase();
-        return role == _selectedRoleFilter.toLowerCase();
-      }).toList();
-    }
 
     if (query.isNotEmpty) {
       data = data.where((user) {
@@ -686,7 +683,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
                           selected: _selectedRoleFilter,
                           onChanged: (value) {
                             setState(() => _selectedRoleFilter = value);
-                            _applyFilters();
+                            _loadUsers(page: 0);
                           },
                         ),
                       ],
@@ -759,7 +756,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
                               selected: _selectedRoleFilter,
                               onChanged: (value) {
                                 setState(() => _selectedRoleFilter = value);
-                                _applyFilters();
+                                _loadUsers(page: 0);
                               },
                               compact: false,
                             ),

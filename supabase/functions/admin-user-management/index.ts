@@ -29,6 +29,7 @@ type ListUsersPayload = {
   action: "list";
   page?: number;
   pageSize?: number;
+  roleFilter?: string;
 };
 
 type UpdateUserPayload = {
@@ -261,6 +262,10 @@ Deno.serve(async (req) => {
   if (body.action === "list") {
     const pageSize = Math.min(Math.max(Number(body.pageSize) || 100, 1), 100);
     const page = Math.max(Number(body.page) || 0, 0);
+    const requestedRole = normalizeRole(body.roleFilter);
+    const roleFilter = ["admin", "gate_officer", "lot_owner", "visitor"].includes(requestedRole)
+      ? requestedRole
+      : null;
     // The directory and Auth are both sources of users.  We prepend only Auth
     // accounts that have no public profile, then paginate the directory. This
     // avoids duplicate accounts and keeps every later page reachable.
@@ -288,12 +293,20 @@ Deno.serve(async (req) => {
       );
     }
     const profiledAuthIds = new Set((authProfiles ?? []).map((profile) => String(profile.user_id)));
-    const authOnly = authUsers.filter((authUser) => !profiledAuthIds.has(authUser.id));
+    const authOnly = authUsers.filter((authUser) => {
+      if (profiledAuthIds.has(authUser.id)) return false;
+      if (!roleFilter) return true;
+      const metadata = (authUser.user_metadata ?? {}) as Record<string, unknown>;
+      return normalizeRole(metadata.role) === roleFilter;
+    });
     authOnly.sort((a, b) => String(a.email ?? "").localeCompare(String(b.email ?? ""), undefined, { sensitivity: "base" }));
 
-    const { count: profileCount, error: profileCountError } = await adminClient
+    const profileCountQuery = adminClient
       .from("users")
       .select("user_id", { count: "exact", head: true });
+    const { count: profileCount, error: profileCountError } = roleFilter
+      ? await profileCountQuery.eq("role", roleFilter)
+      : await profileCountQuery;
     if (profileCountError) {
       return Response.json(
         { error: `Failed to count user profiles: ${profileCountError.message}` },
@@ -305,13 +318,16 @@ Deno.serve(async (req) => {
     const authSlice = authOnly.slice(offset, offset + pageSize);
     const publicOffset = Math.max(0, offset - authOnly.length);
     const publicLimit = pageSize - authSlice.length;
+    const publicProfilesQuery = adminClient
+      .from("users")
+      .select("*")
+      .order("name", { ascending: true, nullsFirst: false })
+      .range(publicOffset, publicOffset + publicLimit - 1);
     const { data: publicProfiles, error: publicProfilesError } = publicLimit === 0
       ? { data: [], error: null }
-      : await adminClient
-        .from("users")
-        .select("*")
-        .order("name", { ascending: true, nullsFirst: false })
-        .range(publicOffset, publicOffset + publicLimit - 1);
+      : roleFilter
+      ? await publicProfilesQuery.eq("role", roleFilter)
+      : await publicProfilesQuery;
     if (publicProfilesError) {
       return Response.json(
         { error: `Failed to load user profiles: ${publicProfilesError.message}` },
