@@ -608,13 +608,6 @@ class _LotOwnerHomeScreenState extends ConsumerState<LotOwnerHomeScreen> {
     return numeric == null ? value.toString() : _formatCurrency(numeric);
   }
 
-  String _purchaseTermLabel(String value) {
-    final normalized = value.trim().toLowerCase();
-    if (normalized == 'cash') return 'Cash';
-    if (normalized == 'at_need') return 'At Need';
-    return value;
-  }
-
   @override
   Widget build(BuildContext context) {
     if (widget.embedded) {

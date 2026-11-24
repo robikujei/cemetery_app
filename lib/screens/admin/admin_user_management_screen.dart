@@ -262,29 +262,33 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
       String? createdUserId;
 
       if (isEditing) {
-        final updateData = <String, dynamic>{
+        if (userId == null || userId.isEmpty) {
+          throw Exception('This user record has no account identifier.');
+        }
+        final updateBody = <String, dynamic>{
+          'action': 'update',
+          'userId': userId,
           'name': name,
           'email': email,
           'phone': phone,
           'role': role,
+          'password': result['password']?.trim() ?? '',
         };
         if (lotOwnerProfile != null) {
-          updateData.addAll(lotOwnerProfile);
+          updateBody['lotOwnerProfile'] = lotOwnerProfile;
         }
-
-        final target = userId != null && userId.isNotEmpty
-            ? supabase.from('users').update(updateData).eq('user_id', userId)
-            : supabase
-                  .from('users')
-                  .update(updateData)
-                  .eq('email', user['email']);
-
-        await target;
+        final response = await supabase.functions.invoke(
+          'admin-user-management',
+          body: updateBody,
+        );
+        if (response.data is Map && response.data['error'] != null) {
+          throw Exception(response.data['error']);
+        }
 
         await AuditService.log(
           action: 'UPDATE_USER',
           entityType: 'user',
-          entityId: userId ?? email,
+          entityId: userId,
           details: 'Updated user $name ($role)',
         );
       } else {
@@ -1554,7 +1558,6 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                   label: 'Email Address',
                   icon: Icons.email_rounded,
                   keyboardType: TextInputType.emailAddress,
-                  readOnly: isEditing,
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'Email is required';
@@ -1565,19 +1568,24 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                     return null;
                   },
                 ),
-                if (!isEditing) ...[
+                if (!isEditing || _isLotOwner) ...[
                   const SizedBox(height: 12),
                   _Field(
                     controller: _passwordController,
-                    label: 'Password',
+                    label: isEditing
+                        ? 'New login password (optional)'
+                        : 'Password',
                     icon: Icons.lock_rounded,
                     keyboardType: TextInputType.visiblePassword,
                     obscureText: true,
                     validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
+                      if (!isEditing &&
+                          (value == null || value.trim().isEmpty)) {
                         return 'Password is required';
                       }
-                      if (value.trim().length < 6) {
+                      if (value != null &&
+                          value.trim().isNotEmpty &&
+                          value.trim().length < 6) {
                         return 'Use at least 6 characters';
                       }
                       return null;

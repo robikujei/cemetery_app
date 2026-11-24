@@ -31,6 +31,20 @@ type ListUsersPayload = {
   pageSize?: number;
 };
 
+type UpdateUserPayload = {
+  action: "update";
+  userId?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  role?: string;
+  // Empty means keep the existing credential. It is intentionally optional
+  // because profile-only records cannot have a password changed until an Auth
+  // account is created for them.
+  password?: string;
+  lotOwnerProfile?: LotOwnerProfilePayload;
+};
+
 // This action is deliberately parameter-free.  It lets an authenticated user
 // reconnect only a profile with the same verified Auth email; it never takes a
 // role or a user id from the client.
@@ -41,6 +55,7 @@ type RecoverProfilePayload = {
 type AdminUserManagementPayload =
   | CreateUserPayload
   | ListUsersPayload
+  | UpdateUserPayload
   | RecoverProfilePayload;
 
 const textOrNull = (value: unknown) => {
@@ -246,12 +261,11 @@ Deno.serve(async (req) => {
   if (body.action === "list") {
     const pageSize = Math.min(Math.max(Number(body.pageSize) || 100, 1), 100);
     const page = Math.max(Number(body.page) || 0, 0);
-    // Authentication is the source of truth for portal accounts.  Some
-    // visitor and gate-officer accounts predate their matching public profile,
-    // so listing only public.users makes valid accounts disappear from User
-    // Management.
+    // The directory and Auth are both sources of users.  We prepend only Auth
+    // accounts that have no public profile, then paginate the directory. This
+    // avoids duplicate accounts and keeps every later page reachable.
     const { data: authPage, error: authUsersError } = await adminClient.auth
-      .admin.listUsers({ page: page + 1, perPage: pageSize });
+      .admin.listUsers({ page: 1, perPage: 1000 });
     if (authUsersError) {
       return Response.json(
         { error: `Failed to load authentication users: ${authUsersError.message}` },
@@ -260,17 +274,55 @@ Deno.serve(async (req) => {
     }
 
     const authUsers = authPage.users ?? [];
-    const userIds = authUsers.map((user) => user.id);
-    const { data: profiles, error: profilesError, count } = await adminClient
-      .from("users")
-      .select("*", { count: "exact" })
-      .in("user_id", userIds);
-    if (profilesError) {
+    const authIds = authUsers.map((user) => user.id);
+    const { data: authProfiles, error: authProfilesError } = authIds.length === 0
+      ? { data: [], error: null }
+      : await adminClient
+        .from("users")
+        .select("user_id")
+        .in("user_id", authIds);
+    if (authProfilesError) {
       return Response.json(
-        { error: `Failed to load user profiles: ${profilesError.message}` },
+        { error: `Failed to match authentication users: ${authProfilesError.message}` },
         { status: 500, headers: corsHeaders },
       );
     }
+    const profiledAuthIds = new Set((authProfiles ?? []).map((profile) => String(profile.user_id)));
+    const authOnly = authUsers.filter((authUser) => !profiledAuthIds.has(authUser.id));
+    authOnly.sort((a, b) => String(a.email ?? "").localeCompare(String(b.email ?? ""), undefined, { sensitivity: "base" }));
+
+    const { count: profileCount, error: profileCountError } = await adminClient
+      .from("users")
+      .select("user_id", { count: "exact", head: true });
+    if (profileCountError) {
+      return Response.json(
+        { error: `Failed to count user profiles: ${profileCountError.message}` },
+        { status: 500, headers: corsHeaders },
+      );
+    }
+
+    const offset = page * pageSize;
+    const authSlice = authOnly.slice(offset, offset + pageSize);
+    const publicOffset = Math.max(0, offset - authOnly.length);
+    const publicLimit = pageSize - authSlice.length;
+    const { data: publicProfiles, error: publicProfilesError } = publicLimit === 0
+      ? { data: [], error: null }
+      : await adminClient
+        .from("users")
+        .select("*")
+        .order("name", { ascending: true, nullsFirst: false })
+        .range(publicOffset, publicOffset + publicLimit - 1);
+    if (publicProfilesError) {
+      return Response.json(
+        { error: `Failed to load user profiles: ${publicProfilesError.message}` },
+        { status: 500, headers: corsHeaders },
+      );
+    }
+
+    const userIds = [
+      ...authSlice.map((user) => user.id),
+      ...(publicProfiles ?? []).map((profile) => String(profile.user_id)),
+    ];
 
     const { data: ownerships, error: ownershipError } = userIds.length === 0
       ? { data: [], error: null }
@@ -288,48 +340,84 @@ Deno.serve(async (req) => {
     for (const ownership of ownerships ?? []) {
       ownershipByUserId.set(String(ownership.user_id), ownership);
     }
-    const profileByUserId = new Map<string, Record<string, unknown>>();
-    for (const profile of profiles ?? []) {
-      profileByUserId.set(String(profile.user_id), profile);
-    }
-    const pageUsers = authUsers.map((authUser) => {
-      const profile = profileByUserId.get(authUser.id);
+    const pageUsers = authSlice.map((authUser) => {
       const metadata = (authUser.user_metadata ?? {}) as Record<string, unknown>;
       const metadataRole = normalizeRole(metadata.role);
-      const role = normalizeRole(profile?.role ?? metadataRole ?? "visitor") ||
+      const role = normalizeRole(metadataRole ?? "visitor") ||
         "visitor";
       const metadataName = textOrNull(metadata.name);
       const metadataPhone = textOrNull(metadata.phone);
       const ownership = ownershipByUserId.get(authUser.id);
       return {
-        ...profile,
         user_id: authUser.id,
-        name: profile?.name ?? metadataName ?? authUser.email?.split("@")[0] ?? "Unknown",
-        email: profile?.email ?? authUser.email ?? "",
-        phone: profile?.phone ?? metadataPhone ?? "",
+        name: metadataName ?? authUser.email?.split("@")[0] ?? "Unknown",
+        email: authUser.email ?? "",
+        phone: metadataPhone ?? "",
         role,
-        profile_missing: !profile,
+        profile_missing: true,
+        auth_account: true,
         is_lot_owner: Boolean(ownership) || role === "lot_owner",
         linked_lot_id: ownership?.lot_id,
         linked_ownership_id: ownership?.ownership_id,
         linked_total_months: ownership?.total_months,
       };
     });
-    pageUsers.sort((a, b) =>
-      String(a.name).localeCompare(String(b.name), undefined, {
-        sensitivity: "base",
-      })
-    );
-    // GoTrue does not return a total. This exact count is available whenever
-    // the last page is short; on a full page it leaves one more page available
-    // for the client to request without preloading it.
-    const total = authUsers.length < pageSize
-      ? page * pageSize + authUsers.length
-      : (page + 2) * pageSize;
+    pageUsers.push(...(publicProfiles ?? []).map((profile) => {
+      const ownership = ownershipByUserId.get(String(profile.user_id));
+      const role = normalizeRole(profile.role) || "visitor";
+      return {
+        ...profile,
+        profile_missing: false,
+        auth_account: profiledAuthIds.has(String(profile.user_id)),
+        is_lot_owner: Boolean(ownership) || role === "lot_owner",
+        linked_lot_id: ownership?.lot_id,
+        linked_ownership_id: ownership?.ownership_id,
+        linked_total_months: ownership?.total_months,
+      };
+    }));
+    const total = (profileCount ?? 0) + authOnly.length;
     return Response.json(
-      { users: pageUsers, page, pageSize, total: Math.max(total, count ?? 0) },
+      { users: pageUsers, page, pageSize, total },
       { headers: corsHeaders },
     );
+  }
+
+  if (body.action === "update") {
+    const userId = (body.userId ?? "").trim();
+    const name = (body.name ?? "").trim();
+    const email = (body.email ?? "").trim().toLowerCase();
+    const phone = (body.phone ?? "").trim();
+    const role = normalizeRole(body.role);
+    const password = (body.password ?? "").trim();
+    if (!userId || !name || !email || !role) {
+      return Response.json({ error: "User, name, email, and role are required" }, { status: 400, headers: corsHeaders });
+    }
+    if (!['admin', 'gate_officer', 'lot_owner', 'visitor'].includes(role)) {
+      return Response.json({ error: "Unsupported user role" }, { status: 400, headers: corsHeaders });
+    }
+    if (password && password.length < 6) {
+      return Response.json({ error: "Password must be at least 6 characters" }, { status: 400, headers: corsHeaders });
+    }
+    const lotOwnerProfile = normalizeLotOwnerProfile(body.lotOwnerProfile);
+    const { data: authUser } = await adminClient.auth.admin.getUserById(userId);
+    if (authUser.user) {
+      const { error: updateAuthError } = await adminClient.auth.admin.updateUserById(userId, {
+        email,
+        ...(password ? { password } : {}),
+        user_metadata: { ...(authUser.user.user_metadata ?? {}), name, phone, role },
+      });
+      if (updateAuthError) {
+        return Response.json({ error: `Unable to update login credentials: ${updateAuthError.message}` }, { status: 500, headers: corsHeaders });
+      }
+    } else if (password) {
+      return Response.json({ error: "This directory profile has no Auth account, so its login password cannot be changed." }, { status: 400, headers: corsHeaders });
+    }
+    const profile = { user_id: userId, name, email, phone: phone || null, role, ...(role === "lot_owner" ? lotOwnerProfile : {}) };
+    const { error: profileError } = await adminClient.from("users").upsert(profile, { onConflict: "user_id" });
+    if (profileError) {
+      return Response.json({ error: `Unable to update user profile: ${profileError.message}` }, { status: 500, headers: corsHeaders });
+    }
+    return Response.json({ user: { id: userId } }, { headers: corsHeaders });
   }
 
   if (body.action !== "create") {
