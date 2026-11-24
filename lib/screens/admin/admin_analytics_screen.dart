@@ -686,17 +686,20 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
                     runSpacing: 8,
                     children: const [
                       _HotspotLegendItem(
-                        color: Color(0x55F44336),
-                        borderColor: Color(0xFFF44336),
-                        label: 'Hotspot cluster area',
+                        color: Color(0xFF689F38),
+                        label: 'Green · low density (5–7 burials)',
+                      ),
+                      _HotspotLegendItem(
+                        color: Color(0xFFFFA000),
+                        label: 'Amber · medium density (8–14 burials)',
+                      ),
+                      _HotspotLegendItem(
+                        color: Color(0xFFFF5722),
+                        label: 'Orange · high density (15–24 burials)',
                       ),
                       _HotspotLegendItem(
                         color: Color(0xFFF44336),
-                        label: 'Cluster count marker',
-                      ),
-                      _HotspotLegendItem(
-                        color: Color(0xFF689F38),
-                        label: 'Isolated burial record',
+                        label: 'Red · very high density (25+ burials)',
                       ),
                     ],
                   ),
