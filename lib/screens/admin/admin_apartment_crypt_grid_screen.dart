@@ -433,8 +433,14 @@ class _AdminApartmentCryptGridScreenState
               children: [
                 SegmentedButton<String>(
                   segments: const [
-                    ButtonSegment(value: 'A', label: Text('Wing A · Left')),
-                    ButtonSegment(value: 'B', label: Text('Wing B · Right')),
+                    ButtonSegment(
+                      value: 'A',
+                      label: Text(apartmentCryptEntranceWingLabel),
+                    ),
+                    ButtonSegment(
+                      value: 'B',
+                      label: Text(apartmentCryptRearWingLabel),
+                    ),
                   ],
                   selected: {_wing},
                   onSelectionChanged: (value) =>
@@ -552,7 +558,7 @@ class _AdminApartmentCryptGridScreenState
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Wing A is displayed on the left and Wing B on the right, with 100 faces in each wing.',
+                  'Wing A faces the entrance; Wing B faces away from the entrance. Each wing has 100 crypt faces.',
                   textAlign: TextAlign.center,
                 ),
                 if (widget.onBackToMap != null) ...[

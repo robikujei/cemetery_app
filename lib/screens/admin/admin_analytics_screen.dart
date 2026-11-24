@@ -19,6 +19,35 @@ class AdminAnalyticsScreen extends StatefulWidget {
   State<AdminAnalyticsScreen> createState() => _AdminAnalyticsScreenState();
 }
 
+class _HotspotLegendItem extends StatelessWidget {
+  const _HotspotLegendItem({
+    required this.color,
+    required this.label,
+    this.borderColor,
+  });
+  final Color color;
+  final Color? borderColor;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 14,
+        height: 14,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(color: borderColor ?? color),
+        ),
+      ),
+      const SizedBox(width: 6),
+      Text(label),
+    ],
+  );
+}
+
 class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
   AnalyticsData? _data;
   bool _loading = false, _exporting = false;
@@ -109,11 +138,11 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
   bool _included(Object? value) => inPeriod(value, _range?.start, _range?.end);
   List<BlockDemand> get _demand => classifyDemand(_data!.lots, _data!.sales);
   Map<DateTime, int> get _visitorDays => visitorTrend(
-        _data!.visitors,
-        TrendInterval.daily,
-        start: _range?.start,
-        end: _range?.end,
-      );
+    _data!.visitors,
+    TrendInterval.daily,
+    start: _range?.start,
+    end: _range?.end,
+  );
   Widget _densitySummary() {
     final areas = _data!.mappedLotAreas();
     final counts = <String, int>{};
@@ -194,7 +223,11 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
     final monthEnd = DateTime(_visitorMonth.year, _visitorMonth.month + 1);
     final days = _visitorDays;
     final counts = <DateTime, int>{
-      for (var day = monthStart; day.isBefore(monthEnd); day = day.add(const Duration(days: 1)))
+      for (
+        var day = monthStart;
+        day.isBefore(monthEnd);
+        day = day.add(const Duration(days: 1))
+      )
         day: days[day] ?? 0,
     };
     final maxCount = counts.values.fold<int>(0, math.max);
@@ -204,7 +237,8 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
     final total = counts.values.fold<int>(0, (sum, count) => sum + count);
 
     Color colorFor(int count) {
-      if (count == 0) return Theme.of(context).colorScheme.surfaceContainerHighest;
+      if (count == 0)
+        return Theme.of(context).colorScheme.surfaceContainerHighest;
       final opacity = 0.20 + (0.80 * count / maxCount);
       return _accent.withValues(alpha: opacity);
     }
@@ -218,7 +252,10 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
               tooltip: 'Previous month',
               icon: const Icon(Icons.chevron_left_rounded),
               onPressed: () => setState(() {
-                _visitorMonth = DateTime(_visitorMonth.year, _visitorMonth.month - 1);
+                _visitorMonth = DateTime(
+                  _visitorMonth.year,
+                  _visitorMonth.month - 1,
+                );
               }),
             ),
             Expanded(
@@ -231,9 +268,15 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
             IconButton(
               tooltip: 'Next month',
               icon: const Icon(Icons.chevron_right_rounded),
-              onPressed: monthStart.isBefore(DateTime(DateTime.now().year, DateTime.now().month))
+              onPressed:
+                  monthStart.isBefore(
+                    DateTime(DateTime.now().year, DateTime.now().month),
+                  )
                   ? () => setState(() {
-                      _visitorMonth = DateTime(_visitorMonth.year, _visitorMonth.month + 1);
+                      _visitorMonth = DateTime(
+                        _visitorMonth.year,
+                        _visitorMonth.month + 1,
+                      );
                     })
                   : null,
             ),
@@ -248,10 +291,12 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
               children: [
                 Row(
                   children: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-                      .map((label) => SizedBox(
-                            width: 56,
-                            child: Text(label, textAlign: TextAlign.center),
-                          ))
+                      .map(
+                        (label) => SizedBox(
+                          width: 56,
+                          child: Text(label, textAlign: TextAlign.center),
+                        ),
+                      )
                       .toList(),
                 ),
                 const SizedBox(height: 6),
@@ -260,13 +305,16 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
                     if (index < firstOffset || index >= cellCount) {
                       return const SizedBox(width: 56, height: 56);
                     }
-                    final day = monthStart.add(Duration(days: index - firstOffset));
+                    final day = monthStart.add(
+                      Duration(days: index - firstOffset),
+                    );
                     final count = counts[day] ?? 0;
                     return SizedBox(
                       width: 56,
                       height: 56,
                       child: Tooltip(
-                        message: '${DateFormat.yMMMd().format(day)}: $count visitor ${count == 1 ? 'entry' : 'entries'}',
+                        message:
+                            '${DateFormat.yMMMd().format(day)}: $count visitor ${count == 1 ? 'entry' : 'entries'}',
                         child: Padding(
                           padding: const EdgeInsets.all(3),
                           child: DecoratedBox(
@@ -280,7 +328,9 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
                                 style: TextStyle(
                                   color: count > 0
                                       ? Colors.white
-                                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                                      : Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -296,7 +346,9 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        Text('$total visitor entries this month. Darker dates have more entries.'),
+        Text(
+          '$total visitor entries this month. Darker dates have more entries.',
+        ),
       ],
     );
   }
@@ -628,6 +680,26 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
                     ),
                   const SizedBox(height: 12),
                   _hotspotMap(),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 8,
+                    children: const [
+                      _HotspotLegendItem(
+                        color: Color(0x55F44336),
+                        borderColor: Color(0xFFF44336),
+                        label: 'Hotspot cluster area',
+                      ),
+                      _HotspotLegendItem(
+                        color: Color(0xFFF44336),
+                        label: 'Cluster count marker',
+                      ),
+                      _HotspotLegendItem(
+                        color: Color(0xFF689F38),
+                        label: 'Isolated burial record',
+                      ),
+                    ],
+                  ),
                   _densitySummary(),
                   const SizedBox(height: 12),
                   _table(
@@ -870,9 +942,10 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
     Map<String, Map<String, dynamic>> lots,
   ) {
     final burials = data.burials
-        .where((record) => _included(
-              record['interment_date'] ?? record['burial_date'],
-            ))
+        .where(
+          (record) =>
+              _included(record['interment_date'] ?? record['burial_date']),
+        )
         .toList();
     final categories = <String, int>{};
     final blocks = <String, int>{};
@@ -882,8 +955,9 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
 
     for (final burial in burials) {
       final category = burial['burial_category']?.toString().trim();
-      final categoryLabel =
-          category == null || category.isEmpty ? 'Unspecified' : category;
+      final categoryLabel = category == null || category.isEmpty
+          ? 'Unspecified'
+          : category;
       categories[categoryLabel] = (categories[categoryLabel] ?? 0) + 1;
 
       final lotId = burial['lot_id']?.toString();
@@ -942,10 +1016,8 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
     try {
       final data = _data!;
       final requiredTables = switch (_report) {
-        'Burial records' || 'Burial records (detailed)' => [
-          'burial_record',
-          'cemetery_lot',
-        ],
+        'Burial records' ||
+        'Burial records (detailed)' => ['burial_record', 'cemetery_lot'],
         'Visitor logs' || 'Visitor trends' => ['visitor_log'],
         'Lot inventory' => ['cemetery_lot'],
         'Lot sales' => ['lot_ownership', 'cemetery_lot'],
@@ -1009,11 +1081,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
           rows = [
             ['Period start (Asia/Manila)', 'Interval', 'Entries'],
             ..._visitorDays.entries.map(
-              (e) => [
-                DateFormat('yyyy-MM-dd').format(e.key),
-                'daily',
-                e.value,
-              ],
+              (e) => [DateFormat('yyyy-MM-dd').format(e.key), 'daily', e.value],
             ),
           ];
         case 'Lot inventory':

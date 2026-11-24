@@ -1593,8 +1593,14 @@ class _AdminBurialRecordsScreenState
               children: [
                 SegmentedButton<String>(
                   segments: const [
-                    ButtonSegment(value: 'A', label: Text('Wing A · Left')),
-                    ButtonSegment(value: 'B', label: Text('Wing B · Right')),
+                    ButtonSegment(
+                      value: 'A',
+                      label: Text(apartmentCryptEntranceWingLabel),
+                    ),
+                    ButtonSegment(
+                      value: 'B',
+                      label: Text(apartmentCryptRearWingLabel),
+                    ),
                   ],
                   selected: {wing},
                   onSelectionChanged: (value) =>
@@ -1713,6 +1719,18 @@ class _AdminBurialRecordsScreenState
           .update(data)
           .eq('informant_id', existingId);
       return existingId;
+    }
+
+    final duplicate = await supabase
+        .from('burial_informants')
+        .select('informant_id, cellphone_no')
+        .ilike('full_name', fullName)
+        .limit(1)
+        .maybeSingle();
+    if (duplicate != null) {
+      throw Exception(
+        'An informant named "$fullName" already exists. Use Find existing informant to select and edit that profile instead.',
+      );
     }
 
     final inserted = await supabase

@@ -4214,7 +4214,7 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                     marker == null
                         ? 'Tap a marker on the map'
                         : isCrypt
-                        ? 'Block ${lotText(lot, 'block_number')} · Apartment Crypt · Wings A & B'
+                        ? 'Block ${lotText(lot, 'block_number')} · Apartment Crypt · Wing A faces entrance'
                         : isFamilyEstate
                         ? 'Phase ${estatePhase.isEmpty ? '--' : estatePhase} · Family Estate'
                         : meta.isEmpty
@@ -4234,7 +4234,10 @@ class _AdminMapManagerScreenState extends ConsumerState<AdminMapManagerScreen> {
                     const SizedBox(height: 10),
                     _infoRow('Lot Number', lotText(lot, 'lot_number')),
                     const SizedBox(height: 10),
-                    _infoRow('Structure', 'Wing A + Wing B · 100 faces each'),
+                    _infoRow(
+                      'Structure',
+                      'Wing A faces entrance · Wing B faces away · 100 faces each',
+                    ),
                   ] else if (isFamilyEstate) ...[
                     const SizedBox(height: 10),
                     _infoRow(

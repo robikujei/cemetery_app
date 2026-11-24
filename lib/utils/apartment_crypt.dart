@@ -23,6 +23,13 @@ const apartmentCryptBuildingNames = <String>{
   'mt. seir',
 };
 
+/// Orientation is standardized for every apartment-crypt building: Wing A is
+/// the entrance-facing side; Wing B is the side away from the entrance.
+const apartmentCryptEntranceWing = 'A';
+const apartmentCryptRearWing = 'B';
+const apartmentCryptEntranceWingLabel = 'Wing A · faces entrance';
+const apartmentCryptRearWingLabel = 'Wing B · away from entrance';
+
 bool isApartmentCryptLot(Map<String, dynamic> lot) {
   final blockNumber = lot['block_number']?.toString().trim() ?? '';
   final lotNumberText = lot['lot_number']?.toString().trim() ?? '';

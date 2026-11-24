@@ -356,8 +356,14 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                 const SizedBox(height: 14),
                 SegmentedButton<String>(
                   segments: const [
-                    ButtonSegment(value: 'A', label: Text('Wing A')),
-                    ButtonSegment(value: 'B', label: Text('Wing B')),
+                    ButtonSegment(
+                      value: 'A',
+                      label: Text(apartmentCryptEntranceWingLabel),
+                    ),
+                    ButtonSegment(
+                      value: 'B',
+                      label: Text(apartmentCryptRearWingLabel),
+                    ),
                   ],
                   selected: {wing},
                   onSelectionChanged: (value) =>
