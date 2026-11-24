@@ -611,12 +611,12 @@ class _AdminBurialRecordsScreenState
             religion.contains(query) ||
             record['death_date']?.toString().contains(query) == true ||
             record['interment_date']?.toString().contains(query) == true;
+        final lot = record['cemetery_lot'];
+        final lotType = lot is Map ? lot['lot_class_type']?.toString() : null;
+        final blockNumber = lot is Map ? lot['block_number']?.toString() : null;
         final matchesCategory =
-            _categoryFilter == 'All' ||
-            record['burial_category']?.toString() == _categoryFilter;
-        final matchesLot =
-            _lotFilter == 'All' ||
-            lotReference(record['cemetery_lot'], fallback: '') == _lotFilter;
+            _categoryFilter == 'All' || lotType == _categoryFilter;
+        final matchesLot = _lotFilter == 'All' || blockNumber == _lotFilter;
         return matchesSearch && matchesCategory && matchesLot;
       }).toList();
       _filteredRecords.sort((a, b) {
@@ -637,7 +637,12 @@ class _AdminBurialRecordsScreenState
   List<String> get _categoryOptions {
     final values =
         _burialRecords
-            .map((record) => record['burial_category']?.toString().trim() ?? '')
+            .map((record) {
+              final lot = record['cemetery_lot'];
+              return lot is Map
+                  ? lot['lot_class_type']?.toString().trim() ?? ''
+                  : '';
+            })
             .where((value) => value.isNotEmpty)
             .toSet()
             .toList()
@@ -648,7 +653,12 @@ class _AdminBurialRecordsScreenState
   List<String> get _lotOptions {
     final values =
         _burialRecords
-            .map((record) => lotReference(record['cemetery_lot'], fallback: ''))
+            .map((record) {
+              final lot = record['cemetery_lot'];
+              return lot is Map
+                  ? lot['block_number']?.toString().trim() ?? ''
+                  : '';
+            })
             .where((value) => value.isNotEmpty)
             .toSet()
             .toList()
@@ -672,9 +682,7 @@ class _AdminBurialRecordsScreenState
               children: [
                 DropdownButtonFormField<String>(
                   value: category,
-                  decoration: const InputDecoration(
-                    labelText: 'Burial category',
-                  ),
+                  decoration: const InputDecoration(labelText: 'Lot type'),
                   items: _categoryOptions
                       .map(
                         (value) =>
@@ -687,7 +695,7 @@ class _AdminBurialRecordsScreenState
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   value: lot,
-                  decoration: const InputDecoration(labelText: 'Lot'),
+                  decoration: const InputDecoration(labelText: 'Block number'),
                   items: _lotOptions
                       .map(
                         (value) =>
