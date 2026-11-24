@@ -1276,6 +1276,32 @@ class _VisitorMapScreenState extends ConsumerState<VisitorMapScreen>
                           'Pre-need: PHP ${lotPriceForType(lot['lot_class_type']?.toString())!.preNeed.toStringAsFixed(2)}',
                 null,
               ),
+            if (isAvailable && burial == null && schedule == null)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () => showDialog<void>(
+                      context: context,
+                      builder: (dialogContext) => AlertDialog(
+                        title: const Text('Lot inquiry'),
+                        content: Text(
+                          'Lot $lotNumber is available. Please visit or contact the cemetery office to confirm availability and purchase details.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(dialogContext),
+                            child: const Text('Close'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    icon: const Icon(Icons.contact_support_outlined),
+                    label: const Text('Inquire about this lot'),
+                  ),
+                ),
+              ),
             _buildDetailRow(
               Icons.route_rounded,
               'Distance',
