@@ -71,6 +71,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
     'Visitor trends',
     'Lot inventory',
     'Lot sales',
+    'Monthly lot sales',
     'Payments',
     'Lot demand',
     'Hotspot analysis',
@@ -143,6 +144,109 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
     start: _range?.start,
     end: _range?.end,
   );
+
+  /// Ownership start dates represent the actual recorded lot purchase date.
+  /// Cancelled or rejected ownerships are deliberately excluded.
+  Map<DateTime, int> get _monthlyLotSales {
+    final totals = <DateTime, int>{};
+    for (final sale in _data!.sales) {
+      final status = sale['status']?.toString().trim().toLowerCase() ?? '';
+      if (status == 'cancelled' || status == 'rejected') continue;
+      if (!_included(sale['start_date'])) continue;
+      final date = DateTime.tryParse(sale['start_date']?.toString() ?? '');
+      if (date == null) continue;
+      final month = DateTime(date.year, date.month);
+      totals[month] = (totals[month] ?? 0) + 1;
+    }
+    final months = totals.keys.toList()..sort();
+    return {
+      for (final month
+          in months.length > 12 ? months.sublist(months.length - 12) : months)
+        month: totals[month]!,
+    };
+  }
+
+  Widget _monthlyLotSalesSummary() {
+    final sales = _monthlyLotSales;
+    final maxValue = sales.values.fold<int>(1, math.max);
+    final total = sales.values.fold<int>(0, (sum, value) => sum + value);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Actual lot purchases by ownership start month. Cancelled and rejected purchases are excluded.',
+        ),
+        const SizedBox(height: 12),
+        Text(
+          '$total lot${total == 1 ? '' : 's'} sold',
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+        ),
+        const SizedBox(height: 16),
+        if (sales.isEmpty)
+          const Text('No completed lot purchases are recorded for this period.')
+        else
+          SizedBox(
+            height: 206,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: sales.entries.map((entry) {
+                  final height = 18 + (128 * entry.value / maxValue);
+                  return SizedBox(
+                    width: 76,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Text(
+                          '${entry.value}',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 5),
+                        Tooltip(
+                          message:
+                              '${DateFormat('MMMM yyyy').format(entry.key)}: ${entry.value} lots sold',
+                          child: Container(
+                            height: height,
+                            width: 38,
+                            decoration: BoxDecoration(
+                              color: _accent,
+                              borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(6),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          DateFormat('MMM\nyy').format(entry.key),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        if (sales.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _table(
+            ['Month', 'Lots sold'],
+            sales.entries
+                .map(
+                  (entry) => [
+                    DateFormat('MMMM yyyy').format(entry.key),
+                    entry.value,
+                  ],
+                )
+                .toList(),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _densitySummary() {
     final areas = _data!.mappedLotAreas();
     final counts = <String, int>{};
@@ -509,6 +613,8 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
                 'across ${data.payments.where((p) => _included(p['payment_date'])).length} transactions in this period.',
               ),
             ),
+          if (!data.errors.containsKey('lot_ownership'))
+            _card('Lots sold per month', _monthlyLotSalesSummary()),
           if (!data.errors.containsKey('visitor_log'))
             _card(
               'Visitor calendar',
@@ -1023,7 +1129,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
         'Burial records (detailed)' => ['burial_record', 'cemetery_lot'],
         'Visitor logs' || 'Visitor trends' => ['visitor_log'],
         'Lot inventory' => ['cemetery_lot'],
-        'Lot sales' => ['lot_ownership', 'cemetery_lot'],
+        'Lot sales' || 'Monthly lot sales' => ['lot_ownership', 'cemetery_lot'],
         'Payments' => ['transaction_history'],
         'Lot demand' => ['cemetery_lot', 'lot_ownership'],
         _ => ['cemetery_lot', 'burial_record'],
@@ -1122,6 +1228,13 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
                     lots[r['lot_id'].toString()]?['price'],
                   ],
                 ),
+          ];
+        case 'Monthly lot sales':
+          rows = [
+            ['Month', 'Lots sold'],
+            ..._monthlyLotSales.entries.map(
+              (entry) => [DateFormat('yyyy-MM').format(entry.key), entry.value],
+            ),
           ];
         case 'Payments':
           rows = [
