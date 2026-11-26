@@ -10,6 +10,7 @@ class AdminInformantsScreen extends StatefulWidget {
 
 class _AdminInformantsScreenState extends State<AdminInformantsScreen> {
   final _search = TextEditingController();
+  String _searchQuery = '';
   List<Map<String, dynamic>> _items = [];
   static const _pageSize = 100;
   int _page = 0;
@@ -21,13 +22,36 @@ class _AdminInformantsScreenState extends State<AdminInformantsScreen> {
   void initState() {
     super.initState();
     _load();
-    _search.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
     _search.dispose();
     super.dispose();
+  }
+
+  void _submitSearch() {
+    final query = _search.text.trim();
+    if (query == _searchQuery && _page == 0) return;
+    setState(() => _searchQuery = query);
+    _load(0);
+  }
+
+  String _searchFilter(String query) {
+    // Keep the PostgREST OR expression structurally safe while preserving the
+    // ordinary name/phone/address keyword search users expect.
+    final escaped = query
+        .replaceAll(r'\\', r'\\\\')
+        .replaceAll(',', r'\\,')
+        .replaceAll('(', r'\\(')
+        .replaceAll(')', r'\\)');
+    return [
+      'full_name.ilike.%$escaped%',
+      'cellphone_no.ilike.%$escaped%',
+      'address.ilike.%$escaped%',
+      'work.ilike.%$escaped%',
+      'id_number.ilike.%$escaped%',
+    ].join(',');
   }
 
   Future<void> _load([int? requestedPage]) async {
@@ -38,14 +62,31 @@ class _AdminInformantsScreenState extends State<AdminInformantsScreen> {
     });
     try {
       final db = Supabase.instance.client;
-      final total = await db.from('burial_informants').count();
-      final rows = await db
-          .from('burial_informants')
-          .select(
-            'informant_id,full_name,address,work,cellphone_no,id_presented,id_number,place_issued',
-          )
-          .order('full_name')
-          .range(page * _pageSize, page * _pageSize + _pageSize - 1);
+      final filter = _searchQuery.isEmpty ? null : _searchFilter(_searchQuery);
+      final total = filter == null
+          ? await db.from('burial_informants').count()
+          : (await db
+                    .from('burial_informants')
+                    .select('informant_id')
+                    .or(filter)
+                    .count())
+                .count;
+      final rows = filter == null
+          ? await db
+                .from('burial_informants')
+                .select(
+                  'informant_id,full_name,address,work,cellphone_no,id_presented,id_number,place_issued',
+                )
+                .order('full_name')
+                .range(page * _pageSize, page * _pageSize + _pageSize - 1)
+          : await db
+                .from('burial_informants')
+                .select(
+                  'informant_id,full_name,address,work,cellphone_no,id_presented,id_number,place_issued',
+                )
+                .or(filter)
+                .order('full_name')
+                .range(page * _pageSize, page * _pageSize + _pageSize - 1);
       if (mounted)
         setState(() {
           _items = List<Map<String, dynamic>>.from(rows);
@@ -291,14 +332,7 @@ class _AdminInformantsScreenState extends State<AdminInformantsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final q = _search.text.trim().toLowerCase();
-    final shown = _items
-        .where(
-          (x) => '${x['full_name']} ${x['cellphone_no']} ${x['address']}'
-              .toLowerCase()
-              .contains(q),
-        )
-        .toList();
+    final shown = _items;
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: _load,
@@ -327,9 +361,16 @@ class _AdminInformantsScreenState extends State<AdminInformantsScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: _search,
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.search),
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => _submitSearch(),
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
                 hintText: 'Search name, phone, or address',
+                suffixIcon: IconButton(
+                  tooltip: 'Search informants',
+                  onPressed: _submitSearch,
+                  icon: const Icon(Icons.arrow_forward_rounded),
+                ),
               ),
             ),
             if (_error != null)
@@ -347,7 +388,11 @@ class _AdminInformantsScreenState extends State<AdminInformantsScreen> {
               )
             else ...[
               const SizedBox(height: 12),
-              Text('${shown.length} informant${shown.length == 1 ? '' : 's'}'),
+              Text(
+                _searchQuery.isEmpty
+                    ? '$_total informant${_total == 1 ? '' : 's'}'
+                    : '$_total matching informant${_total == 1 ? '' : 's'}',
+              ),
               ...shown.map(
                 (item) => Card(
                   child: ListTile(
